@@ -1,0 +1,29 @@
+[Unit]
+Description=Adguard Home DNS Server
+
+[Container]
+ContainerName=adguard
+Image=docker.io/adguard/adguardhome:beta
+AutoUpdate=registry
+
+# HealthCmd=curl http://127.0.0.1:3001
+UserNS=keep-id:uid=65532,gid=65532
+
+Network=homelab.network
+IP=10.90.0.2
+Hostname=adguard
+
+PublishPort=5553:53/tcp
+PublishPort=5553:53/udp
+
+Volume=%h/containers/storage/adguard:/opt/adguardhome/work:Z
+Volume=%h/containers/config/adguard:/opt/adguardhome/conf:Z
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

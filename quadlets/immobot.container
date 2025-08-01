@@ -1,0 +1,26 @@
+[Unit]
+Description=Immobot
+
+[Container]
+ContainerName=immobot
+Image=localhost:5000/immobot:latest
+AutoUpdate=registry
+
+Exec=/app/config.json
+
+# HealthCmd=curl http://127.0.0.1:3001
+UserNS=keep-id:uid=65532,gid=65532
+
+Network=homelab.network
+IP=10.90.0.8
+
+Volume=%h/containers/config/immobot/config.json:/app/config.json:Z
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

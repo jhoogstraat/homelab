@@ -1,0 +1,38 @@
+[Unit]
+Description=Wireguard Easy (wg-easy)
+
+[Container]
+ContainerName=wg-easy
+Image=ghcr.io/wg-easy/wg-easy:15
+AutoUpdate=registry
+
+# UserNS=keep-id:uid=65532,gid=65532
+
+Volume=/etc/containers/volumes/wg-easy:/etc/wireguard:Z
+Network=host
+# Network=wg-easy.network
+# PublishPort=51820:51820/udp
+# PublishPort=51821:51821/tcp
+
+# this is used to allow access over HTTP
+# remove this when using a reverse proxy
+Environment=INSECURE=true
+
+AddCapability=NET_ADMIN
+AddCapability=SYS_MODULE
+AddCapability=NET_RAW
+
+# Sysctl=net.ipv4.ip_forward=1
+# Sysctl=net.ipv4.conf.all.src_valid_mark=1
+# Sysctl=net.ipv6.conf.all.disable_ipv6=0
+# Sysctl=net.ipv6.conf.all.forwarding=1
+# Sysctl=net.ipv6.conf.default.forwarding=1
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

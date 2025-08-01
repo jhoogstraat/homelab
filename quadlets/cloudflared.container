@@ -1,0 +1,23 @@
+[Unit]
+Description=Cloudflare Daemon for a ZeroTrust Tunnel
+
+[Container]
+ContainerName=cloudflared
+Image=docker.io/cloudflare/cloudflared:latest
+AutoUpdate=registry
+
+Exec=tunnel --no-autoupdate run --token $CLOUDFLARE_TOKEN
+
+EnvironmentFile=%h/containers/secrets/cloudflare.env
+
+Network=homelab.network
+IP=10.90.0.9
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

@@ -1,0 +1,30 @@
+[Unit]
+Description=Pod for housing the Energymetering tools
+
+[Pod]
+PodName=energymeter
+
+Network=homelab.network
+IP=10.90.0.5
+
+UserNS=keep-id:uid=1500,gid=1500
+
+# RMQTT
+PublishPort=1883:1883
+PublishPort=8883:8883
+
+# InfluxDB 3
+PublishPort=8181:8181
+
+# Grafana
+PublishPort=3000:3000
+
+# Chronograf
+PublishPort=8888:8888
+
+# InfluxDB 3 Explorer
+PublishPort=8888:80
+PublishPort=8889:8888
+
+[Install]
+WantedBy=multi-user.target default.target

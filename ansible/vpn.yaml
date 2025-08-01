@@ -1,0 +1,49 @@
+- name: Configure wireguard easy for vpn access
+  hosts: homelab
+  remote_user: "{{ admin_user }}"
+  become: true
+  tasks:
+    # https://wg-easy.github.io/wg-easy/latest/examples/tutorials/podman-nft/
+    - name: Copy wg-easy container unit
+      ansible.builtin.copy:
+        src: ../vpn/wg-easy.container
+        dest: /etc/containers/systemd/wg-easy.container
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Configure modules to load (on boot?)
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/wg-easy.conf
+        owner: root
+        content: |
+          wireguard
+          nft_masq
+
+    - name: Create a working directory
+      ansible.builtin.file:
+        path: ~/containers/storage/wg-easy
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Open port 51820/udp for wg-easy (wan)
+      ansible.posix.firewalld:
+        port: 51820/udp
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: Open port 51821/tcp for wg-easy (wan)
+      ansible.posix.firewalld:
+        port: 51821/tcp
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: Force systemd to reload configs and start wg-easy
+      ansible.builtin.systemd_service:
+        state: restarted
+        daemon_reload: true
+        name: wg-easy

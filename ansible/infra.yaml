@@ -1,0 +1,52 @@
+- name: configure fedora iot on raspberry pi
+  hosts: homelab
+  remote_user: "{{ admin_user }}"
+  become: true
+  tasks:
+    - name: Create local insecure registry access
+      ansible.builtin.copy:
+        dest: "/etc/containers/registries.conf.d/local_registry.conf"
+        owner: root
+        content: |
+          [[registry]]
+          location = "localhost:5000"
+          insecure = true
+
+    - name: Open port 1883/tcp for mqtt (wan)
+      ansible.posix.firewalld:
+        port: 1883/tcp
+        state: enabled
+        permanent: true
+        immediate: true
+
+    # Disfunctional with vodafone station. Unable to forward to port 443.
+    # So this only works for lan traffic. For external traffic use cloudflared or wireguard vpn.
+    - name: Forward port 443/tcp to 4443 for caddy reverse-proxy (lan)
+      ansible.posix.firewalld:
+        port_forward:
+          - port: 443
+            toport: 4443
+            proto: tcp
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: Forward port 53/tcp to 5553 for adguard dns server (lan)
+      ansible.posix.firewalld:
+        port_forward:
+          - port: 53
+            toport: 5553
+            proto: tcp
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: Forward port 53/udp to 5553 for adguard dns server (lan)
+      ansible.posix.firewalld:
+        port_forward:
+          - port: 53
+            toport: 5553
+            proto: udp
+        state: enabled
+        permanent: true
+        immediate: true

@@ -1,0 +1,46 @@
+# Update and install packages
+- name: Update and install packages Fedora IoT on Raspberry Pi
+  hosts: homelab
+  remote_user: "{{ admin_user }}"
+  become: true
+  tasks:
+    - name: Ensure listed packages are available
+      community.general.rpm_ostree_pkg:
+        name:
+          - htop
+          - cockpit
+          - cockpit-podman
+          - bluez
+          - ncurses
+          - which
+          - rsync
+          - htop
+          - btop
+        state: present
+      register: ostree_results
+
+    - name: Reboot system to enable new packages
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+      when: ostree_results.changed
+
+    # Cockpit
+    - name: Ensure Cockpit socket is started and enabled
+      ansible.builtin.systemd:
+        name: cockpit.socket
+        state: started
+        enabled: true
+
+    - name: Open firewall ports for Cockpit
+      ansible.builtin.firewalld:
+        service: cockpit
+        state: enabled
+        permanent: true
+        immediate: true
+
+    # Bluetooth
+    - name: Ensure bluetooth service is started and enabled
+      ansible.builtin.systemd:
+        name: bluetooth.service
+        state: started
+        enabled: true

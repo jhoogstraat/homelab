@@ -1,0 +1,26 @@
+[Unit]
+Description=Memos
+
+[Container]
+ContainerName=memos
+Image=docker.io/neosmemo/memos:stable
+AutoUpdate=registry
+
+# HealthCmd=curl http://127.0.0.1:3001
+UserNS=keep-id:uid=65532,gid=65532
+
+Network=homelab.network
+IP=10.90.0.10
+; PublishPort=5230:5230
+
+Volume=%h/containers/storage/%N:/var/opt/memos:Z
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+ExecStartPre=mkdir -p %h/containers/storage/%N
+
+[Install]
+WantedBy=multi-user.target default.target

@@ -1,0 +1,30 @@
+[Unit]
+Description=Caddy Reverse Proxy
+
+[Container]
+ContainerName=caddy
+Image=localhost:5000/caddy:latest
+AutoUpdate=registry
+
+Exec=run --config /opt/caddy/conf/Caddyfile --adapter caddyfile --watch
+
+# HealthCmd=curl http://127.0.0.1:3001
+UserNS=keep-id:uid=65532,gid=65532
+
+Network=homelab.network
+IP=10.90.0.3
+PublishPort=4443:443
+
+Volume=%h/containers/storage/caddy:/opt/caddy/work/caddy:Z
+Volume=%h/containers/config/caddy:/opt/caddy/conf:Z,ro
+
+Environment=XDG_DATA_HOME=/opt/caddy/work
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

@@ -1,0 +1,27 @@
+[Unit]
+Description=Glance
+
+[Container]
+ContainerName=glance
+Image=docker.io/glanceapp/glance:latest
+AutoUpdate=registry
+
+# HealthCmd=wget --no-verbose --spider http://127.0.0.1:5000
+UserNS=keep-id:uid=65532,gid=65532
+
+Network=homelab.network
+Hostname=glance
+IP=10.90.0.4
+
+Volume=%h/containers/config/glance:/app/config:Z
+
+EnvironmentFile=%h/containers/secrets/adguard.env
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

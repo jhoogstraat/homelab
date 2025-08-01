@@ -1,0 +1,7 @@
+# Update and install os updates
+- name: Update and install packages Fedora IoT on Raspberry Pi
+  remote_user: "{{ admin_user }}"
+  become: true
+  tasks:
+    - name: Upgrade the rpm-ostree image
+      ansible.posix.rpm_ostree_upgrade:

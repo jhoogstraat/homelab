@@ -1,0 +1,31 @@
+[Unit]
+Description=InfluxDB for Energymetering
+
+[Container]
+ContainerName=influxdb-energymeter
+Image=docker.io/influxdb:3-core
+AutoUpdate=registry
+Pod=energymeter.pod
+
+Exec=--node-id=node-one --object-store=file --data-dir=/var/lib/influxdb
+
+# HealthCmd=curl http://127.0.0.1:3001
+
+# User+Group of the host mapped on the pod
+User=1500
+Group=1500
+
+Volume=%h/containers/storage/energymeter/influxdb:/var/lib/influxdb:Z
+
+Environment=INFLUXDB3_QUERY_FILE_LIMIT=1000
+
+EnvironmentFile=%h/containers/secrets/influxdb.env
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

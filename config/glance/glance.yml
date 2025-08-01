@@ -1,0 +1,202 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/not-first/glance-schema/master/schema.json
+pages:
+  - name: Home
+    # Optionally, if you only have a single page you can hide the desktop navigation for a cleaner look
+    # hide-desktop-navigation: true
+    columns:
+      - size: small
+        widgets:
+          - type: calendar
+            first-day-of-week: monday
+
+          - type: rss
+            limit: 10
+            collapse-after: 3
+            cache: 12h
+            feeds:
+              - url: https://selfh.st/rss/
+                title: selfh.st
+                limit: 4
+              - url: https://ciechanow.ski/atom.xml
+              - url: https://www.joshwcomeau.com/rss.xml
+                title: Josh Comeau
+              - url: https://samwho.dev/rss.xml
+              - url: https://ishadeed.com/feed.xml
+                title: Ahmad Shadeed
+
+          - type: twitch-channels
+            channels:
+              - theprimeagen
+              - tsoding
+
+          - type: dns-stats
+            service: adguard
+            url: http://adguard
+            username: ${ADGUARD_USERNAME}
+            password: ${ADGUARD_PASSWORD}
+            hour-format: 24h
+
+      - size: full
+        widgets:
+          - type: group
+            widgets:
+              - type: hacker-news
+              - type: lobsters
+
+          - type: videos
+            channels:
+              - UCR-DXc1voovS8nhAvccRZhg # Jeff Geerling
+              - UCsBjURrPoezykLs9EqgamOA # Fireship
+              - UCrqM0Ym_NbK1fqeQG2VIohg # https://www.youtube.com/@TsodingDaily
+              - UCBJycsmduvYEL83R_U4JriQ # Marques Brownlee
+              - UCHnyfMqiRRG1u-2MsSQLbXA # Veritasium
+
+          - type: group
+            widgets:
+              - type: reddit
+                subreddit: technology
+                show-thumbnails: true
+              - type: reddit
+                subreddit: selfhosted
+                show-thumbnails: true
+
+          - type: custom-api
+            title: Next Race
+            cache: 2h
+            url: https://f1api.dev/api/current/next
+            template: |
+              <div class="flex flex-column gap-10">
+                {{ $session := index (.JSON.Array "race") 0 }}
+                <p class="size-h5">
+                  Round {{ .JSON.String "round" }}
+                </p>
+
+                <div class="margin-block-4">
+                  <p class="color-highlight">{{ $session.String "raceName" }}</p>
+                  <p class="color-primary">
+                    <span>Race</span>
+                    {{ $datetime := concat ($session.String "schedule.race.date") "T" ($session.String "schedule.race.time") }}
+                    <span
+                      class="color-highlight"
+                      title="{{ $session.String "schedule.race.date" }}"
+                      {{ parseRelativeTime "rfc3339" $datetime }}
+                    ></span>
+                  </p>
+                  <p class="size-h5">{{ $session.String "schedule.race.date" }} at {{ $session.String "schedule.race.time" }}</p>
+                </div>
+
+                <ul class="size-h5 attachments">
+                  <li>{{ $session.String "circuit.country" }}</li>
+                  <li>{{ $session.String "circuit.city" }}</li>
+                  <li>{{ $session.String "circuit.circuitName" }}</li>
+                </ul>
+              </div>
+
+          - type: custom-api
+            title: Last Race Results
+            cache: 1d
+            url: https://f1api.dev/api/current/last/race
+            template: |
+              <div class="flex flex-column gap-10">
+                <p class="size-h5">{{ .JSON.String "races.raceName" }}</p>
+                <ul class="list collapsible-container" data-collapse-after="5">
+                  {{ range $i, $v := .JSON.Array "races.results" }}
+                  <li class="flex items-center {{ if eq $i 0 }}color-primary{{ else if eq $i 1 }}color-highlight{{ end }}">
+                    <span class="grow min-width-0">{{ .String "position" }}. {{ .String "driver.shortName" }}</span>
+                    <span class="shrink-0 text-right">{{ .String "time" }}</span>
+                  </li>
+                  {{ end }}
+                </ul>
+              </div>
+
+          - type: custom-api
+            title: Drivers Standings
+            cache: 1d
+            url: https://f1api.dev/api/current/drivers-championship
+            template: |
+              <ul class="list collapsible-container" data-collapse-after="5">
+                {{ range $i, $v := .JSON.Array "drivers_championship" }}
+                <li class="flex items-center {{ if eq $i 0 }}color-primary{{ else if eq $i 1 }}color-highlight{{ end }}">
+                  <div class="grow min-width-0">
+                    <span>{{ .String "position" }}. {{ .String "driver.shortName" }}</span>
+                    <span class="size-h6">({{ .String "team.teamName" }})</span>
+                  </div>
+                  <span class="shrink-0 text-right">{{ .String "points" }}</span>
+                </li>
+                {{ end }}
+              </ul>
+
+          - type: custom-api
+            title: Constructors Standings
+            cache: 1d
+            url: https://f1api.dev/api/current/constructors-championship
+            template: |
+              <ul class="list collapsible-container" data-collapse-after="5">
+                {{ range $i, $v := .JSON.Array "constructors_championship" }}
+                <li class="flex items-center {{ if eq $i 0 }}color-primary{{ else if eq $i 1 }}color-highlight{{ end }}">
+                  <span class="grow min-width-0">{{ .String "position" }}. {{ .String "team.teamName" }}</span>
+                  <span class="shrink-0 text-right">{{ .String "points" }}</span>
+                </li>
+                {{ end }}
+              </ul>
+
+      - size: small
+        widgets:
+          - type: weather
+            location: Hamburg, Germany
+            units: metric # alternatively "imperial"
+            hour-format: 24h # alternatively "24h"
+            # Optionally hide the location from being displayed in the widget
+            # hide-location: true
+
+          - type: markets
+            markets:
+              - symbol: SPY
+                name: S&P 500
+              - symbol: BTC-USD
+                name: Bitcoin
+              - symbol: ETH-USD
+                name: Ethereum
+              - symbol: EOS-USD
+                name: EOS
+              - symbol: A-USD
+                name: Vaulta
+
+          - type: releases
+            cache: 1d
+            repositories:
+              - AdguardTeam/AdGuardHome
+              - home-assistant/core
+              - glanceapp/glance
+
+          - type: monitor
+            cache: 1m
+            title: Services
+            sites:
+              - title: AdGuard Home
+                url: https://adguard.hoogstraat.de
+                check-url: http://adguard
+                icon: di:adguard-home
+              - title: Vaultwarden
+                url: https://vault.hoogstraat.de
+                check-url: http://vaultwarden:8080
+                icon: di:vaultwarden
+              - title: Wireguard
+                url: https://wg.hoogstraat.de
+                check-url: wg-easy:51821
+                icon: di:wireguard
+
+# Add more pages here:
+# - name: Your page name
+#   columns:
+#     - size: small
+#       widgets:
+#         # Add widgets here
+
+#     - size: full
+#       widgets:
+#         # Add widgets herej
+
+#     - size: small
+#       widgets:
+#         # Add widgets here

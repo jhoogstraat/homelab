@@ -1,0 +1,138 @@
+(cors) {
+	header Access-Control-Allow-Origin https://home.hoogstraat.de {
+		defer
+	}
+}
+
+(server) {
+	@options method OPTIONS
+
+	@home host "home.{args[0]}"
+	@homepage host "homepage.{args[0]}"
+	@adguard host "adguard.{args[0]}"
+	@vault host "vault.{args[0]}"
+	@languagetool host "languagetool.{args[0]}"
+	@paperless host "paperless.{args[0]}"
+	@homebridge host "homebridge.{args[0]}"
+	@wireguard host "wg.{args[0]}"
+	@homeassistant host "ha.{args[0]}"
+	@registry host "registry.{args[0]}"
+	@glance host "glance.{args[0]}"
+	@energy host "energy.{args[0]}"
+
+	handle @home {
+		reverse_proxy unknown:9999
+	}
+
+	handle @homepage {
+		reverse_proxy unknown:9999
+	}
+
+	handle @adguard {
+		import cors
+		reverse_proxy adguard:80
+  }
+
+	handle @vault {
+		import cors
+		reverse_proxy vaultwarden:8080
+	}
+
+	handle @glance {
+		reverse_proxy glance:8080
+	}
+
+	handle @languagetool {
+		import cors
+		rewrite * /v2{path}?{query}
+		reverse_proxy unknown:9999
+	}
+
+	handle @paperless {
+		import cors
+		header @options Access-Control-Allow-Headers authorization
+		reverse_proxy unknown:9999
+	}
+
+	handle @homebridge {
+		import cors
+		reverse_proxy host.docker.internal:{$PORT_HOMEBRIDGE}
+	}
+
+  handle @wireguard {
+  	reverse_proxy wg-easy:51821
+  }
+
+	handle @homeassistant {
+		# reverse_proxy homeassistant:8123
+		reverse_proxy host.docker.internal:8123
+	}
+
+	handle @registry {
+		reverse_proxy registry:5000
+	}
+
+	handle @energy {
+		reverse_proxy energymeter:3000
+	}
+
+	# Fallback for otherwise unhandled domains
+	handle {
+		abort
+	}
+}
+
+
+*.hoogstraat.net {
+
+	log {
+		output stdout
+		format console
+	}
+
+
+}
+
+# Default entrance via a valid domain. TLS enabled.
+*.hoogstraat.de {
+	log {
+		output stdout
+		format console
+	}
+
+  # Because my DNS provider does not have an api to update DNS entries (like the TXT entry where we have to put the token we get from the CA to validate us), we use a proxy dns server, called acme_server.
+  # Instead of putting the TXT entry on our DNS provider, caddy will update it on the proxy dns server.
+  # Manually, we forward from the DNS provider to the proxy dns server via a CNAME entry.
+  # We need the resolvers, because it seems like caddy tests the CNAME + token-set via _acme-challenge.hoogstraat.de. Adguard DNS will rewrite this to the raspi local ip, without ever leaving the local network, so we need to skip adguard in this case via a public dns server. 
+  tls {
+		resolvers 1.1.1.1 8.8.8.8
+		dns acmedns {
+        username {$ACMEDNS_USERNAME}
+        password {$ACMEDNS_PASSWORD}
+        subdomain {$ACMEDNS_SUBDOMAIN}
+        server_url {$ACMEDNS_SERVER_URL}
+	    }
+	}
+
+	# Same but with cloudflare...
+	# tls {
+	# 	dns cloudflare <token>
+	# }
+
+	# Use cert from Cloudflare, that ONLY Cloudflare trusts (so browser still complain when accessed directly and not through cloudflare proxy).
+	# Better would be a certificate by letsencrypt, but they ratelimit and the certificate was not saved while developing... :(
+	# https://samjmck.com/en/blog/using-caddy-with-cloudflare/
+	# tls /cert.pem /priv.pem
+	
+	# Alternatively use caddy internal certificates
+	# tls internal
+
+  # Separate entrance to the pi. Does not have TLS enabled
+  # *.pi {
+  # 	log
+  # 	tls internal
+  # 	import server pi
+  # }
+
+	import server hoogstraat.de
+}

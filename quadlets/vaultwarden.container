@@ -1,0 +1,30 @@
+[Unit]
+Description=Vaultwarden (Bitwarden in Rust)
+
+[Container]
+ContainerName=vaultwarden
+Image=docker.io/vaultwarden/server:latest-alpine
+AutoUpdate=registry
+
+# HealthCmd=wget --no-verbose --spider http://127.0.0.1:5000
+UserNS=keep-id:uid=65532,gid=65532
+
+Network=homelab.network
+IP=10.90.0.7
+HostName=vaultwarden
+
+Volume=%h/containers/storage/vaultwarden:/data:Z
+
+Environment=DOMAIN=https://vault.hoogstraat.de
+Environment=ROCKET_PORT=8080
+
+EnvironmentFile=%h/containers/secrets/vaultwarden.env
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

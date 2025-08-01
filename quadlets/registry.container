@@ -1,0 +1,29 @@
+[Unit]
+Description=Private docker registry
+
+[Container]
+ContainerName=docker-registry
+Image=docker.io/registry:2
+AutoUpdate=registry
+
+HealthCmd=wget --no-verbose --spider http://127.0.0.1:5000
+UserNS=keep-id:uid=65532,gid=65532
+
+Network=homelab.network
+IP=10.90.0.6
+HostName=registry
+
+PublishPort=5000:5000
+
+Volume=%h/containers/storage/registry:/var/lib/registry:Z
+
+Environment=REGISTRY_STORAGE_DELETE_ENABLED=true
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

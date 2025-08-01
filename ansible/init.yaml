@@ -1,0 +1,97 @@
+- name: Configure Fedora IoT on Raspberry Pi
+  hosts: servers
+  remote_user: root
+  vars:
+    admin_username: jh
+    admin_full_name: Joshua
+    admin_ssh_pub_key: ../users/admin.pub
+    podman_username: picasso
+    podman_user_comment: Rootless unprivileged peasant named picasso to run podman containers
+    podman_ssh_pub_key: ../users/picasso.pub
+    cockpit_username: cockpit
+    cockpit_user_comment: Rootless unprivileged peasant with password to login to cockpit
+  tasks:
+    # Generic
+    - name: Define hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Set timezone to Europe/Berlin
+      community.general.timezone:
+        name: Europe/Berlin
+
+    - name: Lock root user
+      ansible.builtin.user:
+        name: root
+        password_lock: true
+
+    # Admin user
+    - name: Create admin user
+      ansible.builtin.user:
+        name: "{{ admin_username }}"
+        comment: "{{ admin_full_name }}"
+        uid: 1000
+        password_lock: true
+        groups: ["wheel"]
+        state: present
+
+    - name: Add ssh pub key for admin user
+      ansible.posix.authorized_key:
+        user: "{{ admin_username }}"
+        key: "{{ lookup('file', admin_ssh_pub_key) }}"
+        state: present
+
+    - name: Allow group wheel sudo access without password
+      community.general.sudoers:
+        name: wheel-all
+        group: wheel
+        commands: ALL
+        nopassword: true
+
+    # Rootless podman user
+    - name: Add unprivileged podman container runner user
+      ansible.builtin.user:
+        name: "{{ podman_username }}"
+        comment: "{{ podman_user_comment }}"
+        password_lock: true
+        uid: 3000
+        # groups: ["dialout", "dbus"] # Thread USB Dongle, "RPI onboard bluetooth"
+        state: present
+
+    - name: Add ssh pub key for podman user
+      ansible.posix.authorized_key:
+        user: "{{ podman_username }}"
+        key: "{{ lookup('file', podman_ssh_pub_key) }}"
+        state: present
+
+    # Rootless cockpit login user
+    - name: Add unprivileged cockpit user
+      ansible.builtin.user:
+        name: "{{ cockpit_username }}"
+        comment: "{{ cockpit_user_comment }}"
+        uid: 4000
+        password: $6$fMTmOCP5eFVreSeb$dC/eKQPsoDu7tu0lsqAcfTvbVhNLLSBkT7ylDsPa6ucaM4Hy3msuPBnP3sTJXWlD5/ECnPYthEZPpVxt9h.pD1
+        state: present
+
+    # Podman
+    - name: "Start & Enable Podman Socket"
+      ansible.builtin.service:
+        name: podman.socket
+        state: started
+        enabled: true
+        # become: true
+
+    - name: "Start & Enable Podman Auto Update Timer"
+      become_user: "{{ podman_username }}"
+      ansible.builtin.service:
+        name: "podman-auto-update.timer"
+        state: "started"
+        enabled: true
+
+    - name: Enable lingering for {{ item }} user
+      ansible.builtin.command:
+        cmd: "loginctl enable-linger {{ item }}"
+        creates: "/var/lib/systemd/linger/{{ item }}"
+      loop:
+        - "{{ admin_username }}"
+        - "{{ podman_username }}"
