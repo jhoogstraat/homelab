@@ -2,7 +2,7 @@
 Description=Pod for housing homeassistant and friends
 
 [Pod]
-PodName=hass
+PodName=homeassistant
 
 Network=host
 

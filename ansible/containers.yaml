@@ -2,9 +2,10 @@
   hosts: homelab
   remote_user: "{{ podman_user }}"
   tasks:
-    - name: Sync containers quadlets
+    # https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#podman-rootless-unit-search-path
+    - name: Sync rootless quadlets
       ansible.posix.synchronize:
-        src: ../quadlets/
+        src: ../quadlets/rootless/
         dest: ~/.config/containers/systemd/
 
     - name: Copy config

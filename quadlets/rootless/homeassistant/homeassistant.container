@@ -9,7 +9,6 @@ Pod=homeassistant.pod
 
 # HealthCmd=curl http://127.0.0.1:3001
 
-# User+Group of the host mapped on the pod
 User=1500
 Group=1500
 
