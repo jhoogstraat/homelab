@@ -6,13 +6,13 @@ It does not contain any unencrypted passwords or secrets, because that would be 
 
 Directory structure:
 
-- config/: contains config files for the containers.
-- containers/: Contains the systemd unit files for pods and containers.
-- custom-images/: Dockerfiles to build custom images that can't be fetched remotely.
-- playbooks/: A location for all playbooks.
-- storage/: Contains empty or prefilled storage directories for the containers.
-- secrets/: SOPS-encrypted secrets using the admin private ssh key
-- users/: A list of public ssh keys that are imported to the target server.
+- `ansible/`: A location for all playbooks.
+- `config/`: contains config files for the containers.
+- `data/`: Contains empty or prefilled storage directories for the containers.
+- `quadlets/`: Contains the systemd unit files for pods and containers.
+- `images/`: Dockerfiles to build custom images that can't be fetched remotely.
+- `secrets/`: SOPS-encrypted secrets using the admin private ssh key
+- `users/`: A list of public ssh keys that are imported to the target server.
 
 TODO: As the storage dirs are actively used and modified we cannot just push the static static from the repo...
 
