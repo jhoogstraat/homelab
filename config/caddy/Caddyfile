@@ -1,5 +1,5 @@
 (cors) {
-	header Access-Control-Allow-Origin https://home.hoogstraat.de {
+	header Access-Control-Allow-Origin https://glance.hoogstraat.de {
 		defer
 	}
 }
@@ -51,7 +51,7 @@
 	handle @paperless {
 		import cors
 		header @options Access-Control-Allow-Headers authorization
-		reverse_proxy unknown:9999
+		reverse_proxy paperless-ngx:8010
 	}
 
 	handle @homebridge {

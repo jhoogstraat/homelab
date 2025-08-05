@@ -1,0 +1,35 @@
+[Unit]
+Description=paperless-ngx webserver
+Wants=paperless-redis.container
+Wants=paperless-tika.container
+Wants=paperless-gotenberg.container
+
+[Container]
+ContainerName=paperless-webserver
+Image=ghcr.io/paperless-ngx/paperless-ngx:latest
+AutoUpdate=registry
+Pod=paperless.pod
+
+# User+Group of the host mapped on the pod
+User=1500
+Group=1500
+
+Volume=%h/containers/storage/paperless/data:/usr/src/paperless/data:Z
+Volume=%h/containers/storage/paperless/media:/usr/src/paperless/media:Z
+Volume=%h/containers/storage/paperless/export:/usr/src/paperless/export:Z
+Volume=%h/containers/storage/paperless/consume:/usr/src/paperless/consume:Z
+
+Environment=PAPERLESS_REDIS=redis://localhost:6379
+Environment=PAPERLESS_TIKA_ENABLED=1
+Environment=PAPERLESS_TIKA_GOTENBERG_ENDPOINT=http://localhost:3000
+Environment=PAPERLESS_TIKA_ENDPOINT=http://localhost:9998
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=500
+ExecStartPre=mkdir -p %h/containers/storage/paperless/data %h/containers/storage/paperless/media %h/containers/storage/paperless/export %h/containers/storage/paperless/consume
+
+[Install]
+WantedBy=multi-user.target default.target

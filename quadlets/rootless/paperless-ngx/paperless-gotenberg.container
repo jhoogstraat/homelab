@@ -1,0 +1,23 @@
+[Unit]
+Description=gotenberg for paperless-ngx
+
+[Container]
+ContainerName=paperless-gotenberg
+Image=docker.io/gotenberg/gotenberg:8.20
+AutoUpdate=registry
+Pod=paperless.pod
+
+# User+Group of the host mapped on the pod
+User=1500
+Group=1500
+
+Exec=gotenberg --chromium-disable-javascript=true --chromium-allow-list=file:///tmp/.*
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=500
+
+[Install]
+WantedBy=multi-user.target default.target

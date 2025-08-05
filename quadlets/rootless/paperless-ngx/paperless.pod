@@ -1,0 +1,16 @@
+[Unit]
+Description=Pod for paperless-ngx
+
+[Pod]
+PodName=paperless-ngx
+
+Network=homelab.network
+IP=10.90.0.11
+
+UserNS=keep-id:uid=1500,gid=1500
+
+# paperless-ngx-webserver
+PublishPort=8010:8000
+
+[Install]
+WantedBy=multi-user.target default.target
