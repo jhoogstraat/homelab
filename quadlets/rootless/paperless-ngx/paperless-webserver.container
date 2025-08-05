@@ -23,6 +23,11 @@ Environment=PAPERLESS_REDIS=redis://localhost:6379
 Environment=PAPERLESS_TIKA_ENABLED=1
 Environment=PAPERLESS_TIKA_GOTENBERG_ENDPOINT=http://localhost:3000
 Environment=PAPERLESS_TIKA_ENDPOINT=http://localhost:9998
+Environment=USERMAP_UID=1500
+Environment=USERMAP_GID=1500
+
+EnvironmentFile=%h/containers/config/paperless-ngx/config.env
+EnvironmentFile=%h/containers/secrets/paperless-ngx.env
 
 Timezone=local
 
