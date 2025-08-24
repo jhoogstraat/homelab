@@ -19,12 +19,16 @@ Volume=%h/containers/storage/caddy:/opt/caddy/work/caddy:Z
 Volume=%h/containers/config/caddy:/opt/caddy/conf:Z,ro
 
 Environment=XDG_DATA_HOME=/opt/caddy/work
+EnvironmentFile=%h/containers/secrets/acmedns.env
 
 Timezone=local
 
 [Service]
-Restart=always
+Restart=on-failure
 TimeoutStartSec=300
+
+StartLimitInterval=300
+StartLimitBurst=5
 
 [Install]
 WantedBy=multi-user.target default.target

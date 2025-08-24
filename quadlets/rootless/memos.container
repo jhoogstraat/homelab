@@ -18,9 +18,12 @@ Volume=%h/containers/storage/%N:/var/opt/memos:Z
 Timezone=local
 
 [Service]
-Restart=always
+Restart=on-failure
 TimeoutStartSec=300
 ExecStartPre=mkdir -p %h/containers/storage/%N
+
+StartLimitInterval=300
+StartLimitBurst=5
 
 [Install]
 WantedBy=multi-user.target default.target

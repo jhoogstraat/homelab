@@ -22,8 +22,11 @@ Environment=REGISTRY_STORAGE_DELETE_ENABLED=true
 Timezone=local
 
 [Service]
-Restart=always
+Restart=on-failure
 TimeoutStartSec=300
+
+StartLimitInterval=300
+StartLimitBurst=5
 
 [Install]
 WantedBy=multi-user.target default.target

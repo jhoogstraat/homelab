@@ -17,5 +17,5 @@ Volume=%h/containers/config/homeassistant/:/config:Z
 Timezone=local
 
 [Service]
-Restart=always
+Restart=on-failure
 TimeoutStartSec=300

@@ -10,7 +10,6 @@ AutoUpdate=registry
 UserNS=keep-id:uid=65532,gid=65532
 
 Network=homelab.network
-Hostname=glance
 IP=10.90.0.4
 
 Volume=%h/containers/config/glance:/app/config:Z
@@ -20,8 +19,11 @@ EnvironmentFile=%h/containers/secrets/adguard.env
 Timezone=local
 
 [Service]
-Restart=always
+Restart=on-failure
 TimeoutStartSec=300
+
+StartLimitInterval=300
+StartLimitBurst=5
 
 [Install]
 WantedBy=multi-user.target default.target

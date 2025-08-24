@@ -8,5 +8,8 @@ Network=host
 
 UserNS=keep-id:uid=1500,gid=1500
 
+StartLimitInterval=300
+StartLimitBurst=5
+
 [Install]
 WantedBy=multi-user.target default.target
