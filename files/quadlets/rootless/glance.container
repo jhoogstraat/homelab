@@ -12,9 +12,9 @@ UserNS=keep-id:uid=65532,gid=65532
 Network=homelab.network
 IP=10.90.0.4
 
-Volume=%h/containers/config/glance:/app/config:Z
+Volume=%h/containers/config/%N:/app/config:Z
 
-EnvironmentFile=%h/containers/secrets/adguard.env
+EnvironmentFile=%h/containers/secrets/%N.env
 
 Timezone=local
 

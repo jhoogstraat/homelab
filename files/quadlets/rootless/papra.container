@@ -12,11 +12,11 @@ UserNS=keep-id:uid=999,gid=999
 Network=homelab.network
 IP=10.90.0.11
 
-Volume=%h/containers/storage/papra/data:/app/app-data:Z
-Volume=%h/containers/storage/papra/ingestion:/app/ingestion:Z
+Volume=%h/containers/storage/%N/data:/app/app-data:Z
+Volume=%h/containers/storage/%N/ingestion:/app/ingestion:Z
 
-EnvironmentFile=%h/containers/config/papra/papra.env
-EnvironmentFile=%h/containers/secrets/papra.env
+EnvironmentFile=%h/containers/config/%N/papra.env
+EnvironmentFile=%h/containers/secrets/%N.env
 
 Timezone=local
 

@@ -13,18 +13,20 @@ Network=homelab.network
 IP=10.90.0.7
 HostName=vaultwarden
 
-Volume=%h/containers/storage/vaultwarden:/data:Z
+Volume=%h/containers/storage/%N:/data:Z
 
 Environment=DOMAIN=https://vault.hoogstraat.de
 Environment=ROCKET_PORT=8080
 
-EnvironmentFile=%h/containers/secrets/vaultwarden.env
+EnvironmentFile=%h/containers/secrets/%N.env
 
 Timezone=local
 
 [Service]
 Restart=on-failure
 TimeoutStartSec=300
+
+ExecStartPre=mkdir -p %h/containers/storage/%N
 
 StartLimitInterval=300
 StartLimitBurst=5

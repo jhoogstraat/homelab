@@ -8,7 +8,7 @@ AutoUpdate=registry
 
 Exec=tunnel --no-autoupdate run --token $CLOUDFLARE_TOKEN
 
-EnvironmentFile=%h/containers/secrets/cloudflare.env
+EnvironmentFile=%h/containers/secrets/%N.env
 
 Network=homelab.network
 IP=10.90.0.9

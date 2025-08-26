@@ -15,17 +15,20 @@ Network=homelab.network
 IP=10.90.0.3
 PublishPort=4443:443
 
-Volume=%h/containers/storage/caddy:/opt/caddy/work/caddy:Z
-Volume=%h/containers/config/caddy:/opt/caddy/conf:Z,ro
+Volume=%h/containers/storage/%N:/opt/caddy/work/caddy:Z
+Volume=%h/containers/config/%N:/opt/caddy/conf:Z,ro
+
+EnvironmentFile=%h/containers/secrets/%N.env
 
 Environment=XDG_DATA_HOME=/opt/caddy/work
-EnvironmentFile=%h/containers/secrets/acmedns.env
 
 Timezone=local
 
 [Service]
 Restart=on-failure
 TimeoutStartSec=300
+
+ExecStartPre=mkdir -p %h/containers/storage/%N
 
 StartLimitInterval=300
 StartLimitBurst=5
