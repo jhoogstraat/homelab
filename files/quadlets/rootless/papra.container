@@ -23,6 +23,10 @@ Timezone=local
 [Service]
 Restart=on-failure
 TimeoutStartSec=300
+
+ExecStartPre=mkdir -p %h/containers/storage/%N/data
+ExecStartPre=mkdir -p %h/containers/storage/%N/ingestion
+
 StartLimitInterval=300
 StartLimitBurst=5
 
