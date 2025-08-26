@@ -4,10 +4,10 @@
   vars:
     admin_username: jh
     admin_full_name: Joshua
-    admin_ssh_pub_key: ../users/admin.pub
-    podman_username: picasso
-    podman_user_comment: Rootless unprivileged peasant named picasso to run podman containers
-    podman_ssh_pub_key: ../users/picasso.pub
+    admin_ssh_pub_key: files/users/admin.pub
+    picasso_username: picasso
+    picasso_user_comment: Rootless unprivileged peasant named picasso to run podman containers
+    picasso_ssh_pub_key: files/users/picasso.pub
     cockpit_username: cockpit
     cockpit_user_comment: Rootless unprivileged peasant with password to login to cockpit
   tasks:
@@ -48,20 +48,20 @@
         commands: ALL
         nopassword: true
 
-    # Rootless podman user
+    # Rootless picasso user
     - name: Add unprivileged podman container runner user
       ansible.builtin.user:
-        name: "{{ podman_username }}"
-        comment: "{{ podman_user_comment }}"
+        name: "{{ picasso_username }}"
+        comment: "{{ picasso_user_comment }}"
         password_lock: true
         uid: 3000
         # groups: ["dialout", "dbus"] # Thread USB Dongle, "RPI onboard bluetooth"
         state: present
 
-    - name: Add ssh pub key for podman user
+    - name: Add ssh pub key for picasso user
       ansible.posix.authorized_key:
-        user: "{{ podman_username }}"
-        key: "{{ lookup('file', podman_ssh_pub_key) }}"
+        user: "{{ picasso_username }}"
+        key: "{{ lookup('file', picasso_ssh_pub_key) }}"
         state: present
 
     # Rootless cockpit login user
@@ -82,7 +82,7 @@
         # become: true
 
     - name: "Start & Enable Podman Auto Update Timer"
-      become_user: "{{ podman_username }}"
+      become_user: "{{ picasso_username }}"
       ansible.builtin.service:
         name: "podman-auto-update.timer"
         state: "started"
@@ -94,4 +94,4 @@
         creates: "/var/lib/systemd/linger/{{ item }}"
       loop:
         - "{{ admin_username }}"
-        - "{{ podman_username }}"
+        - "{{ picasso_username }}"

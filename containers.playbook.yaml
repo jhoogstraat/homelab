@@ -1,0 +1,27 @@
+- name: Configure podman containers and configuration data
+  hosts: homelab
+  remote_user: "{{ picasso_username }}"
+  # roles:
+  #   - sync_secrets
+  tasks:
+    - name: Sync rootless quadlets
+      ansible.posix.synchronize:
+        src: files/quadlets/rootless/
+        dest: ~/.config/containers/systemd/ # https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#podman-rootless-unit-search-path
+      notify:
+        - Reload systemd units
+
+    - name: Sync configs
+      ansible.posix.synchronize:
+        src: files/configs/
+        dest: ~/containers/config/
+
+    - name: sync secrets
+      include_role:
+        name: sync_secrets
+      vars:
+
+    - name: Reload systemd units
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+        scope: user

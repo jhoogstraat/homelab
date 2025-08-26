@@ -1,0 +1,91 @@
+queries:
+  solo:
+    active: false
+    discord:
+      webhook: ${SOLO_WEBHOOK}
+    filter:
+      priceMax: 800
+      titleBlacklist: ["tausch", "swap", "zwischenmiete", "untermiete", "such", "frist"]
+      regionBlacklist: ["jenfeld", "rahlstedt", "osdorf", "othmarschen", "farmsen", "lemsahl", "stellingen", "schnelsen", "bramfeld", "heimfeld", "sinstorf", "neugraben", "lohbrügge", "hausbruch", "tonndorf", "marmstorf", "wilhelmsburg", "groß borstel", "lokstedt", "nienstedten", "sülldorf", "fuhlsbüttel", "bergedorf", "harburg", "wellingsbüttel", "kirchwerder", "hummelsbüttel", "langenhorn", "spadenland", "niendorf"]
+
+  duo:
+    active: true
+    discord:
+      webhook: {$DUO_WEBHOOK: ''}
+    filter:
+      priceMin: 700
+      priceMax: 1800
+      roomsMin: 2
+      titleBlacklist: ["tausch", "swap", "zwischenmiete", "untermiete", "sucht"]
+      regionBlacklist: ["jenfeld", "rahlstedt", "osdorf", "othmarschen", "farmsen", "lemsahl", "stellingen", "schnelsen", "bramfeld", "heimfeld", "sinstorf", "neugraben", "lohbrügge", "hausbruch", "tonndorf", "marmstorf", "wilhelmsburg", "groß borstel", "lokstedt", "nienstedten", "sülldorf", "fuhlsbüttel", "bergedorf", "harburg", "wellingsbüttel", "kirchwerder", "hummelsbüttel", "langenhorn", "spadenland", "niendorf"]
+
+services:
+  kleinanzeigen:
+    active: true
+    query: "adType=OFFERED&categoryId=203&distance=10&histograms=CATEGORY&includeTopAds=false&labelsGenerationEnabled=true&limitTotalResultCount=true&locationId=9409&q=wohnung&size=10"
+
+  immoscout24:
+    active: true
+    query: "pagenumber=1&realestatetype=apartmentrent&channel=is24&sorting=-firstactivation&priceType=calculatedtotalrent&pagesize=10&searchType=region&geocodes=/de/hamburg/hamburg&features=nextGen"
+
+  wggesucht:
+    active: false
+    query: "categories=0,1,2,3&city_id=55&limit=10&img=1&noDeact=1&rent_types=0"
+
+  immowelt:
+    active: true
+    body: >
+      {
+          "areas": [],
+          "distributionTypes": ["RENT"],
+          "estateGroups": ["RESIDENTIAL"],
+          "estateSubtypes": [],
+          "estateType": "APARTMENT",
+          "excludedFeatureFilters": [],
+          "immoItemTypes": ["ESTATE", "PROJECT"],
+          "locations": [
+              {"id": 441425, "type": "LOCATION_ID"},
+              {"id": 441501, "type": "LOCATION_ID"},
+              {"id": 441509, "type": "LOCATION_ID"},
+              {"id": 441375, "type": "LOCATION_ID"},
+              {"id": 441392, "type": "LOCATION_ID"},
+              {"id": 441475, "type": "LOCATION_ID"},
+              {"id": 441407, "type": "LOCATION_ID"},
+              {"id": 441379, "type": "LOCATION_ID"},
+              {"id": 441373, "type": "LOCATION_ID"},
+              {"id": 441385, "type": "LOCATION_ID"},
+              {"id": 441472, "type": "LOCATION_ID"},
+              {"id": 441415, "type": "LOCATION_ID"},
+              {"id": 441421, "type": "LOCATION_ID"},
+              {"id": 441395, "type": "LOCATION_ID"},
+              {"id": 441393, "type": "LOCATION_ID"},
+              {"id": 441424, "type": "LOCATION_ID"},
+              {"id": 441370, "type": "LOCATION_ID"},
+              {"id": 441463, "type": "LOCATION_ID"},
+              {"id": 441369, "type": "LOCATION_ID"},
+              {"id": 441483, "type": "LOCATION_ID"},
+              {"id": 441386, "type": "LOCATION_ID"},
+              {"id": 441405, "type": "LOCATION_ID"},
+              {"id": 441454, "type": "LOCATION_ID"},
+              {"id": 441493, "type": "LOCATION_ID"},
+              {"id": 441469, "type": "LOCATION_ID"},
+              {"id": 441411, "type": "LOCATION_ID"}
+          ],
+          "paging": {"page": 0, "size": 10},
+          "responseAttributes": [
+              "AREAS",
+              "CONSTRUCTION_YEAR",
+              "ID",
+              "ONLINE_ID",
+              "PICTURES",
+              "PLACE",
+              "PRICES",
+              "PRIMARY_AREA",
+              "PRIMARY_PRICE",
+              "ROOMS_MAX",
+              "ROOMS_MIN",
+              "TIMESTAMP",
+              "TITLE"
+          ],
+          "sort": {"direction": "DESC", "field": "TIMESTAMP"}
+      }

@@ -1,0 +1,30 @@
+[Unit]
+Description=Papra document management
+
+[Container]
+ContainerName=papra
+Image=ghcr.io/papra-hq/papra:latest-rootless
+AutoUpdate=registry
+
+# HealthCmd=curl http://127.0.0.1:3001
+UserNS=keep-id:uid=65532,gid=65532
+
+Network=homelab.network
+IP=10.90.0.11
+
+Volume=%h/containers/storage/papra/data:/app/app-data:Z
+Volume=%h/containers/storage/papra/ingestion:/app/ingestion:Z
+
+EnvironmentFile=%h/containers/config/papra/papra.env
+EnvironmentFile=%h/containers/secrets/papra.env
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=300
+StartLimitInterval=300
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target default.target

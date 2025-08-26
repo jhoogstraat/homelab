@@ -6,13 +6,16 @@ It does not contain any unencrypted passwords or secrets, because that would be 
 
 Directory structure:
 
-- `ansible/`: A location for all playbooks.
-- `config/`: contains config files for the containers.
-- `data/`: Contains empty or prefilled storage directories for the containers.
-- `quadlets/`: Contains the systemd unit files for pods and containers.
-- `images/`: Dockerfiles to build custom images that can't be fetched remotely.
-- `secrets/`: SOPS-encrypted secrets using the admin private ssh key
-- `users/`: A list of public ssh keys that are imported to the target server.
+- `files/`: All files that are used or synced to the host by ansible.
+    - `build/`: Dockerfiles to build custom images that can't be fetched remotely.
+    - `configs/`: Config files for the containers.
+    - `data/`: Empty or prefilled storage directories for the containers.
+    - `env_secrets/`: SOPS-encrypted secrets using a age key.
+    - `quadlets/`: Systemd unit file templates for pods and containers.
+    - `users/`: A list of public ssh keys that are imported to the target server.
+- `inventory/`: Ansible inventory that defines some basic vars and the raspberry target.
+- `roles/`: Custom ansible roles that are used by the playbooks
+
 
 TODO: As the storage dirs are actively used and modified we cannot just push the static static from the repo...
 
@@ -20,13 +23,15 @@ TODO: As the storage dirs are actively used and modified we cannot just push the
 
 The first thing to do is to use the private key of the root.pub public ssh key to generate a installable fedora iot image.
 
-Then use the ansible `ìnit` playbook to setup some bare minimums, like users and permissions.
+Then use the ansible `bootstrap` playbook to setup some bare minimums, like users and permissions.
 
 ## Setup containers
 
 `systemd` unit files are used to define podman pods and containers. This allows them to really nicely integrate into the linux system (like starting on boot, restart on failure, dependency resolution, etc.).
 
-Use the `infra` and `container` playbooks to setup necessary system components like the firewall and the container unit files.
+Use the `configure` and `containers` playbooks to setup necessary system components like the firewall and the container unit files.
+
+*Notice: The `containers` playbook requires `BW_SESSION` being set in the environment before running `ansible-playbook`. See the secrets role for more info.*
 
 ## Users
 
@@ -36,16 +41,24 @@ Use the `infra` and `container` playbooks to setup necessary system components l
 
 ## Secrets
 
-Secrets are encrypted using sops and a age key that is stored in vaultwarden as a secure note (item-id 5cbdfdb6-f629-454a-a37f-bf763a721586).
+Secrets are encrypted using sops and an age key that is stored securely, e.g. in bitwarden, as a secure note.
 
-- encrypt: Use `encrypt_all.sh` to encrypt all .env files under /secrets with the public key that corresponds to the private key in vaultwarden.
-- decrypt: Copy the private age key from the secret note in vaultwarden and use it as the variable SOPS_AGE_KEY together with the script `decrypt_all.sh`.
+How to edit secrets (using bitwarden):
+1. Unlock the vault by reading the master password from stdin or a file and then setting the `BW_SESSION` environment variable:
+```bash
+    export BW_SESSION=$(bw unlock --raw)
+```
 
-To sync all secrets to the homelab server use the ansible playbook `secrets.playbook.yaml`. This action requires the bitwarden cli (`bw`) to be installed and logged in to the account with the age private key note.
-It will then asks for the master password to unlock the vault and fetch the secret note value (the age private key) to unlock and sync all .env files to the homelab server.
-
-Caution: For this playbook to work all secrets must be in encrypted state.
+2. Instruct SOPS to retrieve the age private key by executing the following command and taking its output:
+```bash
+    export SOPS_AGE_KEY_CMD="zsh -c \"bw list items --search 'homelab secrets age de-/encryption key' | jq -r '.[0].fields[] | select(.name == \\\"private key\\\") | .value'\""
+```
 
 ## Backup
 
 TODO!
+
+## Helpful commands
+
+- `systemd-analyze --user --generators=true verify adguard.service` - Check for errors during systemd unit generation
+- `journalctl -r` - Show all messages in the journal sorted by recently.

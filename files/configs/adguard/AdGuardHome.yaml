@@ -197,7 +197,7 @@ clients:
     arp: true
     rdns: true
     dhcp: true
-    hosts: homelab
+    hosts: true
   persistent: []
 log:
   enabled: true

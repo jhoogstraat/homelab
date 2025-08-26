@@ -6,7 +6,7 @@
     # https://wg-easy.github.io/wg-easy/latest/examples/tutorials/podman-nft/
     - name: Copy wg-easy container unit
       ansible.builtin.copy:
-        src: ../quadlets/rootful/wg-easy.container
+        src: files/quadlets/rootful/wg-easy.container
         dest: /etc/containers/systemd/wg-easy.container
         owner: root
         group: root

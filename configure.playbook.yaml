@@ -1,4 +1,4 @@
-- name: configure fedora iot on raspberry pi
+- name: configure linux on raspberry pi
   hosts: homelab
   remote_user: "{{ admin_user }}"
   become: true
@@ -50,3 +50,23 @@
         state: enabled
         permanent: true
         immediate: true
+
+    - name: Ensure Cockpit socket is started and enabled
+      ansible.builtin.systemd:
+        name: cockpit.socket
+        state: started
+        enabled: true
+
+    - name: Open firewall ports for Cockpit
+      ansible.builtin.firewalld:
+        service: cockpit
+        state: enabled
+        permanent: true
+        immediate: true
+
+    # Bluetooth
+    - name: Ensure bluetooth service is started and enabled
+      ansible.builtin.systemd:
+        name: bluetooth.service
+        state: started
+        enabled: true

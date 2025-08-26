@@ -1,0 +1,35 @@
+# Bitwarden lookups currently require `BW_SESSION` being set, because `bw status` does not respect `--session` and an error is thrown.
+# Ansibles `environment` field does not apply to lookups, so `BW_SESSION` must be available before running the playbook.
+# https://github.com/ansible-collections/community.general/issues/8690
+
+- name: Get age key from Bitwarden
+  ansible.builtin.set_fact:
+    age_private_key: "{{ lookup('community.general.bitwarden', bw_age_key_secret_name, field=bw_age_key_field_name, result_count=1) | first }}"
+  no_log: true
+
+- name: Decrypt and copy secrets
+  block:
+    - name: Create temporary directory for copying secrets
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: _secrets
+      register: tmp_secrets_dir
+
+    - name: Decrypt and copy to tmp dir
+      ansible.builtin.copy:
+        content: "{{ lookup('community.sops.sops', item, age_key=age_private_key) }}"
+        dest: "{{ tmp_secrets_dir.path }}/{{ item | basename | regex_replace('\\.enc', '') }}"
+        mode: u=rw
+      loop: "{{ lookup('fileglob', secrets_local_path, wantlist=True) }}"
+
+    - name: Atomically replace secrets directory
+      ansible.builtin.shell: rm -rf {{ secrets_target_path }} && mv -T {{ tmp_secrets_dir.path }} {{ secrets_target_path }}
+      args:
+        removes: "{{ tmp_secrets_dir.path }}"
+
+  always:
+    - name: Cleanup tmp secrets directory
+      ansible.builtin.file:
+        path: "{{ tmp_secrets_dir.path }}"
+        state: absent
+      when: tmp_secrets_dir.path is defined
