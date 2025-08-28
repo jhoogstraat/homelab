@@ -7,30 +7,23 @@
 (server) {
 	@options method OPTIONS
 
-	@home host "home.{args[0]}"
-	@homepage host "homepage.{args[0]}"
 	@adguard host "adguard.{args[0]}"
-	@vault host "vault.{args[0]}"
-	@languagetool host "languagetool.{args[0]}"
-	@papra host "papra.{args[0]}"
-	@homebridge host "homebridge.{args[0]}"
-	@wireguard host "wg.{args[0]}"
-	@homeassistant host "ha.{args[0]}"
-	@registry host "registry.{args[0]}"
 	@glance host "glance.{args[0]}"
+	@vault host "vault.{args[0]}"
+	@papra host "papra.{args[0]}"
+	@papra host "n8n.{args[0]}"
+	@homeassistant host "ha.{args[0]}"
+	@wireguard host "wg.{args[0]}"
+	@registry host "registry.{args[0]}"
 	@energy host "energy.{args[0]}"
-
-	handle @home {
-		reverse_proxy unknown:9999
-	}
-
-	handle @homepage {
-		reverse_proxy unknown:9999
-	}
 
 	handle @adguard {
 		import cors
 		reverse_proxy adguard:80
+	}
+
+	handle @glance {
+		reverse_proxy glance:8080
 	}
 
 	handle @vault {
@@ -38,32 +31,20 @@
 		reverse_proxy vaultwarden:8080
 	}
 
-	handle @glance {
-		reverse_proxy glance:8080
-	}
-
-	handle @languagetool {
-		import cors
-		rewrite * /v2{path}?{query}
-		reverse_proxy unknown:9999
-	}
-
 	handle @papra {
 		reverse_proxy papra:1221
 	}
 
-	handle @homebridge {
-		import cors
-		reverse_proxy host.docker.internal:{$PORT_HOMEBRIDGE}
+	handle @papra {
+		reverse_proxy n8n:5678
+	}
+
+	handle @homeassistant {
+		reverse_proxy host.docker.internal:8123
 	}
 
 	handle @wireguard {
   		reverse_proxy wg-easy:51821
-	}
-
-	handle @homeassistant {
-		# reverse_proxy homeassistant:8123
-		reverse_proxy host.docker.internal:8123
 	}
 
 	handle @registry {
