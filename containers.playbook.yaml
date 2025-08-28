@@ -1,11 +1,17 @@
 - name: Configure podman containers and configuration data
   hosts: homelab
   remote_user: "{{ picasso_username }}"
+  vars_prompt:
+    - name: age_private_key
+      prompt: Insert the whole age decryption key
+      private: true
   tasks:
     - name: Sync rootless quadlets
       ansible.posix.synchronize:
         src: files/quadlets/rootless/
         dest: ~/.config/containers/systemd/ # https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#podman-rootless-unit-search-path
+        rsync_opts:
+          - --out-format=%n
       notify:
         - systemd
 
@@ -17,7 +23,6 @@
     - name: sync secrets
       include_role:
         name: sync_secrets
-      vars:
 
   handlers:
     - name: Reload systemd units
@@ -25,3 +30,10 @@
       ansible.builtin.systemd_service:
         daemon_reload: true
         scope: user
+
+    # - name: Restart systemd units
+    #   listen: systemd
+    #   ansible.builtin.systemd_service:
+    #     daemon_reload: true
+    #     scope: user
+    #   loop: loop over changed units

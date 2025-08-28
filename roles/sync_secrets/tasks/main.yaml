@@ -2,10 +2,13 @@
 # Ansibles `environment` field does not apply to lookups, so `BW_SESSION` must be available before running the playbook.
 # https://github.com/ansible-collections/community.general/issues/8690
 
-- name: Get age key from Bitwarden
-  ansible.builtin.set_fact:
-    age_private_key: "{{ lookup('community.general.bitwarden', bw_age_key_secret_name, field=bw_age_key_field_name, result_count=1) | first }}"
-  no_log: true
+# If caddy and vaultwarden are not running, this will not work.
+# This is unfortunate, because they will not run before running this playbook.
+# - name: Get age key from Bitwarden
+#   ansible.builtin.set_fact:
+#     age_private_key: "{{ lookup('community.general.bitwarden', bw_age_key_secret_name, field=bw_age_key_field_name, result_count=1) | first }}"
+#   no_log: false
+#
 
 - name: Decrypt and copy secrets
   block:

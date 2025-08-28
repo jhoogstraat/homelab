@@ -1,4 +1,5 @@
 ---
+age_private_key: <insert-age-key>
 bw_master_password: <insert-secret>
 bw_age_key_secret_name: homelab secrets age de-/encryption key
 bw_age_key_field_name: private key
