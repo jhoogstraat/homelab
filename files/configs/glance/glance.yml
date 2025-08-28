@@ -168,6 +168,7 @@ pages:
               - AdguardTeam/AdGuardHome
               - home-assistant/core
               - glanceapp/glance
+              - papra-hq/papra
 
           - type: monitor
             cache: 1m
@@ -181,9 +182,13 @@ pages:
                 url: https://vault.hoogstraat.de
                 check-url: http://vaultwarden:8080
                 icon: di:vaultwarden
+              - title: Papra
+                url: https://papra.hoogstraat.de
+                check-url: http://papra:1221
+                icon: di:papra
               - title: Wireguard
                 url: https://wg.hoogstraat.de
-                check-url: wg-easy:51821
+                check-url: http://wg-easy:51821
                 icon: di:wireguard
 
 # Add more pages here:
