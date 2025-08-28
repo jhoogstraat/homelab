@@ -14,7 +14,7 @@ IP=10.90.0.4
 
 Volume=%h/containers/config/%N:/app/config:Z
 
-EnvironmentFile=%h/containers/secrets/%N.env
+EnvironmentFile=%h/containers/secrets/adguard.env
 
 Timezone=local
 
