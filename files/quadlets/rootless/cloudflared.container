@@ -6,7 +6,7 @@ ContainerName=cloudflared
 Image=docker.io/cloudflare/cloudflared:latest
 AutoUpdate=registry
 
-Exec=tunnel --no-autoupdate run --token $CLOUDFLARE_TOKEN
+Exec=tunnel --no-autoupdate run --token ${CLOUDFLARE_TOKEN} homelab
 
 EnvironmentFile=%h/containers/secrets/%N.env
 
