@@ -18,7 +18,7 @@ PublishPort=4443:443
 Volume=%h/containers/storage/%N:/opt/caddy/work/caddy:Z
 Volume=%h/containers/config/%N:/opt/caddy/conf:Z,ro
 
-EnvironmentFile=%h/containers/secrets/%N.env
+EnvironmentFile=%h/containers/secrets/acmedns.env
 
 Environment=XDG_DATA_HOME=/opt/caddy/work
 
