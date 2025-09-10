@@ -2,7 +2,7 @@ queries:
   solo:
     active: false
     discord:
-      webhook: ${SOLO_WEBHOOK}
+      webhook: ${DISCORD_WEBHOOK_SOLO}
     filter:
       priceMax: 800
       titleBlacklist: ["tausch", "swap", "zwischenmiete", "untermiete", "such", "frist"]
@@ -11,7 +11,7 @@ queries:
   duo:
     active: true
     discord:
-      webhook: {$DUO_WEBHOOK: ''}
+      webhook: ${DISCORD_WEBHOOK_DUO}
     filter:
       priceMin: 700
       priceMax: 1800

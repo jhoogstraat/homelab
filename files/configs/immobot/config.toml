@@ -1,96 +1,24 @@
 [queries.solo]
 active = false
-discord.webhook = "${SOLO_WEBHOOK}"
+discord.webhook = "${DISCORD_WEBHOOK_SOLO}"
 
 [queries.solo.filter]
 priceMax = 800
-titleBlacklist = [
-  "tausch",
-  "swap",
-  "zwischenmiete",
-  "untermiete",
-  "such",
-  "frist",
-]
-regionBlacklist = [
-  "jenfeld",
-  "rahlstedt",
-  "osdorf",
-  "othmarschen",
-  "farmsen",
-  "lemsahl",
-  "stellingen",
-  "schnelsen",
-  "bramfeld",
-  "heimfeld",
-  "sinstorf",
-  "neugraben",
-  "lohbrügge",
-  "hausbruch",
-  "tonndorf",
-  "marmstorf",
-  "wilhelmsburg",
-  "groß borstel",
-  "lokstedt",
-  "nienstedten",
-  "sülldorf",
-  "fuhlsbüttel",
-  "bergedorf",
-  "harburg",
-  "wellingsbüttel",
-  "kirchwerder",
-  "hummelsbüttel",
-  "langenhorn",
-  "spadenland",
-  "niendorf",
-]
+titleBlacklist = [ "tausch", "swap", "zwischenmiete", "untermiete", "such", "frist", ]
+regionBlacklist = [ "jenfeld", "rahlstedt", "osdorf", "othmarschen", "farmsen", "lemsahl", "stellingen", "schnelsen", "bramfeld", "heimfeld", "sinstorf", "neugraben", "lohbrügge", "hausbruch", "tonndorf", "marmstorf", "wilhelmsburg", "groß borstel", "lokstedt", "nienstedten", "sülldorf", "fuhlsbüttel", "bergedorf", "harburg", "wellingsbüttel", "kirchwerder", "hummelsbüttel", "langenhorn", "spadenland", "niendorf", ]
 
 
 [queries.duo]
 active = true
-discord.webhook = "${DUO_WEBHOOK}"
+discord.webhook = "${DISCORD_WEBHOOK_DUO}"
 
 [queries.duo.filter]
 priceMin = 700
 priceMax = 1800
 roomsMin = 2
 titleBlacklist = ["tausch", "swap", "zwischenmiete", "untermiete", "sucht"]
-regionBlacklist = [
-  "jenfeld",
-  "rahlstedt",
-  "osdorf",
-  "othmarschen",
-  "farmsen",
-  "lemsahl",
-  "stellingen",
-  "schnelsen",
-  "bramfeld",
-  "heimfeld",
-  "sinstorf",
-  "neugraben",
-  "lohbrügge",
-  "hausbruch",
-  "tonndorf",
-  "marmstorf",
-  "wilhelmsburg",
-  "groß borstel",
-  "lokstedt",
-  "nienstedten",
-  "sülldorf",
-  "fuhlsbüttel",
-  "bergedorf",
-  "harburg",
-  "wellingsbüttel",
-  "kirchwerder",
-  "hummelsbüttel",
-  "langenhorn",
-  "spadenland",
-  "niendorf",
-]
+regionBlacklist = [ "jenfeld", "rahlstedt", "osdorf", "othmarschen", "farmsen", "lemsahl", "stellingen", "schnelsen", "bramfeld", "heimfeld", "sinstorf", "neugraben", "lohbrügge", "hausbruch", "tonndorf", "marmstorf", "wilhelmsburg", "groß borstel", "lokstedt", "nienstedten", "sülldorf", "fuhlsbüttel", "bergedorf", "harburg", "wellingsbüttel", "kirchwerder", "hummelsbüttel", "langenhorn", "spadenland", "niendorf", ] [services.kleinanzeigen] active = true query = "adType=OFFERED&categoryId=203&distance=10&histograms=CATEGORY&includeTopAds=false&labelsGenerationEnabled=true&limitTotalResultCount=true&locationId=9409&q=wohnung&size=10"
 
-[services.kleinanzeigen]
-active = true
-query = "adType=OFFERED&categoryId=203&distance=10&histograms=CATEGORY&includeTopAds=false&labelsGenerationEnabled=true&limitTotalResultCount=true&locationId=9409&q=wohnung&size=10"
 
 [services.immoscout24]
 active = true

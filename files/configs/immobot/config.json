@@ -3,100 +3,24 @@
     "solo": {
       "active": false,
       "filter": {
-        "titleBlacklist": [
-          "tausch",
-          "swap",
-          "zwischenmiete",
-          "untermiete",
-          "such",
-          "frist"
-        ],
-        "regionBlacklist": [
-          "jenfeld",
-          "rahlstedt",
-          "osdorf",
-          "othmarschen",
-          "farmsen",
-          "lemsahl",
-          "stellingen",
-          "schnelsen",
-          "bramfeld",
-          "heimfeld",
-          "sinstorf",
-          "neugraben",
-          "lohbrügge",
-          "hausbruch",
-          "tonndorf",
-          "marmstorf",
-          "wilhelmsburg",
-          "groß borstel",
-          "lokstedt",
-          "nienstedten",
-          "sülldorf",
-          "fuhlsbüttel",
-          "bergedorf",
-          "harburg",
-          "wellingsbüttel",
-          "kirchwerder",
-          "hummelsbüttel",
-          "langenhorn",
-          "spadenland",
-          "niendorf"
-        ],
+        "titleBlacklist": [ "tausch", "swap", "zwischenmiete", "untermiete", "such", "frist" ],
+        "regionBlacklist": [ "jenfeld", "rahlstedt", "osdorf", "othmarschen", "farmsen", "lemsahl", "stellingen", "schnelsen", "bramfeld", "heimfeld", "sinstorf", "neugraben", "lohbrügge", "hausbruch", "tonndorf", "marmstorf", "wilhelmsburg", "groß borstel", "lokstedt", "nienstedten", "sülldorf", "fuhlsbüttel", "bergedorf", "harburg", "wellingsbüttel", "kirchwerder", "hummelsbüttel", "langenhorn", "spadenland", "niendorf" ],
         "priceMax": 800
       },
       "discord": {
-        "webhook": "https://discord.com/api/webhooks/1267163746921480296/FmpBkJE8e_PqbGt_568UKGnzyNtg4g9ImttELhcpZtj8eXh3gyxi-c6t9yV4vKxKMnjb"
+        "webhook": "${DISCORD_WEBHOOK_SOLO}"
       }
     },
     "duo": {
       "active": true,
       "filter": {
-        "titleBlacklist": [
-          "tausch",
-          "swap",
-          "zwischenmiete",
-          "untermiete",
-          "sucht"
-        ],
-        "regionBlacklist": [
-          "jenfeld",
-          "rahlstedt",
-          "osdorf",
-          "othmarschen",
-          "farmsen",
-          "lemsahl",
-          "stellingen",
-          "schnelsen",
-          "bramfeld",
-          "heimfeld",
-          "sinstorf",
-          "neugraben",
-          "lohbrügge",
-          "hausbruch",
-          "tonndorf",
-          "marmstorf",
-          "wilhelmsburg",
-          "groß borstel",
-          "lokstedt",
-          "nienstedten",
-          "sülldorf",
-          "fuhlsbüttel",
-          "bergedorf",
-          "harburg",
-          "wellingsbüttel",
-          "kirchwerder",
-          "hummelsbüttel",
-          "langenhorn",
-          "spadenland",
-          "niendorf"
-        ],
-        "priceMin": 700,
+        "titleBlacklist": [ "tausch", "swap", "zwischenmiete", "untermiete", "sucht" ],
+        "regionBlacklist": [ "jenfeld", "rahlstedt", "osdorf", "othmarschen", "farmsen", "lemsahl", "stellingen", "schnelsen", "bramfeld", "heimfeld", "sinstorf", "neugraben", "lohbrügge", "hausbruch", "tonndorf", "marmstorf", "wilhelmsburg", "groß borstel", "lokstedt", "nienstedten", "sülldorf", "fuhlsbüttel", "bergedorf", "harburg", "wellingsbüttel", "kirchwerder", "hummelsbüttel", "langenhorn", "spadenland", "niendorf" ], "priceMin": 700,
         "priceMax": 1800,
         "roomsMin": 2
       },
       "discord": {
-        "webhook": "https://discord.com/api/webhooks/1267164203375005766/v9VFRT612dz-s2AmsZtVzhFL80nDgGhO3UYZp-GbjVNUDXG9LDlBXNdf_VRJAvX0og3e"
+        "webhook": "${DISCORD_WEBHOOK_DUO}"
       }
     }
   },

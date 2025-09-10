@@ -15,6 +15,7 @@ Network=homelab.network
 IP=10.90.0.8
 
 Volume=%h/containers/config/%N/config.json:/app/config.json:Z
+EnvironmentFile=%h/containers/secrets/%N.env
 
 Timezone=local
 
