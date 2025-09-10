@@ -54,6 +54,11 @@ How to edit secrets (using bitwarden):
     export SOPS_AGE_KEY_CMD="zsh -c \"bw list items --search 'homelab secrets age de-/encryption key' | jq -r '.[0].fields[] | select(.name == \\\"private key\\\") | .value'\""
 ```
 
+3. Edit the secrets file using sops:
+```bash
+    sops edit files/env_secrets/.env.adguard
+```
+
 ## Backup
 
 TODO!
