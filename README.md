@@ -10,7 +10,7 @@ Directory structure:
     - `build/`: Dockerfiles to build custom images that can't be fetched remotely.
     - `configs/`: Config files for the containers.
     - `data/`: Empty or prefilled storage directories for the containers.
-    - `env_secrets/`: SOPS-encrypted secrets using a age key.
+    - `secrets/`: SOPS-encrypted secrets using a age key.
     - `quadlets/`: Systemd unit file templates for pods and containers.
     - `users/`: A list of public ssh keys that are imported to the target server.
 - `inventory/`: Ansible inventory that defines some basic vars and the raspberry target.
@@ -56,7 +56,7 @@ How to edit secrets (using bitwarden):
 
 3. Edit the secrets file using sops:
 ```bash
-    sops edit files/env_secrets/.env.adguard
+    sops edit files/secrets/.env.adguard
 ```
 
 ## Backup
