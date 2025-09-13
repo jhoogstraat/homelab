@@ -12,9 +12,9 @@ UserNS=keep-id:uid=1000,gid=1000
 Network=homelab.network
 IP=10.90.0.12
 
-Volume=%h/containers/storage/%N:/home/node/.n8n:Z
+Volume=%h/containers/storage/%p:/home/node/.n8n:Z
 
-EnvironmentFile=%h/containers/config/%N/%N.env
+EnvironmentFile=%h/containers/config/%p/%p.env
 
 Timezone=local
 
@@ -22,7 +22,7 @@ Timezone=local
 Restart=on-failure
 TimeoutStartSec=300
 
-ExecStartPre=mkdir -p %h/containers/storage/%N
+ExecStartPre=mkdir -p %h/containers/storage/%p
 
 StartLimitInterval=300
 StartLimitBurst=5
