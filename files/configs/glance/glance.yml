@@ -157,11 +157,7 @@ pages:
                 name: Bitcoin
               - symbol: ETH-USD
                 name: Ethereum
-              - symbol: EOS-USD
-                name: EOS
-              - symbol: A-USD
-                name: Vaulta
-
+              
           - type: releases
             cache: 1d
             repositories:
