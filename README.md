@@ -1,31 +1,47 @@
-# Homelab
+![Header Image](https://raw.githubusercontent.com/Mafyuh/homelab-svg-assets/main/assets/header_.png)
 
-This repo contains the source of my personal homelab that runs a raspberry pi 4 8GB locally on my network.
+<div align="center">
 
-It does not contain any unencrypted passwords or secrets, because that would be dumb. Don't even try.
+# homelab (wip)
 
-Directory structure:
+| Hardware | OS | Tools | Secrets |
+|---|---|---|---|
+[![Raspberry Pi Badge](https://img.shields.io/badge/Raspberry%20Pi-black?logo=raspberrypi&logoColor=fff&style=for-the-badge)](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/) | [![Fedora](https://img.shields.io/badge/Fedora-black?style=for-the-badge&logo=fedora&logoColor=white)](https://fedoraproject.org/de/iot/) | [![Podman](https://img.shields.io/badge/Podman-black?logo=podman&logoColor=fff&style=for-the-badge)](https://podman.io/) [![Ansible](https://img.shields.io/badge/-Ansible-black?logo=ansible&logoColor=red&style=for-the-badge)](https://www.ansible.com/) | [![SOPS](https://img.shields.io/badge/-SOPS-black?logoColor=fff&style=for-the-badge)](https://github.com/getsops/sops) [![age](https://img.shields.io/badge/-age-black?logoColor=fff&style=for-the-badge)](https://github.com/FiloSottile/age)
 
-- `files/`: All files that are used or synced to the host by ansible.
-    - `build/`: Dockerfiles to build custom images that can't be fetched remotely.
-    - `configs/`: Config files for the containers.
-    - `data/`: Empty or prefilled storage directories for the containers.
-    - `secrets/`: SOPS-encrypted secrets using a age key.
-    - `quadlets/`: Systemd unit file templates for pods and containers.
-    - `users/`: A list of public ssh keys that are imported to the target server.
-- `inventory/`: Ansible inventory that defines some basic vars and the raspberry target.
-- `roles/`: Custom ansible roles that are used by the playbooks
+</div>
 
+# 📖 Overview
 
-TODO: As the storage dirs are actively used and modified we cannot just push the static static from the repo...
+This repo contains the source of my personal homelab that runs a Raspberry Pi 4 Model B 8GB locally on my network.
 
-## Setup
+Secrets are encrypted using [sops](https://github.com/getsops/sops) and a [age](https://github.com/FiloSottile/age) asymmetric key pair.
+
+## 🗃️ Folder Structure
+```shell
+├── 📁 .github                      # CI/CD workflows
+│   └── 📁 workflows                
+├── 📁 ansible                      # Application deployments
+│   ├── 📁 inventory                                
+│   └── 📁 roles                    
+├── 📁 configs                      # Configuration files for containers
+│   ├── 📁 adguard                  
+│   ├── 📁 caddy                    
+│   └── 📁 other apps               
+├── 📁 quadlets                     # Systemd unit file templates for pods and containers 
+├── 📁 scripts                      # Builds and helper scripts
+├── 📁 secrets                      # SOPS-encrypted secrets
+├── 📁 users                        # Public ssh keys for users
+├── .sops.yaml                      # SOPS configuration
+└── README.md
+```
+
+# 🧑‍💻 Setup
 
 The first thing to do is to use the private key of the root.pub public ssh key to generate a installable fedora iot image.
 
 Then use the ansible `bootstrap` playbook to setup some bare minimums, like users and permissions.
 
-## Setup containers
+## containers
 
 `systemd` unit files are used to define podman pods and containers. This allows them to really nicely integrate into the linux system (like starting on boot, restart on failure, dependency resolution, etc.).
 
@@ -39,7 +55,7 @@ Use the `configure` and `containers` playbooks to setup necessary system compone
 - admin.pub: The jh user that has sudo permissions without password
 - picasso.pub: The unprivliged user that runs userland podman containers
 
-## Secrets
+## 🔒 Secrets
 
 Secrets are encrypted using sops and an age key that is stored securely, e.g. in bitwarden, as a secure note.
 
@@ -65,5 +81,9 @@ TODO!
 
 ## Helpful commands
 
-- `systemd-analyze --user --generators=true verify adguard.service` - Check for errors during systemd unit generation
-- `journalctl -r` - Show all messages in the journal sorted by recently.
+- `systemd-analyze --user --generators=true verify X.service` - Check for errors during systemd unit generation
+- `journalctl` 
+    - `-r` - Show all messages in the journal sorted by recently.
+    - `-f` - Follow logs as they are coming in.
+    - `-u` - Select a service unit to filter for.
+    - `-n X` - Show the last X lines of the journal.
