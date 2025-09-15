@@ -6,7 +6,7 @@
     # https://wg-easy.github.io/wg-easy/latest/examples/tutorials/podman-nft/
     - name: Copy wg-easy container unit
       ansible.builtin.copy:
-        src: files/quadlets/rootful/wg-easy.container
+        src: ../quadlets/rootful/wg-easy.container
         dest: /etc/containers/systemd/wg-easy.container
         owner: root
         group: root
@@ -19,14 +19,6 @@
         content: |
           wireguard
           nft_masq
-
-    - name: Create a working directory
-      ansible.builtin.file:
-        path: ~/containers/storage/wg-easy
-        state: directory
-        owner: root
-        group: root
-        mode: '0755'
 
     - name: Open port 51820/udp for wg-easy (wan)
       ansible.posix.firewalld:

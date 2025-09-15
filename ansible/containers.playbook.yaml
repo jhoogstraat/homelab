@@ -8,7 +8,7 @@
   tasks:
     - name: Sync rootless quadlets
       ansible.posix.synchronize:
-        src: files/quadlets/rootless/
+        src: ../quadlets/rootless/
         dest: ~/.config/containers/systemd/ # https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#podman-rootless-unit-search-path
         rsync_opts:
           - --out-format=%n
@@ -17,7 +17,7 @@
 
     - name: Sync configs
       ansible.posix.synchronize:
-        src: files/configs/
+        src: ../configs/
         dest: ~/containers/config/
 
     - name: sync secrets

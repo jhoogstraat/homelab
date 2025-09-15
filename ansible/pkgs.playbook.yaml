@@ -7,7 +7,6 @@
     - name: Ensure listed packages are available
       community.general.rpm_ostree_pkg:
         name:
-          - htop
           - cockpit
           - cockpit-podman
           - bluez
@@ -16,6 +15,7 @@
           - rsync
           - htop
           - btop
+          - neovim
         state: present
       register: ostree_results
 
