@@ -1,6 +1,9 @@
 [Unit]
 Description=Cloudflare Daemon for a ZeroTrust Tunnel
 
+StartLimitIntervalSec=300
+StartLimitBurst=2
+
 [Container]
 ContainerName=cloudflared
 Image=docker.io/cloudflare/cloudflared:latest
@@ -8,7 +11,7 @@ AutoUpdate=registry
 
 Exec=tunnel --no-autoupdate run
 
-EnvironmentFile=%h/containers/secrets/%N.env
+EnvironmentFile=%h/containers/secrets/%p.env
 
 Network=homelab.network
 IP=10.90.0.9
@@ -17,10 +20,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=300
-
-StartLimitInterval=300
-StartLimitBurst=5
+TimeoutStartSec=30
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target default.target
