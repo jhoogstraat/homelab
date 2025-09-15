@@ -30,10 +30,3 @@
       ansible.builtin.systemd_service:
         daemon_reload: true
         scope: user
-
-    # - name: Restart systemd units
-    #   listen: systemd
-    #   ansible.builtin.systemd_service:
-    #     daemon_reload: true
-    #     scope: user
-    #   loop: loop over changed units
