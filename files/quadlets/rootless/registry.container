@@ -1,12 +1,15 @@
 [Unit]
 Description=Private docker registry
 
+StartLimitIntervalSec=300
+StartLimitBurst=2
+
 [Container]
 ContainerName=registry
 Image=docker.io/registry:2
 AutoUpdate=registry
 
-HealthCmd=wget --no-verbose --spider http://127.0.0.1:5000
+# HealthCmd=wget --no-verbose --spider --timeout=5 http://127.0.0.1:5000
 UserNS=keep-id:uid=65532,gid=65532
 
 Network=homelab.network
@@ -15,20 +18,18 @@ HostName=registry
 
 PublishPort=5000:5000
 
-Volume=%h/containers/storage/%N:/var/lib/registry:Z
+Volume=%h/containers/storage/%p:/var/lib/registry:Z
 
 Environment=REGISTRY_STORAGE_DELETE_ENABLED=true
 
 Timezone=local
 
 [Service]
-Restart=on-failure
-TimeoutStartSec=300
-
 ExecStartPre=mkdir -p %h/containers/storage/%N
 
-StartLimitInterval=300
-StartLimitBurst=5
+Restart=on-failure
+TimeoutStartSec=60
+TimeoutStopSec=60
 
 [Install]
 WantedBy=multi-user.target default.target
