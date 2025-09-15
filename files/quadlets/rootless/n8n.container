@@ -1,31 +1,31 @@
 [Unit]
 Description=n8n Secure Workflow Automation
 
+StartLimitIntervalSec=300
+StartLimitBurst=2
+
 [Container]
 ContainerName=n8n
 Image=docker.n8n.io/n8nio/n8n
 AutoUpdate=registry
 
 # HealthCmd=curl http://127.0.0.1:3001
-UserNS=keep-id:uid=1000,gid=1000
+# UserNS=keep-id:uid=1000,gid=1000
 
 Network=homelab.network
 IP=10.90.0.12
 
-Volume=%h/containers/storage/%p:/home/node/.n8n:Z
-
+# Volume=%h/containers/storage/%p:/home/node/.n8n:Z
+Volume=n8n_data:/home/node/.n8n:Z
 EnvironmentFile=%h/containers/config/%p/%p.env
-
 Timezone=local
 
 [Service]
-Restart=on-failure
-TimeoutStartSec=300
-
 ExecStartPre=mkdir -p %h/containers/storage/%p
 
-StartLimitInterval=300
-StartLimitBurst=5
+Restart=on-failure
+TimeoutStartSec=90
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target default.target

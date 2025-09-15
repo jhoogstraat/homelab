@@ -11,7 +11,7 @@
 	@glance host "glance.{args[0]}"
 	@vault host "vault.{args[0]}"
 	@papra host "papra.{args[0]}"
-	@papra host "n8n.{args[0]}"
+	@n8n host "n8n.{args[0]}"
 	@homeassistant host "ha.{args[0]}"
 	@wireguard host "wg.{args[0]}"
 	@registry host "registry.{args[0]}"
@@ -35,7 +35,7 @@
 		reverse_proxy papra:1221
 	}
 
-	handle @papra {
+	handle @n8n {
 		reverse_proxy n8n:5678
 	}
 
