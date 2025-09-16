@@ -1,0 +1,33 @@
+[Unit]
+Description=OpenThread Border Router
+
+StartLimitIntervalSec=500
+StartLimitBurst=2
+
+[Container]
+ContainerName=otbr
+Image=docker.io/openthread-borderrouter:latest
+AutoUpdate=registry
+Pod=homeassistant.pod
+
+# User+Group of the host mapped on the pod
+User=1500
+Group=1500
+
+Timezone=local
+
+AddCapability=NET_ADMIN
+
+AddDevice=/dev/ttyACM0
+AddDevice=/dev/net/tun
+
+Volume=/etc/containers/volumes/%p:/data:Z
+
+EnvironmentFile=%h/containers/config/%p.env
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=100
+TimeoutStopSec=100
+
+ExecStartPre=mkdir -p /etc/containers/volumes/%p

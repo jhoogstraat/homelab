@@ -1,0 +1,29 @@
+[Unit]
+Description=Home Assistant
+
+StartLimitIntervalSec=500
+StartLimitBurst=2
+
+[Container]
+ContainerName=homeassistant
+Image=docker.io/homeassistant/home-assistant:stable
+AutoUpdate=registry
+Pod=homeassistant.pod
+
+User=1500
+Group=1500
+
+Volume=%h/containers/config/%p/:/config:Z
+Volume=%h/containers/storage/%p/:/?!:Z
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=100
+TimeoutStopSec=100
+
+ExecStartPre=mkdir -p %h/containers/storage/%p
+
+[Install]
+WantedBy=multi-user.target default.target

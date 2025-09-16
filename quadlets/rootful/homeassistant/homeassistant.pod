@@ -1,0 +1,12 @@
+[Unit]
+Description=Pod for housing homeassistant and friends
+
+[Pod]
+PodName=homeassistant
+
+Network=host
+
+UserNS=keep-id:uid=1500,gid=1500
+
+[Install]
+WantedBy=multi-user.target default.target
