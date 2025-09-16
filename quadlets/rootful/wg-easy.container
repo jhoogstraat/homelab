@@ -1,9 +1,12 @@
 [Unit]
 Description=Wireguard Easy (wg-easy)
 
+StartLimitIntervalSec=500
+StartLimitBurst=2
+
 [Container]
 ContainerName=wg-easy
-Image=ghcr.io/wg-easy/wg-easy:15
+Image=hcr.io/wg-easy/wg-easy:15
 AutoUpdate=registry
 
 # UserNS=keep-id:uid=65532,gid=65532
@@ -32,10 +35,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=300
-
-StartLimitInterval=300
-StartLimitBurst=5
+TimeoutStartSec=100
+TimeoutStopSec=100
 
 [Install]
 WantedBy=multi-user.target default.target

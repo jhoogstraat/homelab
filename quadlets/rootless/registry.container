@@ -25,11 +25,11 @@ Environment=REGISTRY_STORAGE_DELETE_ENABLED=true
 Timezone=local
 
 [Service]
-ExecStartPre=mkdir -p %h/containers/storage/%N
-
 Restart=on-failure
 TimeoutStartSec=60
 TimeoutStopSec=60
+
+ExecStartPre=mkdir -p %h/containers/storage/%p
 
 [Install]
 WantedBy=multi-user.target default.target

@@ -1,6 +1,9 @@
 [Unit]
 Description=Adguard Home DNS Server
 
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
 [Container]
 ContainerName=adguard
 Image=docker.io/adguard/adguardhome:beta
@@ -15,19 +18,17 @@ IP=10.90.0.2
 PublishPort=5553:53/tcp
 PublishPort=5553:53/udp
 
-Volume=%h/containers/storage/%N:/opt/adguardhome/work:Z
-Volume=%h/containers/config/%N:/opt/adguardhome/conf:Z
+Volume=%h/containers/storage/%p:/opt/adguardhome/work:Z
+Volume=%h/containers/config/%p:/opt/adguardhome/conf:Z
 
 Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=300
+TimeoutStartSec=30
+TimeoutStopSec=30
 
-ExecStartPre=mkdir -p %h/containers/storage/%N
-
-StartLimitInterval=300
-StartLimitBurst=5
+ExecStartPre=mkdir -p %h/containers/storage/%p
 
 [Install]
 WantedBy=multi-user.target default.target

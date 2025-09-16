@@ -26,8 +26,8 @@ PublishPort=8888:8888
 PublishPort=8888:80
 PublishPort=8889:8888
 
-StartLimitInterval=300
-StartLimitBurst=5
+StartLimitIntervalSec=300
+StartLimitBurst=2
 
 [Install]
 WantedBy=multi-user.target default.target

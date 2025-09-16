@@ -1,6 +1,9 @@
 [Unit]
 Description=Immobot
 
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
 [Container]
 ContainerName=immobot
 Image=localhost:5000/immobot:latest
@@ -14,17 +17,16 @@ UserNS=keep-id:uid=65532,gid=65532
 Network=homelab.network
 IP=10.90.0.8
 
-Volume=%h/containers/config/%N/config.json:/app/config.json:Z
-EnvironmentFile=%h/containers/secrets/%N.env
+Volume=%h/containers/config/%p/config.json:/app/config.json:Z
+
+EnvironmentFile=%h/containers/secrets/%p.env
 
 Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=300
-
-StartLimitInterval=300
-StartLimitBurst=5
+TimeoutStartSec=30
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target default.target

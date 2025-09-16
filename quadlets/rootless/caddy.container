@@ -1,6 +1,9 @@
 [Unit]
 Description=Caddy Reverse Proxy
 
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
 [Container]
 ContainerName=caddy
 Image=localhost:5000/caddy:latest
@@ -15,8 +18,8 @@ Network=homelab.network
 IP=10.90.0.3
 PublishPort=4443:443
 
-Volume=%h/containers/storage/%N:/opt/caddy/work/caddy:Z
-Volume=%h/containers/config/%N:/opt/caddy/conf:Z,ro
+Volume=%h/containers/storage/%p:/opt/caddy/work/caddy:Z
+Volume=%h/containers/config/%p:/opt/caddy/conf:Z,ro
 
 EnvironmentFile=%h/containers/secrets/acmedns.env
 
@@ -26,12 +29,10 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=300
+TimeoutStartSec=30
+TimeoutStopSec=30
 
-ExecStartPre=mkdir -p %h/containers/storage/%N
-
-StartLimitInterval=300
-StartLimitBurst=5
+ExecStartPre=mkdir -p %h/containers/storage/%p
 
 [Install]
 WantedBy=multi-user.target default.target

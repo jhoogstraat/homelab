@@ -1,6 +1,9 @@
 [Unit]
 Description=Papra document management
 
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
 [Container]
 ContainerName=papra
 Image=ghcr.io/papra-hq/papra:latest-rootless
@@ -12,23 +15,21 @@ UserNS=keep-id:uid=999,gid=999
 Network=homelab.network
 IP=10.90.0.11
 
-Volume=%h/containers/storage/%N/data:/app/app-data:Z
-Volume=%h/containers/storage/%N/ingestion:/app/ingestion:Z
+Volume=%h/containers/storage/%p/data:/app/app-data:Z
+Volume=%h/containers/storage/%p/ingestion:/app/ingestion:Z
 
-EnvironmentFile=%h/containers/config/%N/papra.env
-EnvironmentFile=%h/containers/secrets/%N.env
+EnvironmentFile=%h/containers/config/%p/papra.env
+EnvironmentFile=%h/containers/secrets/%p.env
 
 Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=300
+TimeoutStartSec=30
+TimeoutStopSec=30
 
-ExecStartPre=mkdir -p %h/containers/storage/%N/data
-ExecStartPre=mkdir -p %h/containers/storage/%N/ingestion
-
-StartLimitInterval=300
-StartLimitBurst=5
+ExecStartPre=mkdir -p %h/containers/storage/%p/data
+ExecStartPre=mkdir -p %h/containers/storage/%p/ingestion
 
 [Install]
 WantedBy=multi-user.target default.target

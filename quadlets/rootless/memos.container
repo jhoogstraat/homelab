@@ -1,6 +1,9 @@
 [Unit]
 Description=Memos
 
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
 [Container]
 ContainerName=memos
 Image=docker.io/neosmemo/memos:stable
@@ -12,18 +15,16 @@ UserNS=keep-id:uid=65532,gid=65532
 Network=homelab.network
 IP=10.90.0.10
 
-Volume=%h/containers/storage/%N:/var/opt/memos:Z
+Volume=%h/containers/storage/%p:/var/opt/memos:Z
 
 Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=300
+TimeoutStartSec=30
+TimeoutStopSec=30
 
-ExecStartPre=mkdir -p %h/containers/storage/%N
-
-StartLimitInterval=300
-StartLimitBurst=5
+ExecStartPre=mkdir -p %h/containers/storage/%p
 
 [Install]
 WantedBy=multi-user.target default.target

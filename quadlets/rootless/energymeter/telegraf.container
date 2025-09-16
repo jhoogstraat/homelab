@@ -7,6 +7,9 @@ Requires=rmqtt.container
 After=influxdb.container
 Requires=influxdb.container
 
+StartLimitIntervalSec=1200
+StartLimitBurst=2
+
 [Container]
 ContainerName=telegraf-energymeter
 Image=docker.io/telegraf:1.35-alpine
@@ -27,9 +30,7 @@ Timezone=local
 [Service]
 Restart=on-failure
 TimeoutStartSec=300
-
-StartLimitInterval=300
-StartLimitBurst=5
+TimeoutStopSec=300
 
 [Install]
 WantedBy=multi-user.target default.target

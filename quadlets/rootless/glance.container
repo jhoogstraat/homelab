@@ -1,6 +1,9 @@
 [Unit]
 Description=Glance
 
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
 [Container]
 ContainerName=glance
 Image=docker.io/glanceapp/glance:latest
@@ -12,7 +15,7 @@ UserNS=keep-id:uid=65532,gid=65532
 Network=homelab.network
 IP=10.90.0.4
 
-Volume=%h/containers/config/%N:/app/config:Z
+Volume=%h/containers/config/%p:/app/config:Z
 
 EnvironmentFile=%h/containers/secrets/adguard.env
 
@@ -20,10 +23,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=300
-
-StartLimitInterval=300
-StartLimitBurst=5
+TimeoutStartSec=30
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target default.target

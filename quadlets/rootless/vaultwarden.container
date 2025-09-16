@@ -1,6 +1,9 @@
 [Unit]
 Description=Vaultwarden (Bitwarden in Rust)
 
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
 [Container]
 ContainerName=vaultwarden
 Image=docker.io/vaultwarden/server:latest-alpine
@@ -13,23 +16,21 @@ Network=homelab.network
 IP=10.90.0.7
 HostName=vaultwarden
 
-Volume=%h/containers/storage/%N:/data:Z
+Volume=%h/containers/storage/%p:/data:Z
 
 Environment=DOMAIN=https://vault.hoogstraat.de
 Environment=ROCKET_PORT=8080
 
-EnvironmentFile=%h/containers/secrets/%N.env
+EnvironmentFile=%h/containers/secrets/%p.env
 
 Timezone=local
 
 [Service]
 Restart=on-failure
 TimeoutStartSec=300
+TimeoutStopSec=300
 
-ExecStartPre=mkdir -p %h/containers/storage/%N
-
-StartLimitInterval=300
-StartLimitBurst=5
+ExecStartPre=mkdir -p %h/containers/storage/%p
 
 [Install]
 WantedBy=multi-user.target default.target

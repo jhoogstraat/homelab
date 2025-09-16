@@ -21,11 +21,11 @@ EnvironmentFile=%h/containers/config/%p/%p.env
 Timezone=local
 
 [Service]
-ExecStartPre=mkdir -p %h/containers/storage/%p
-
 Restart=on-failure
 TimeoutStartSec=90
 TimeoutStopSec=30
+
+ExecStartPre=mkdir -p %h/containers/storage/%p
 
 [Install]
 WantedBy=multi-user.target default.target
