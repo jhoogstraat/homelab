@@ -40,7 +40,7 @@
 	}
 
 	handle @homeassistant {
-		reverse_proxy host.docker.internal:8123
+		reverse_proxy homeassistant:8123
 	}
 
 	handle @wireguard {
