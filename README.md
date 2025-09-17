@@ -18,16 +18,16 @@ Secrets are encrypted using [sops](https://github.com/getsops/sops) and a [age](
 
 ## 🗃️ Folder Structure
 ```shell
-├── 📁 .github                      # CI/CD workflows
-│   └── 📁 workflows                
+├── 📁 .github                      # CI/CD workflows and actions
 ├── 📁 ansible                      # Application deployments
-│   ├── 📁 inventory                                
-│   └── 📁 roles                    
+│   ├── 📁 inventory
+│   ├── 📁 roles
+│   └──    ansible.cfg
 ├── 📁 configs                      # Configuration files for containers
-│   ├── 📁 adguard                  
-│   ├── 📁 caddy                    
-│   └── 📁 other apps               
-├── 📁 quadlets                     # Systemd unit file templates for pods and containers 
+│   ├── 📁 adguard
+│   ├── 📁 caddy
+│   └── 📁 other apps
+├── 📁 quadlets                     # Systemd unit file templates for pods and containers
 ├── 📁 scripts                      # Builds and helper scripts
 ├── 📁 secrets                      # SOPS-encrypted secrets
 ├── 📁 users                        # Public ssh keys for users
@@ -51,9 +51,9 @@ Use the `configure` and `containers` playbooks to setup necessary system compone
 
 ## Users
 
-- root.pub: Used when installing linux
-- admin.pub: The jh user that has sudo permissions without password
-- picasso.pub: The unprivliged user that runs userland podman containers
+- `root.pub`: Used when installing linux
+- `admin.pub`: The jh user that has sudo permissions without password
+- `picasso.pub`: The unprivileged user that runs userland podman containers
 
 ## 🔒 Secrets
 
@@ -82,7 +82,7 @@ TODO!
 ## Helpful commands
 
 - `systemd-analyze --user --generators=true verify X.service` - Check for errors during systemd unit generation
-- `journalctl` 
+- `journalctl`
     - `-r` - Show all messages in the journal sorted by recently.
     - `-f` - Follow logs as they are coming in.
     - `-u` - Select a service unit to filter for.
