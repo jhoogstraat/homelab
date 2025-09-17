@@ -6,15 +6,14 @@ StartLimitBurst=2
 
 [Container]
 ContainerName=homeassistant
-Image=docker.io/homeassistant/home-assistant:stable
+Image=ghcr.io/home-assistant/home-assistant:stable
 AutoUpdate=registry
 Pod=homeassistant.pod
 
 User=1500
 Group=1500
 
-Volume=%h/containers/config/%p/:/config:Z
-Volume=%h/containers/storage/%p/:/?!:Z
+Volume=%h/containers/config/%p:/config:Z
 
 Timezone=local
 
@@ -23,7 +22,7 @@ Restart=on-failure
 TimeoutStartSec=100
 TimeoutStopSec=100
 
-ExecStartPre=mkdir -p %h/containers/storage/%p
+ExecStartPre=mkdir -p %h/containers/config/%p
 
 [Install]
 WantedBy=multi-user.target default.target
