@@ -10,6 +10,7 @@
       ansible.posix.synchronize:
         src: ../quadlets/rootless/
         dest: ~/.config/containers/systemd/ # https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#podman-rootless-unit-search-path
+        delete: true
         rsync_opts:
           - --out-format=%n
       notify:
