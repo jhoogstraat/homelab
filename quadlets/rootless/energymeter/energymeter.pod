@@ -1,6 +1,9 @@
 [Unit]
 Description=Pod for housing the Energymetering tools
 
+StartLimitIntervalSec=300
+StartLimitBurst=2
+
 [Pod]
 PodName=energymeter
 
@@ -25,9 +28,6 @@ PublishPort=8888:8888
 # InfluxDB 3 Explorer
 PublishPort=8888:80
 PublishPort=8889:8888
-
-StartLimitIntervalSec=300
-StartLimitBurst=2
 
 [Install]
 WantedBy=multi-user.target default.target

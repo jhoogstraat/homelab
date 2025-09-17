@@ -18,8 +18,8 @@ IP=10.90.0.2
 PublishPort=5553:53/tcp
 PublishPort=5553:53/udp
 
-Volume=%h/containers/storage/%p:/opt/adguardhome/work:Z
 Volume=%h/containers/config/%p:/opt/adguardhome/conf:Z
+Volume=%h/containers/storage/%p:/opt/adguardhome/work:Z
 
 Timezone=local
 
