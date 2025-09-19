@@ -1,6 +1,6 @@
 ---
 creation_rules:
-  - path_regex: files/secrets/.*\.enc\.[a-z]+$
+  - path_regex: secrets/.*\.env$
     # encrypted_regex: ^(data|stringData)$
     key_groups:
       - age:
