@@ -1,0 +1,27 @@
+[Unit]
+Description=Beszel UI
+
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=beszel-ui
+
+Image=docker.io/henrygd/beszel:latest
+AutoUpdate=registry
+
+Pod=beszel.pod
+
+Volume=%h/containers/storage/beszel/data:/beszel_data:Z
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+ExecStartPre=mkdir -p %h/containers/storage/beszel/data
+
+[Install]
+WantedBy=multi-user.target default.target

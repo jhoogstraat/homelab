@@ -157,7 +157,7 @@ pages:
                 name: Bitcoin
               - symbol: ETH-USD
                 name: Ethereum
-              
+
           - type: releases
             cache: 1d
             repositories:
@@ -165,6 +165,8 @@ pages:
               - home-assistant/core
               - glanceapp/glance
               - papra-hq/papra
+              - henrygd/beszel
+              - vaultwarden/server
 
           - type: monitor
             cache: 1m
@@ -182,6 +184,10 @@ pages:
                 url: https://papra.hoogstraat.de
                 check-url: http://papra:1221
                 icon: di:papra
+              - title: Beszel
+                url: https://monitor.hoogstraat.de
+                check-url: http://beszel:8090
+                icon: di:beszel
               - title: Wireguard
                 url: https://wg.hoogstraat.de
                 check-url: http://wg-easy:51821

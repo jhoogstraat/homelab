@@ -1,0 +1,19 @@
+[Unit]
+Description=Pod for housing Beszel
+
+StartLimitIntervalSec=300
+StartLimitBurst=2
+
+[Pod]
+PodName=beszel
+
+Network=homelab.network
+IP=10.90.0.14
+
+; To be able to access the podman socket
+UserNS=keep-id
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30

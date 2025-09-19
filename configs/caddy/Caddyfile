@@ -16,6 +16,7 @@
 	@wireguard host "wg.{args[0]}"
 	@registry host "registry.{args[0]}"
 	@energy host "energy.{args[0]}"
+	@beszel host "monitor.{args[0]}"
 
 	handle @adguard {
 		import cors
@@ -53,6 +54,10 @@
 
 	handle @energy {
 		reverse_proxy energymeter:3000
+	}
+
+	handle @beszel {
+		reverse_proxy beszel:8090
 	}
 
 	# Fallback for otherwise unhandled domains
