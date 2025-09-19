@@ -1,6 +1,9 @@
 [Unit]
 Description=Grafana for Energymetering
 
+StartLimitIntervalSec=300
+StartLimitBurst=2
+
 [Container]
 ContainerName=grafana-energymeter
 Image=docker.io/grafana/grafana:latest
@@ -24,9 +27,6 @@ Timezone=local
 [Service]
 Restart=on-failure
 TimeoutStartSec=300
-
-StartLimitIntervalSec=300
-StartLimitBurst=2
 
 [Install]
 WantedBy=multi-user.target default.target

@@ -1,6 +1,9 @@
 [Unit]
 Description=InfluxDB Explorer for Energymetering
 
+StartLimitIntervalSec=300
+StartLimitBurst=2
+
 [Container]
 ContainerName=influxdb-explorer-energymeter
 Image=docker.io/influxdata/influxdb3-ui:1.0.0
@@ -20,9 +23,6 @@ Timezone=local
 [Service]
 Restart=on-failure
 TimeoutStartSec=300
-
-StartLimitIntervalSec=300
-StartLimitBurst=2
 
 [Install]
 WantedBy=multi-user.target default.target
