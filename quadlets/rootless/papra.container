@@ -25,7 +25,7 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=30
 
 ExecStartPre=mkdir -p %h/containers/storage/%p/data
