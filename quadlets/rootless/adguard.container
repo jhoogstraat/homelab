@@ -6,7 +6,7 @@ StartLimitBurst=2
 
 [Container]
 ContainerName=adguard
-Image=docker.io/adguard/adguardhome:beta
+Image=docker.io/adguard/adguardhome:latest
 AutoUpdate=registry
 
 # HealthCmd=curl http://127.0.0.1:3001
