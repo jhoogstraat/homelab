@@ -167,6 +167,7 @@ pages:
               - papra-hq/papra
               - henrygd/beszel
               - vaultwarden/server
+              - n8n-io/n8n
 
           - type: monitor
             cache: 1m
@@ -188,6 +189,10 @@ pages:
                 url: https://monitor.hoogstraat.de
                 check-url: http://beszel:8090
                 icon: di:beszel
+              - title: n8n
+                url: https://n8n.hoogstraat.de
+                check-url: http://n8n:5678
+                icon: di:n8n
               - title: Wireguard
                 url: https://wg.hoogstraat.de
                 check-url: http://wg-easy:51821
