@@ -1,15 +1,15 @@
 - name: Configure podman containers and configuration data
   hosts: homelab
-  remote_user: "{{ picasso_username }}"
+  become: true
   vars_prompt:
     - name: age_private_key
       prompt: Insert the whole age decryption key
       private: true
   tasks:
-    - name: Sync rootless quadlets
+    - name: Sync quadlets
       ansible.posix.synchronize:
-        src: ../quadlets/rootless/
-        dest: ~/.config/containers/systemd/ # https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#podman-rootless-unit-search-path
+        src: ../quadlets/
+        dest: /etc/containers/systemd/ # https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#podman-rootful-unit-search-path
         delete: true
         rsync_opts:
           - --out-format=%n
@@ -19,9 +19,9 @@
     - name: Sync configs
       ansible.posix.synchronize:
         src: ../configs/
-        dest: ~/containers/config/
+        dest: /opt/containers/config/
 
-    - name: sync secrets
+    - name: Sync secrets
       include_role:
         name: sync_secrets
 

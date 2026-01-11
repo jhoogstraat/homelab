@@ -9,9 +9,9 @@ ContainerName=wg-easy
 Image=hcr.io/wg-easy/wg-easy:15
 AutoUpdate=registry
 
-# UserNS=keep-id:uid=65532,gid=65532
+# UserNS=auto
 
-Volume=/etc/containers/volumes/wg-easy:/etc/wireguard:Z
+Volume=/etc/containers/volumes/wg-easy:/etc/wireguard:Z,idmap
 Network=host
 # Network=wg-easy.network
 # PublishPort=51820:51820/udp

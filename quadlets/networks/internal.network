@@ -1,0 +1,14 @@
+# This network does not allow any internet access and is purely internal.
+
+[Unit]
+Description=Homelab internal network
+
+[Network]
+NetworkName=homelab-internal
+Subnet=10.91.0.0/24
+Gateway=10.91.0.1
+IPv6=true
+Internal=true
+
+[Install]
+WantedBy=multi-user.target default.target

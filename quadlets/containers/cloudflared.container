@@ -9,9 +9,11 @@ ContainerName=cloudflared
 Image=docker.io/cloudflare/cloudflared:latest
 AutoUpdate=registry
 
+UserNS=auto
+
 Exec=tunnel --no-autoupdate run
 
-EnvironmentFile=%h/containers/secrets/%p.env
+EnvironmentFile=/opt/containers/secrets/%p.env
 
 Network=homelab.network
 IP=10.90.0.9

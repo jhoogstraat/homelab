@@ -12,16 +12,16 @@ AutoUpdate=registry
 Exec=run --config /opt/caddy/conf/Caddyfile --adapter caddyfile --watch
 
 # HealthCmd=curl http://127.0.0.1:3001
-UserNS=keep-id:uid=65532,gid=65532
+UserNS=auto
 
 Network=homelab.network
 IP=10.90.0.3
 PublishPort=4443:443
 
-Volume=%h/containers/storage/%p:/opt/caddy/work/caddy:Z
-Volume=%h/containers/config/%p:/opt/caddy/conf:Z,ro
+Volume=/opt/containers/config/%p:/opt/caddy/conf:Z,ro,idmap
+Volume=/opt/containers/data/%p:/opt/caddy/work/caddy:Z,idmap
 
-EnvironmentFile=%h/containers/secrets/acmedns.env
+EnvironmentFile=/opt/containers/secrets/acmedns.env
 
 Environment=XDG_DATA_HOME=/opt/caddy/work
 
@@ -32,7 +32,7 @@ Restart=on-failure
 TimeoutStartSec=30
 TimeoutStopSec=30
 
-ExecStartPre=mkdir -p %h/containers/storage/%p
+ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
 WantedBy=multi-user.target default.target

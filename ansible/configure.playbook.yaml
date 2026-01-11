@@ -15,7 +15,7 @@
     - name: Open port 1883/tcp for mqtt (wan)
       ansible.posix.firewalld:
         port: 1883/tcp
-        state: enabled
+        state: disabled
         permanent: true
         immediate: true
 

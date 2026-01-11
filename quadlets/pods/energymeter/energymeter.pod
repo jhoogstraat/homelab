@@ -10,7 +10,7 @@ PodName=energymeter
 Network=homelab.network
 IP=10.90.0.5
 
-UserNS=keep-id:uid=1500,gid=1500
+UserNS=auto
 
 # RMQTT
 PublishPort=1883:1883

@@ -55,6 +55,14 @@ Use the `configure` and `containers` playbooks to setup necessary system compone
 - `admin.pub`: The jh user that has sudo permissions without password
 - `picasso.pub`: The unprivileged user that runs userland podman containers
 
+Initially, all containers used UserNS with `keep-id` to map the user namespace of `picasso` into the container. This allows `picasso` to read and edit any file that is stored inside the container in a shared volume directory.
+The inherent disadvantage is that containers can potentially attack each other now, as they run in the same user namespace.
+
+A more secure alternative is to use `auto` on ALL containers, so that the host user is not mapped inside the container and each container uses a isolated user namespace.
+See also https://github.com/containers/podman/issues/20845.
+
+Additionally, newer linux kernels support `idmapped` mounts, which allow the system to remap the ownership of files on the fly for a specific mount point, without actually changing the file ownership on the physical disk.
+
 ## 🔒 Secrets
 
 Secrets are encrypted using sops and an age key that is stored securely, e.g. in bitwarden, as a secure note.

@@ -18,11 +18,11 @@ Exec=--node-id=node-one --object-store=file --data-dir=/var/lib/influxdb
 User=1500
 Group=1500
 
-Volume=%h/containers/storage/energymeter/influxdb:/var/lib/influxdb:Z
+Volume=/opt/containers/data/energymeter/influxdb:/var/lib/influxdb:Z,idmap
 
 Environment=INFLUXDB3_QUERY_FILE_LIMIT=1000
 
-EnvironmentFile=%h/containers/secrets/influxdb.env
+EnvironmentFile=/opt/containers/secrets/influxdb.env
 
 Timezone=local
 

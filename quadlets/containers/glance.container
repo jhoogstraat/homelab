@@ -10,14 +10,14 @@ Image=docker.io/glanceapp/glance:latest
 AutoUpdate=registry
 
 # HealthCmd=wget --no-verbose --spider http://127.0.0.1:5000
-UserNS=keep-id:uid=65532,gid=65532
+UserNS=auto
 
 Network=homelab.network
 IP=10.90.0.4
 
-Volume=%h/containers/config/%p:/app/config:Z
+Volume=/opt/containers/config/%p:/app/config:Z,idmap
 
-EnvironmentFile=%h/containers/secrets/adguard.env
+EnvironmentFile=/opt/containers/secrets/adguard.env
 
 Timezone=local
 

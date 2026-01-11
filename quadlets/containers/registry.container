@@ -10,7 +10,7 @@ Image=docker.io/registry:2
 AutoUpdate=registry
 
 # HealthCmd=wget --no-verbose --spider --timeout=5 http://127.0.0.1:5000
-UserNS=keep-id:uid=65532,gid=65532
+UserNS=auto
 
 Network=homelab.network
 IP=10.90.0.6
@@ -18,7 +18,7 @@ HostName=registry
 
 PublishPort=5000:5000
 
-Volume=%h/containers/storage/%p:/var/lib/registry:Z
+Volume=/opt/containers/data/%p:/var/lib/registry:Z,idmap
 
 Environment=REGISTRY_STORAGE_DELETE_ENABLED=true
 
@@ -29,7 +29,7 @@ Restart=on-failure
 TimeoutStartSec=60
 TimeoutStopSec=60
 
-ExecStartPre=mkdir -p %h/containers/storage/%p
+ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
 WantedBy=multi-user.target default.target

@@ -10,16 +10,16 @@ Image=ghcr.io/papra-hq/papra:latest-rootless
 AutoUpdate=registry
 
 # HealthCmd=curl http://127.0.0.1:3001
-UserNS=keep-id:uid=999,gid=999
+UserNS=auto
 
 Network=homelab.network
 IP=10.90.0.11
 
-Volume=%h/containers/storage/%p/data:/app/app-data:Z
-Volume=%h/containers/storage/%p/ingestion:/app/ingestion:Z
+Volume=/opt/containers/data/%p/data:/app/app-data:Z,idmap
+Volume=/opt/containers/data/%p/ingestion:/app/ingestion:Z,idmap
 
-EnvironmentFile=%h/containers/config/%p/papra.env
-EnvironmentFile=%h/containers/secrets/%p.env
+EnvironmentFile=/opt/containers/config/%p/papra.env
+EnvironmentFile=/opt/containers/secrets/%p.env
 
 Timezone=local
 
@@ -28,8 +28,8 @@ Restart=on-failure
 TimeoutStartSec=300
 TimeoutStopSec=30
 
-ExecStartPre=mkdir -p %h/containers/storage/%p/data
-ExecStartPre=mkdir -p %h/containers/storage/%p/ingestion
+ExecStartPre=mkdir -p /opt/containers/data/%p/data
+ExecStartPre=mkdir -p /opt/containers/data/%p/ingestion
 
 [Install]
 WantedBy=multi-user.target default.target

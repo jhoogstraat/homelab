@@ -16,10 +16,9 @@ Pod=energymeter.pod
 User=1500
 Group=1500
 
-Volume=%h/containers/config/energymeter/grafana-datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yml:Z
-Volume=%h/containers/storage/energymeter/grafana:/var/lib/grafana:Z
+Volume=/opt/containers/config/energymeter/grafana-datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yml:Z,idmapVolume=/opt/containers/data/energymeter/grafana:/var/lib/grafana:Z,idmap
 
-EnvironmentFile=%h/containers/secrets/influxdb.env
+EnvironmentFile=/opt/containers/secrets/influxdb.env
 Environment=GF_LOG_LEVEL=debug
 
 Timezone=local

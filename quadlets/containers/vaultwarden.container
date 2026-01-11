@@ -10,18 +10,18 @@ Image=docker.io/vaultwarden/server:latest-alpine
 AutoUpdate=registry
 
 # HealthCmd=wget --no-verbose --spider http://127.0.0.1:5000
-UserNS=keep-id:uid=65532,gid=65532
+UserNS=auto
 
 Network=homelab.network
 IP=10.90.0.7
 HostName=vaultwarden
 
-Volume=%h/containers/storage/%p:/data:Z
+Volume=/opt/containers/data/%p:/data:Z,idmap
 
 Environment=DOMAIN=https://vault.hoogstraat.de
 Environment=ROCKET_PORT=8080
 
-EnvironmentFile=%h/containers/secrets/%p.env
+EnvironmentFile=/opt/containers/secrets/%p.env
 
 Timezone=local
 
@@ -30,7 +30,7 @@ Restart=on-failure
 TimeoutStartSec=300
 TimeoutStopSec=300
 
-ExecStartPre=mkdir -p %h/containers/storage/%p
+ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
 WantedBy=multi-user.target default.target

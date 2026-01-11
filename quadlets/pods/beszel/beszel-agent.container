@@ -13,9 +13,9 @@ AutoUpdate=registry
 Pod=beszel.pod
 
 Environment=HUB_URL=http://localhost:8090
-EnvironmentFile=%h/containers/secrets/beszel.env
+EnvironmentFile=/opt/containers/secrets/beszel.env
 
-Volume=%h/containers/storage/beszel/agent:/var/lib/beszel-agent:Z
+Volume=/opt/containers/data/beszel/agent:/var/lib/beszel-agent:Z,idmap
 Volume=${XDG_RUNTIME_DIR}/podman/podman.sock:${XDG_RUNTIME_DIR}/podman/podman.sock:ro
 
 Timezone=local
@@ -25,7 +25,7 @@ Restart=on-failure
 TimeoutStartSec=60
 TimeoutStopSec=60
 
-ExecStartPre=mkdir -p %h/containers/storage/beszel/agent
+ExecStartPre=mkdir -p /opt/containers/data/beszel/agent
 
 [Install]
 WantedBy=multi-user.target default.target

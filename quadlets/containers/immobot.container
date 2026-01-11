@@ -1,21 +1,25 @@
 [Unit]
-Description=Memos
+Description=Immobot
 
 StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Container]
-ContainerName=memos
-Image=docker.io/neosmemo/memos:stable
+ContainerName=immobot
+Image=localhost:5000/immobot:latest
 AutoUpdate=registry
 
+Exec=/app/config.json
+
 # HealthCmd=curl http://127.0.0.1:3001
-UserNS=keep-id:uid=65532,gid=65532
+UserNS=auto
 
 Network=homelab.network
-IP=10.90.0.10
+IP=10.90.0.8
 
-Volume=%h/containers/storage/%p:/var/opt/memos:Z
+Volume=/opt/containers/config/%p/config.json:/app/config.json:Z,idmap
+
+EnvironmentFile=/opt/containers/secrets/%p.env
 
 Timezone=local
 
@@ -23,8 +27,6 @@ Timezone=local
 Restart=on-failure
 TimeoutStartSec=30
 TimeoutStopSec=30
-
-ExecStartPre=mkdir -p %h/containers/storage/%p
 
 [Install]
 WantedBy=multi-user.target default.target

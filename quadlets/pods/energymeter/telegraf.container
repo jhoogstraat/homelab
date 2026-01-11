@@ -21,9 +21,9 @@ AddCapability=NET_RAW
 
 # HealthCmd=curl http://127.0.0.1:3001
 
-Volume=%h/containers/config/energymeter/telegraf.conf:/etc/telegraf/telegraf.conf:Z
+Volume=/opt/containers/config/energymeter/telegraf.conf:/etc/telegraf/telegraf.conf:Z,idmap
 
-EnvironmentFile=%h/containers/secrets/influxdb.env
+EnvironmentFile=/opt/containers/secrets/influxdb.env
 
 Timezone=local
 

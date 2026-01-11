@@ -21,9 +21,9 @@ AddCapability=NET_ADMIN
 AddDevice=/dev/ttyACM0
 AddDevice=/dev/net/tun
 
-Volume=/etc/containers/volumes/%p:/data:Z
+Volume=/etc/containers/volumes/%p:/data:Z,idmap
 
-EnvironmentFile=%h/containers/config/%p.env
+EnvironmentFile=/opt/containers/config/%p.env
 
 [Service]
 Restart=on-failure

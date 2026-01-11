@@ -9,13 +9,12 @@ ContainerName=homeassistant
 Image=ghcr.io/home-assistant/home-assistant:stable
 AutoUpdate=registry
 
-; UserNS=keep-id:uid=65532,gid=65532
-UserNS=host
+UserNS=auto
 
 Network=homelab.network
 IP=10.90.0.13
 
-Volume=%h/containers/config/%p:/config:Z
+Volume=/opt/containers/config/%p:/config:Z,idmap
 
 Timezone=local
 
@@ -24,7 +23,7 @@ Restart=on-failure
 TimeoutStartSec=100
 TimeoutStopSec=100
 
-ExecStartPre=mkdir -p %h/containers/config/%p
+ExecStartPre=mkdir -p /opt/containers/config/%p
 
 [Install]
 WantedBy=multi-user.target default.target

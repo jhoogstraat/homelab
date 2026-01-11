@@ -4,4 +4,4 @@ bw_master_password: <insert-secret>
 bw_age_key_secret_name: homelab secrets age de-/encryption key
 bw_age_key_field_name: private key
 secrets_local_path: ../secrets/*.enc.env
-secrets_target_path: ~/containers/secrets
+secrets_target_path: /opt/containers/secrets

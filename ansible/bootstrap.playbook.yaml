@@ -1,13 +1,10 @@
 - name: Configure Fedora IoT on Raspberry Pi
-  hosts: servers
+  hosts: homelab
   remote_user: root
   vars:
     admin_username: jh
     admin_full_name: Joshua
-    admin_ssh_pub_key: files/users/admin.pub
-    picasso_username: picasso
-    picasso_user_comment: Rootless unprivileged peasant named picasso to run podman containers
-    picasso_ssh_pub_key: files/users/picasso.pub
+    admin_ssh_pub_key: ../users/jh.pub
     cockpit_username: cockpit
     cockpit_user_comment: Rootless unprivileged peasant with password to login to cockpit
   tasks:
@@ -48,23 +45,6 @@
         commands: ALL
         nopassword: true
 
-    # Rootless picasso user
-    - name: Add unprivileged podman container runner user
-      ansible.builtin.user:
-        name: "{{ picasso_username }}"
-        comment: "{{ picasso_user_comment }}"
-        password_lock: true
-        uid: 3000
-        # groups: ["dialout", "dbus"] # Thread USB Dongle, "RPI onboard bluetooth"
-        state: present
-
-    - name: Add ssh pub key for picasso user
-      ansible.posix.authorized_key:
-        user: "{{ picasso_username }}"
-        key: "{{ lookup('file', picasso_ssh_pub_key) }}"
-        state: present
-
-    # Rootless cockpit login user
     - name: Add unprivileged cockpit user
       ansible.builtin.user:
         name: "{{ cockpit_username }}"
@@ -74,24 +54,22 @@
         state: present
 
     # Podman
-    - name: "Start & Enable Podman Socket"
+    - name: Start & Enable Podman Socket
       ansible.builtin.service:
         name: podman.socket
         state: started
         enabled: true
-        # become: true
 
-    - name: "Start & Enable Podman Auto Update Timer"
-      become_user: "{{ picasso_username }}"
+    - name: Start & Enable Podman Auto Update Timer
       ansible.builtin.service:
-        name: "podman-auto-update.timer"
-        state: "started"
+        name: podman-auto-update.timer
+        state: started
         enabled: true
 
-    - name: Enable lingering for {{ item }} user
-      ansible.builtin.command:
-        cmd: "loginctl enable-linger {{ item }}"
-        creates: "/var/lib/systemd/linger/{{ item }}"
-      loop:
-        - "{{ admin_username }}"
-        - "{{ picasso_username }}"
+    - name: Ensure base container directory exists
+      ansible.builtin.file:
+        path: /opt/containers
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'

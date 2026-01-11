@@ -12,7 +12,7 @@ AutoUpdate=registry
 
 Pod=beszel.pod
 
-Volume=%h/containers/storage/beszel/data:/beszel_data:Z
+Volume=/opt/containers/data/beszel/data:/beszel_data:Z,idmap
 
 Timezone=local
 
@@ -21,7 +21,7 @@ Restart=on-failure
 TimeoutStartSec=30
 TimeoutStopSec=30
 
-ExecStartPre=mkdir -p %h/containers/storage/beszel/data
+ExecStartPre=mkdir -p /opt/containers/data/beszel/data
 
 [Install]
 WantedBy=multi-user.target default.target
