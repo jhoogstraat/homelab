@@ -14,7 +14,11 @@
 
 This repo contains the source of my personal homelab that runs a Raspberry Pi 4 Model B 8GB locally on my network.
 
+Containers run using [podman](https://podman.io/) and [systemd](https://systemd.io/) as Quadlets and are deployed using [ansible](https://www.ansible.com/).
+
 Secrets are encrypted using [sops](https://github.com/getsops/sops) and a [age](https://github.com/FiloSottile/age) asymmetric key pair.
+
+TLS termination and reverse proxying is done using [traefik](https://traefik.io/).
 
 ## 🗃️ Folder Structure
 ```shell
@@ -25,7 +29,7 @@ Secrets are encrypted using [sops](https://github.com/getsops/sops) and a [age](
 │   └──    ansible.cfg
 ├── 📁 configs                      # Configuration files for containers
 │   ├── 📁 adguard
-│   ├── 📁 caddy
+│   ├── 📁 traefik
 │   └── 📁 other apps
 ├── 📁 quadlets                     # Systemd unit file templates for pods and containers
 ├── 📁 scripts                      # Builds and helper scripts
@@ -37,11 +41,13 @@ Secrets are encrypted using [sops](https://github.com/getsops/sops) and a [age](
 
 # 🧑‍💻 Setup
 
-The first thing to do is to use the private key of the root.pub public ssh key to generate a installable fedora iot image.
+1. Use the private key of the root.pub public ssh key to generate a installable fedora iot image.
+2. Then use the ansible `bootstrap` playbook to setup some bare minimums, like users and permissions.
+3. Use the `configure` playbook to setup system components like the firewall.
+4. Configure your specific cert provider inside `traefik.yml`.
+5. Finally use the `containers` playbook to deploy all containers.
 
-Then use the ansible `bootstrap` playbook to setup some bare minimums, like users and permissions.
-
-## containers
+## Containers
 
 `systemd` unit files are used to define podman pods and containers. This allows them to really nicely integrate into the linux system (like starting on boot, restart on failure, dependency resolution, etc.).
 
@@ -49,19 +55,28 @@ Use the `configure` and `containers` playbooks to setup necessary system compone
 
 *Notice: The `containers` playbook requires `BW_SESSION` being set in the environment before running `ansible-playbook`. See the secrets role for more info.*
 
+## Routing
+
+Each service is exposed under its own subdomain, e.g. `adguard.example.com` using `traefik` as a reverse proxy.
+
+### TLS
+Traefik automatically provisions and renews TLS certificates using Let's Encrypt.
+
+It uses a DNS challenge to issue a wildcard certificate (`*.example.com`) that all services then use.
+
+*This must be adapted to your specific environment. Define your DNS provider and environment args required inside `traefik.yml`*.
+
 ## Users
 
 - `root.pub`: Used when installing linux
-- `admin.pub`: The jh user that has sudo permissions without password
-- `picasso.pub`: The unprivileged user that runs userland podman containers
+- `jh.pub`: The jh user that has sudo permissions without password
 
-Initially, all containers used UserNS with `keep-id` to map the user namespace of `picasso` into the container. This allows `picasso` to read and edit any file that is stored inside the container in a shared volume directory.
-The inherent disadvantage is that containers can potentially attack each other now, as they run in the same user namespace.
-
-A more secure alternative is to use `auto` on ALL containers, so that the host user is not mapped inside the container and each container uses a isolated user namespace.
+All containers use `userns=auto` to run processes in a random user namespace.
+This prevents container processes to be able to attack each other, as they all run in different user namespaces.
 See also https://github.com/containers/podman/issues/20845.
 
 Additionally, newer linux kernels support `idmapped` mounts, which allow the system to remap the ownership of files on the fly for a specific mount point, without actually changing the file ownership on the physical disk.
+This is used to map config and data files into containers with the correct ownership. Special attention is given to containers that do not run the root user inside. Here the mapping has to be matched to the target uid:gid inside the container.
 
 ## 🔒 Secrets
 
