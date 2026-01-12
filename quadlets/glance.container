@@ -19,6 +19,8 @@ Volume=/opt/containers/config/%p:/app/config:Z,idmap
 
 EnvironmentFile=/opt/containers/secrets/adguard.env
 
+Label="traefik.enable=true"
+
 Timezone=local
 
 [Service]

@@ -15,10 +15,15 @@ UserNS=auto
 Network=homelab.network
 IP=10.90.0.12
 
-Volume=/opt/containers/data/%p:/home/node/.n8n:Z,idmap
-# Volume=n8n_data:/home/node/.n8n:Z,idmap
+# User inside container is node (uid:gid 1000:1000), so map root to this uid/gid.
+# Because of UserNS=auto, the `podman run` process is run with a random uid/gid, which has to be taken into account (@).
+Volume=/opt/containers/data/%p:/home/node/.n8n:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+
 EnvironmentFile=/opt/containers/config/%p/%p.env
+
 Timezone=local
+
+Label="traefik.enable=true"
 
 [Service]
 Restart=on-failure

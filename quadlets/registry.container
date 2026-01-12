@@ -1,12 +1,12 @@
 [Unit]
-Description=Private docker registry
+Description=Homelab Docker Registry
 
 StartLimitIntervalSec=300
 StartLimitBurst=2
 
 [Container]
 ContainerName=registry
-Image=docker.io/registry:2
+Image=docker.io/registry:3
 AutoUpdate=registry
 
 # HealthCmd=wget --no-verbose --spider --timeout=5 http://127.0.0.1:5000
@@ -21,6 +21,8 @@ PublishPort=5000:5000
 Volume=/opt/containers/data/%p:/var/lib/registry:Z,idmap
 
 Environment=REGISTRY_STORAGE_DELETE_ENABLED=true
+
+Label="traefik.enable=true"
 
 Timezone=local
 

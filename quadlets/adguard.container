@@ -15,11 +15,16 @@ UserNS=auto
 Network=homelab.network
 IP=10.90.0.2
 
-PublishPort=5553:53/tcp
-PublishPort=5553:53/udp
+# cannot bind on all interfaces, because aardvark-dns binds 53 on bridge interface for internal container DNS resolution.
+# Also, systemd-resolved normally binds port 53. That is disabled in the configure playbook.
+PublishPort=192.168.0.3:53:53/tcp
+PublishPort=192.168.0.3:53:53/udp
 
 Volume=/opt/containers/config/%p:/opt/adguardhome/conf:Z,idmap
 Volume=/opt/containers/data/%p:/opt/adguardhome/work:Z,idmap
+
+Label="traefik.enable=true"
+Label="traefik.http.services.%p.loadbalancer.server.port=80"
 
 Timezone=local
 

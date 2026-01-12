@@ -17,6 +17,8 @@ IP=10.90.0.10
 
 Volume=/opt/containers/data/%p:/var/opt/memos:Z,idmap
 
+Label="traefik.enable=true"
+
 Timezone=local
 
 [Service]

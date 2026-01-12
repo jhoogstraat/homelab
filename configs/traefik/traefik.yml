@@ -1,0 +1,124 @@
+# Traefik global configuration
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# Enable traefik ui dashboard
+api:
+  dashboard: true
+  insecure: true
+
+# Log level INFO|DEBUG|ERROR
+log:
+  level: DEBUG
+
+# crowdsec bouncer
+#experimental:
+#  plugins:
+#    bouncer:
+#      moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+#      version: v1.4.7
+
+#metrics:
+#  influxDB2:
+#     address: http://influxdb2:8086
+#     token: my-secure-token-secret
+#     org: influx-org
+#     bucket: influx-bucket
+#     addEntryPointsLabels: true
+#     addRoutersLabels: true
+#     addServicesLabels: true
+#     pushInterval: 60s
+
+# Configuring Multiple Filters
+accessLog:
+  filePath: "/opt/traefik/access.log"
+  format: common
+  filters:
+    statusCodes:
+      - "200-299" # log successful http requests
+      - "400-599" # log failed http requests
+    #retryAttempts: true
+    #minDuration: "10ms"
+  # collect logs as in-memory buffer before writing into log file
+  bufferingSize: 0
+  # fields:
+  #   headers:
+  #     defaultMode: drop # drop all headers per default
+  #     names:
+  #       User-Agent: keep # log user agent strings
+
+# The setting below is to allow insecure backend connections.
+serverTransport:
+  insecureSkipVerify: true
+
+# Use letsencrypt to generate ssl certificates
+certificatesResolvers:
+  lets-encrypt-dns:
+    acme:
+      email: joshua.hoogstraat@icloud.com
+      storage: /opt/traefik/acme.json
+      dnsChallenge: # for wildcard cert; requires api token of dns provider
+        provider: acme-dns
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"
+
+  lets-encrypt-dns-staging:
+    acme:
+      email: joshua.hoogstraat@icloud.com
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory # To use staging
+      storage: /opt/traefik/acme-staging.json
+      dnsChallenge: # for wildcard cert; requires api token of dns provider
+        provider: acme-dns
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"
+
+# Traefik entrypoints (network ports) configuration
+entryPoints:
+  # Not used in apps, but redirect everything from HTTP to HTTPS
+  # http:
+  #   address: :80
+  #   http:
+  #     redirections:
+  #       entryPoint:
+  #         to: https
+  #         scheme: https
+
+  # HTTPS endpoint, with domain wildcard
+  https:
+    address: :443
+    # enable HTTP3 QUIC via UDP/443
+    #http3:
+    #  advertisedPort: '443'
+    http:
+      # use dynamically generated self-signed certificate
+      # tls: {}
+      # or use a pre-defined certificate resolver from below
+      # if so, remove above line with tls: {}
+      tls:
+        certResolver: lets-encrypt-dns
+        domains:
+          - main: hoogstraat.de # change this to your proxy domain
+            sans:
+              - "*.hoogstraat.de" # change this to your proxy domain
+      middlewares:
+        # - security-headers@file # reference to a dynamic middleware for setting http security headers per default
+        # - rate-limit@file # reference to a dynamic middleware for enabling rate limiting per default
+        #- crowdsec@file # reference to a dynamic middleware for enabling crowdsec bouncer
+
+providers:
+  providersThrottleDuration: 2s
+
+  # File provider for connecting things that are outside of docker / defining middleware
+  # file:
+  #   filename: /etc/traefik/fileConfig.yml
+  #   watch: true
+
+  # Docker provider for connecting all apps that are inside of the docker network
+  docker:
+    network: homelab # add Your Docker Network Name Here
+    # endpoint: "tcp://socket-proxy:2375" # use socket-proxy for secure access to docker api
+    defaultRule: "Host(`{{ index .Labels \"subdomain\" | default .ContainerName }}.hoogstraat.de`)"
+    exposedByDefault: false

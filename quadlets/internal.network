@@ -1,0 +1,6 @@
+[Network]
+NetworkName=homelab-internal
+Subnet=10.91.0.0/24
+Gateway=10.91.0.1
+IPv6=true
+Internal=true

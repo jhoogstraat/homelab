@@ -1,0 +1,40 @@
+[Unit]
+Description=Traefik Reverse Proxy
+
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=traefik
+Image=docker.io/traefik:3
+AutoUpdate=registry
+
+# HealthCmd=curl http://127.0.0.1:3001
+UserNS=auto
+
+Network=homelab.network
+IP=10.90.0.3
+PublishPort=443:443
+PublishPort=8080:8080
+
+# Podman socket connection with SELinux
+SecurityLabelDisable=true
+
+Volume=/opt/containers/config/%p:/etc/traefik:Z,idmap
+Volume=/opt/containers/data/%p:/opt/traefik:Z,idmap
+Volume=%t/podman/podman.sock:/var/run/docker.sock:idmap
+
+Environment=ACME_DNS_API_BASE=https://auth.acme-dns.io
+Environment=ACME_DNS_STORAGE_PATH=/opt/traefik/.lego-acme-dns-accounts.json
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+ExecStartPre=mkdir -p /opt/containers/data/%p
+
+[Install]
+WantedBy=multi-user.target default.target

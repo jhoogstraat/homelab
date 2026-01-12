@@ -1,12 +1,6 @@
-[Unit]
-Description=Homelab network
-
 [Network]
 NetworkName=homelab
 Subnet=10.90.0.0/24
 Gateway=10.90.0.1
 DNS=10.90.0.2
 IPv6=true
-
-[Install]
-WantedBy=multi-user.target default.target

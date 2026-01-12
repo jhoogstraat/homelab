@@ -8,11 +8,11 @@ StartLimitBurst=2
 ContainerName=otbr
 Image=docker.io/openthread-borderrouter:latest
 AutoUpdate=registry
-Pod=homeassistant.pod
+# Pod=homeassistant.pod
 
 # User+Group of the host mapped on the pod
-User=1500
-Group=1500
+# User=1500
+# Group=1500
 
 Timezone=local
 

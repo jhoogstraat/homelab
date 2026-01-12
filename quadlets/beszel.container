@@ -1,11 +1,11 @@
 [Unit]
-Description=Beszel UI
+Description=Beszel
 
 StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Container]
-ContainerName=beszel-ui
+ContainerName=beszel
 
 Image=docker.io/henrygd/beszel:latest
 AutoUpdate=registry
@@ -15,6 +15,9 @@ Pod=beszel.pod
 Volume=/opt/containers/data/beszel/data:/beszel_data:Z,idmap
 
 Timezone=local
+
+Label="traefik.enable=true"
+Label="traefik.http.services.%p.loadbalancer.server.port=8090"
 
 [Service]
 Restart=on-failure

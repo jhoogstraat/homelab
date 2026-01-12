@@ -16,7 +16,7 @@ Environment=HUB_URL=http://localhost:8090
 EnvironmentFile=/opt/containers/secrets/beszel.env
 
 Volume=/opt/containers/data/beszel/agent:/var/lib/beszel-agent:Z,idmap
-Volume=${XDG_RUNTIME_DIR}/podman/podman.sock:${XDG_RUNTIME_DIR}/podman/podman.sock:ro
+Volume=%t/podman/podman.sock:/var/run/docker.sock:idmap
 
 Timezone=local
 

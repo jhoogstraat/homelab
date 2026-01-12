@@ -9,7 +9,7 @@ ContainerName=wg-easy
 Image=hcr.io/wg-easy/wg-easy:15
 AutoUpdate=registry
 
-# UserNS=auto
+UserNS=auto
 
 Volume=/etc/containers/volumes/wg-easy:/etc/wireguard:Z,idmap
 Network=host
@@ -25,11 +25,13 @@ AddCapability=NET_ADMIN
 AddCapability=SYS_MODULE
 AddCapability=NET_RAW
 
-# Sysctl=net.ipv4.ip_forward=1
-# Sysctl=net.ipv4.conf.all.src_valid_mark=1
-# Sysctl=net.ipv6.conf.all.disable_ipv6=0
-# Sysctl=net.ipv6.conf.all.forwarding=1
-# Sysctl=net.ipv6.conf.default.forwarding=1
+Sysctl=net.ipv4.ip_forward=1
+Sysctl=net.ipv4.conf.all.src_valid_mark=1
+Sysctl=net.ipv6.conf.all.disable_ipv6=0
+Sysctl=net.ipv6.conf.all.forwarding=1
+Sysctl=net.ipv6.conf.default.forwarding=1
+
+Label="traefik.enable=true"
 
 Timezone=local
 
