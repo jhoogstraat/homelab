@@ -12,13 +12,24 @@
 
 # 📖 Overview
 
-This repo contains the source of my personal homelab that runs a Raspberry Pi 4 Model B 8GB locally on my network.
+- This repo contains the source of my personal homelab that runs a Raspberry Pi 4 Model B 8GB locally on my network.
 
-Containers run using [podman](https://podman.io/) and [systemd](https://systemd.io/) as Quadlets and are deployed using [ansible](https://www.ansible.com/).
+- Containers run using [podman](https://podman.io/) and [systemd](https://systemd.io/) as Quadlets and are deployed using [ansible](https://www.ansible.com/).
 
-Secrets are encrypted using [sops](https://github.com/getsops/sops) and a [age](https://github.com/FiloSottile/age) asymmetric key pair.
+- Secrets are encrypted using [sops](https://github.com/getsops/sops) and a [age](https://github.com/FiloSottile/age) asymmetric key pair.
 
-TLS termination and reverse proxying is done using [traefik](https://traefik.io/).
+- TLS termination and reverse proxying is done using [traefik](https://traefik.io/).
+
+
+# 🧑‍💻 Setup
+
+1. Use the private key of the root.pub public ssh key to generate a installable fedora iot image.
+2. Then use the ansible `bootstrap` playbook to setup some bare minimums, like users and permissions.
+3. Use the `configure` playbook to setup system components like the firewall.
+4. Configure your specific cert provider inside `traefik.yml`.
+5. Finally use the `containers` playbook to deploy all containers.
+
+# Technical details
 
 ## 🗃️ Folder Structure
 ```shell
@@ -38,14 +49,6 @@ TLS termination and reverse proxying is done using [traefik](https://traefik.io/
 ├── .sops.yaml                      # SOPS configuration
 └── README.md
 ```
-
-# 🧑‍💻 Setup
-
-1. Use the private key of the root.pub public ssh key to generate a installable fedora iot image.
-2. Then use the ansible `bootstrap` playbook to setup some bare minimums, like users and permissions.
-3. Use the `configure` playbook to setup system components like the firewall.
-4. Configure your specific cert provider inside `traefik.yml`.
-5. Finally use the `containers` playbook to deploy all containers.
 
 ## Containers
 
