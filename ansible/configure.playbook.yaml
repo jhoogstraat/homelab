@@ -29,12 +29,24 @@
         content: |
           [Resolve]
           DNS=1.1.1.1 8.8.8.8
-          DNSStubListener=no
-      notify: Restart systemd-resolved
+          DNSStubListener=
+      register: dns_config
 
-    - name: Ensure Cockpit socket is started and enabled
+    - name: Restart systemd-resolved
+      ansible.builtin.service:
+        name: systemd-resolved
+        state: restarted
+      when: dns_config.changed
+
+    - name: Start Cockpit socket
       ansible.builtin.systemd:
         name: cockpit.socket
+        state: started
+        enabled: true
+
+    - name: Start bluetooth service
+      ansible.builtin.systemd:
+        name: bluetooth.service
         state: started
         enabled: true
 
@@ -58,16 +70,3 @@
         state: enabled
         permanent: true
         immediate: true
-
-    # Bluetooth
-    - name: Ensure bluetooth service is started and enabled
-      ansible.builtin.systemd:
-        name: bluetooth.service
-        state: started
-        enabled: true
-
-  handlers:
-    - name: Restart systemd-resolved
-      ansible.builtin.service:
-        name: systemd-resolved
-        state: restarted
