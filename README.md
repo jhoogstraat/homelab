@@ -53,18 +53,37 @@
 ## Containers
 
 `systemd` unit files are used to define podman pods and containers. This allows them to really nicely integrate into the linux system (like starting on boot, restart on failure, dependency resolution, etc.).
+It is like a integrated kubernetes-lite.
 
-Use the `configure` and `containers` playbooks to setup necessary system components like the firewall and the container unit files.
+All containers use `userns=auto` to run processes in a random user namespace.
+This prevents container processes to be able to attack each other, as they all run in different user namespaces.
+See also https://github.com/containers/podman/issues/20845.
 
-*Notice: The `containers` playbook requires `BW_SESSION` being set in the environment before running `ansible-playbook`. See the secrets role for more info.*
+Additionally, newer linux kernels support `idmapped` mounts, which allow the system to remap the ownership of files on the fly for a specific mount point, without actually changing the file ownership on the physical disk.
+This is used to map config and data files into containers with the correct ownership. Special attention is given to containers that do not run the root user inside. Here the mapping has to be matched to the target uid:gid inside the container.
+
+## Deployment
+
+Ansible is used to deploy and manage the homelab.
+
+The `bootstrap` playbook is used to setup bare minimums on a fresh fedora iot installation, like creating the admin user and setting up ssh access.
+
+The `configure` playbook sets up basic port forwarding (mainly 443 and 53).
+
+The `containers` playbook deploys all containers defined in the `quadlets` folder + their respective configuration files from the `configs` folder + any necessary secrets from the `secrets` folder.
+Secrets are first decrypted using the age private key before being copied to the server. This means that you have to enter your age private key each time when running the playbook.
+The playbooks is not (yet) idempotent, but already tries to only restart containers if something changed. If anything goes wrong you can always restart services manually using `systemtl restart <service>`.
 
 ## Routing
 
-Each service is exposed under its own subdomain, e.g. `adguard.example.com` using `traefik` as a reverse proxy.
+Each service is exposed under its own subdomain, e.g. `adguard.example.com`.
+
+Traefik is configured via `traefik.yml`. Basic rules for tls, entrypoints and the docker provider life there.
+Inside of the container quadlets you only have to define `traefik.enable=true` for traefik to pick up the service and route it correctly. Otherwise it will be skipped.
+Using the `defaultRule` option from traefik, the subdomain is either defined by the container name or an explicit custom `subdomain=xyz` label (see vaultwarden quadlet for an example).
 
 ### TLS
 Traefik automatically provisions and renews TLS certificates using Let's Encrypt.
-
 It uses a DNS challenge to issue a wildcard certificate (`*.example.com`) that all services then use.
 
 *This must be adapted to your specific environment. Define your DNS provider and environment args required inside `traefik.yml`*.
@@ -73,13 +92,6 @@ It uses a DNS challenge to issue a wildcard certificate (`*.example.com`) that a
 
 - `root.pub`: Used when installing linux
 - `jh.pub`: The jh user that has sudo permissions without password
-
-All containers use `userns=auto` to run processes in a random user namespace.
-This prevents container processes to be able to attack each other, as they all run in different user namespaces.
-See also https://github.com/containers/podman/issues/20845.
-
-Additionally, newer linux kernels support `idmapped` mounts, which allow the system to remap the ownership of files on the fly for a specific mount point, without actually changing the file ownership on the physical disk.
-This is used to map config and data files into containers with the correct ownership. Special attention is given to containers that do not run the root user inside. Here the mapping has to be matched to the target uid:gid inside the container.
 
 ## 🔒 Secrets
 
