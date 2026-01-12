@@ -179,14 +179,18 @@ pages:
                 icon: di:adguard-home
               - title: Vaultwarden
                 url: https://vault.hoogstraat.de
-                check-url: http://vaultwarden:8080
+                check-url: http://vaultwarden:80
                 icon: di:vaultwarden
               - title: Papra
                 url: https://papra.hoogstraat.de
                 check-url: http://papra:1221
                 icon: di:papra
+              - title: Memos
+                url: https://memos.hoogstraat.de
+                check-url: http://memos:5230
+                icon: di:memos
               - title: Beszel
-                url: https://monitor.hoogstraat.de
+                url: https://beszel.hoogstraat.de
                 check-url: http://beszel:8090
                 icon: di:beszel
               - title: n8n
