@@ -7,14 +7,15 @@
       private: true
   tasks:
     - name: Sync quadlets
-      ansible.posix.synchronize:
-        src: ../quadlets/
-        dest: /etc/containers/systemd/ # https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#podman-rootful-unit-search-path
-        delete: true
-        rsync_opts:
-          - --out-format=%n
-      notify:
-        - systemd
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "/etc/containers/systemd/{{ item | basename }}"
+        owner: root
+        group: root
+        mode: '0644'
+      with_fileglob:
+        - ../quadlets/*
+      register: quadlet_copy_result
 
     - name: Sync configs
       ansible.posix.synchronize:
@@ -25,9 +26,19 @@
       include_role:
         name: sync_secrets
 
-  handlers:
-    - name: Reload systemd units
-      listen: systemd
-      ansible.builtin.systemd_service:
+    - name: Reload systemd daemon if any quadlet changed
+      ansible.builtin.systemd:
         daemon_reload: true
-        scope: user
+      when: quadlet_copy_result.changed
+
+     # - name: debug copy results
+    #   ansible.builtin.debug:
+    #     var: quadlet_copy_result
+
+    - name: Restart changed containers
+      ansible.builtin.systemd:
+        name: "{{ item.dest | basename | splitext | first }}"
+        state: restarted
+        enabled: true
+      loop: "{{ quadlet_copy_result.results }}"
+      when: item.changed and item.dest | splitext | last == '.container'
