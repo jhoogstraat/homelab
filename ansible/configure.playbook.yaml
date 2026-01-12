@@ -12,44 +12,25 @@
           location = "localhost:5000"
           insecure = true
 
-    - name: Open port 1883/tcp for mqtt (wan)
-      ansible.posix.firewalld:
-        port: 1883/tcp
-        state: disabled
-        permanent: true
-        immediate: true
+    - name: Ensure the systemd-resolved drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
 
-    # Disfunctional with vodafone station. Unable to forward to port 443.
-    # So this only works for lan traffic. For external traffic use cloudflared or wireguard vpn.
-    - name: Forward port 443/tcp to 4443 for caddy reverse-proxy (lan)
-      ansible.posix.firewalld:
-        port_forward:
-          - port: 443
-            toport: 4443
-            proto: tcp
-        state: enabled
-        permanent: true
-        immediate: true
-
-    - name: Forward port 53/tcp to 5553 for adguard dns server (lan)
-      ansible.posix.firewalld:
-        port_forward:
-          - port: 53
-            toport: 5553
-            proto: tcp
-        state: enabled
-        permanent: true
-        immediate: true
-
-    - name: Forward port 53/udp to 5553 for adguard dns server (lan)
-      ansible.posix.firewalld:
-        port_forward:
-          - port: 53
-            toport: 5553
-            proto: udp
-        state: enabled
-        permanent: true
-        immediate: true
+    - name: Disable systemd-resolved DNSStubListener and set new nameservers
+      ansible.builtin.copy:
+        dest: /etc/systemd/resolved.conf.d/custom-dns.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Resolve]
+          DNS=1.1.1.1 8.8.8.8
+          DNSStubListener=no
+      notify: Restart systemd-resolved
 
     - name: Ensure Cockpit socket is started and enabled
       ansible.builtin.systemd:
@@ -57,9 +38,23 @@
         state: started
         enabled: true
 
-    - name: Open firewall ports for Cockpit
+    - name: Open cockpit ports
       ansible.builtin.firewalld:
         service: cockpit
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: Open https port
+      ansible.builtin.firewalld:
+        service: https
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: Open dns ports
+      ansible.builtin.firewalld:
+        service: dns
         state: enabled
         permanent: true
         immediate: true
@@ -70,3 +65,9 @@
         name: bluetooth.service
         state: started
         enabled: true
+
+  handlers:
+    - name: Restart systemd-resolved
+      ansible.builtin.service:
+        name: systemd-resolved
+        state: restarted
