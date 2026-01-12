@@ -55,12 +55,13 @@
 `systemd` unit files are used to define podman pods and containers. This allows them to really nicely integrate into the linux system (like starting on boot, restart on failure, dependency resolution, etc.).
 It is like a integrated kubernetes-lite.
 
-All containers use `userns=auto` to run processes in a random user namespace.
+Containers to not run rootless, but use `userns=auto` to run processes in a random user namespace.
 This prevents container processes to be able to attack each other, as they all run in different user namespaces.
-See also https://github.com/containers/podman/issues/20845.
+If a attacker manages to break out of one container, they still cannot access files or processes of other containers or the host, as they are now a random user without privileges.
+See also https://github.com/containers/podman/issues/20845 and https://github.com/containers/podman/discussions/13728.
 
 Additionally, newer linux kernels support `idmapped` mounts, which allow the system to remap the ownership of files on the fly for a specific mount point, without actually changing the file ownership on the physical disk.
-This is used to map config and data files into containers with the correct ownership. Special attention is given to containers that do not run the root user inside. Here the mapping has to be matched to the target uid:gid inside the container.
+This is used to map config and data files into containers with the correct ownership. Special attention is given to containers that do not run the root user inside. Here the mapping has to be matched to the target uid:gid inside the container (see n8n as an example).
 
 ## Deployment
 
