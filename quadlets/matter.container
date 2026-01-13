@@ -1,0 +1,27 @@
+[Unit]
+Description=Python Matter Server
+
+StartLimitIntervalSec=500
+StartLimitBurst=2
+
+[Container]
+ContainerName=matter
+# Image=ghcr.io/matter-js/matterjs-server:latest
+Image=ghcr.io/matter-js/python-matter-server:stable
+AutoUpdate=registry
+# Pod=homeassistant.pod
+
+UserNS=auto
+
+Network=host
+
+Volume=/opt/containers/data/%p:/data:Z,idmap
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=100
+TimeoutStopSec=100
+
+ExecStartPre=mkdir -p /opt/containers/data/%p

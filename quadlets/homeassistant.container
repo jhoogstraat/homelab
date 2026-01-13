@@ -11,8 +11,7 @@ AutoUpdate=registry
 
 UserNS=auto
 
-Network=homelab.network
-IP=10.90.0.13
+Network=host
 
 Volume=/opt/containers/config/%p:/config:Z,idmap
 

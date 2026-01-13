@@ -6,28 +6,45 @@ StartLimitBurst=2
 
 [Container]
 ContainerName=otbr
-Image=docker.io/openthread-borderrouter:latest
+Image=docker.io/openthread/border-router:latest
 AutoUpdate=registry
 # Pod=homeassistant.pod
 
-# User+Group of the host mapped on the pod
-# User=1500
-# Group=1500
+# Guide:
+# https://github.com/openthread/ot-br-posix/issues/3124#issuecomment-3734337579
 
-Timezone=local
+# Does not work with /dev/net/tun, even with --privileged
+# UserNS=auto
+
+Network=host
 
 AddCapability=NET_ADMIN
+AddCapability=NET_RAW
 
-AddDevice=/dev/ttyACM0
+# Unmask=all
+# SecurityLabelDisable=true
+# AddCapability=all
+# Seccomp=unconfined
+
+AddDevice=/dev/ttyUSB0
 AddDevice=/dev/net/tun
 
-Volume=/etc/containers/volumes/%p:/data:Z,idmap
+Volume=/opt/containers/data/%p:/data:Z,idmap
 
-EnvironmentFile=/opt/containers/config/%p.env
+EnvironmentFile=/opt/containers/config/%p/config.env
+
+# https://raw.githubusercontent.com/openthread/ot-br-posix/refs/heads/main/etc/docker/border-router/setup-host
+# When network=host this cannot be set by the quadlet.
+# Sysctl=net.ipv6.conf.end0.accept_ra=2
+# Sysctl=net.ipv6.conf.end0.accept_ra_rt_info_max_plen=64
+# Sysctl=net.ipv6.conf.all.forwarding=1
+# Sysctl=net.ipv4.ip_forward=1
+
+Timezone=local
 
 [Service]
 Restart=on-failure
 TimeoutStartSec=100
 TimeoutStopSec=100
 
-ExecStartPre=mkdir -p /etc/containers/volumes/%p
+ExecStartPre=mkdir -p /opt/containers/data/%p
