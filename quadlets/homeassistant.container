@@ -9,11 +9,19 @@ ContainerName=homeassistant
 Image=ghcr.io/home-assistant/home-assistant:stable
 AutoUpdate=registry
 
-UserNS=auto
+# Does not work with dbus
+# UserNS=auto
 
 Network=host
 
-Volume=/opt/containers/config/%p:/config:Z,idmap
+AddCapability=NET_ADMIN
+AddCapability=NET_RAW
+
+# Required for SELinux allowing access to certain hardware devices, such as Bluetooth
+SecurityLabelType=spc_t
+
+Volume=/opt/containers/data/%p:/config:Z,idmap
+Volume=/run/dbus/system_bus_socket:/run/dbus/system_bus_socket
 
 Label="traefik.enable=true"
 Label="traefik.http.services.%p.loadbalancer.server.port=8123"
@@ -26,7 +34,9 @@ Restart=on-failure
 TimeoutStartSec=100
 TimeoutStopSec=100
 
-ExecStartPre=mkdir -p /opt/containers/config/%p
+# Copy configuration to data dir, as Home Assistant throws everything (config and data) into one single directory.
+ExecStartPre=mkdir -p /opt/containers/data/%p
+ExecStartPre=cp /opt/containers/config/%p/configuration.yaml /opt/containers/data/%p/configuration.yaml
 
 [Install]
 WantedBy=multi-user.target default.target
