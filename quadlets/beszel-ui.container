@@ -5,7 +5,7 @@ StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Container]
-ContainerName=beszel
+ContainerName=beszel-ui
 
 Image=docker.io/henrygd/beszel:latest
 AutoUpdate=registry
@@ -18,6 +18,7 @@ Timezone=local
 
 Label="traefik.enable=true"
 Label="traefik.http.services.%p.loadbalancer.server.port=8090"
+Label="subdomain=beszel"
 
 [Service]
 Restart=on-failure
@@ -26,5 +27,5 @@ TimeoutStopSec=30
 
 ExecStartPre=mkdir -p /opt/containers/data/beszel/data
 
-[Install]
-WantedBy=multi-user.target default.target
+; [Install]
+; WantedBy=multi-user.target default.target

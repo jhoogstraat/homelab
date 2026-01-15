@@ -7,10 +7,11 @@ StartLimitBurst=2
 [Pod]
 PodName=beszel
 
+UserNS=auto
+
 Network=homelab.network
 IP=10.90.0.14
 
-; To be able to access the podman socket
 UserNS=auto
 
 [Service]
