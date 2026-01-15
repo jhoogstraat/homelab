@@ -114,13 +114,18 @@ How to edit secrets (using bitwarden):
     sops edit files/secrets/.env.adguard
 ```
 
+### Creating a new secret
+
+
+
 ## Backup
 
 TODO!
 
 ## Helpful commands
 
-- `systemd-analyze --user --generators=true verify X.service` - Check for errors during systemd unit generation
+- `/usr/lib/systemd/system-generators/podman-system-generator --dryrun`
+- `systemd-analyze --generators=true verify X.service` - Check for errors during systemd unit generation
 - `journalctl`
     - `-r` - Show all messages in the journal sorted by recently.
     - `-f` - Follow logs as they are coming in.
