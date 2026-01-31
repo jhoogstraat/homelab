@@ -3,23 +3,6 @@
   remote_user: "{{ admin_user }}"
   become: true
   tasks:
-    # https://wg-easy.github.io/wg-easy/latest/examples/tutorials/podman-nft/
-    - name: Copy wg-easy container unit
-      ansible.builtin.copy:
-        src: ../quadlets/rootful/wg-easy.container
-        dest: /etc/containers/systemd/wg-easy.container
-        owner: root
-        group: root
-        mode: "0644"
-
-    - name: Configure modules to load (on boot?)
-      ansible.builtin.copy:
-        dest: /etc/modules-load.d/wg-easy.conf
-        owner: root
-        content: |
-          wireguard
-          nft_masq
-
     - name: Open port 51820/udp for wg-easy (wan)
       ansible.posix.firewalld:
         port: 51820/udp
@@ -30,7 +13,7 @@
     - name: Open port 51821/tcp for wg-easy (wan)
       ansible.posix.firewalld:
         port: 51821/tcp
-        state: enabled
+        state: disabled
         permanent: true
         immediate: true
 
