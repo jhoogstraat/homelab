@@ -6,25 +6,16 @@ StartLimitBurst=2
 
 [Container]
 ContainerName=wg-easy
-Image=hcr.io/wg-easy/wg-easy:15
+Image=ghcr.io/wg-easy/wg-easy:15
 AutoUpdate=registry
 
-UserNS=auto
-
-Volume=/etc/containers/volumes/wg-easy:/etc/wireguard:Z,idmap
-Network=host
-# Network=wg-easy.network
-# PublishPort=51820:51820/udp
-# PublishPort=51821:51821/tcp
-
-# this is used to allow access over HTTP
-# remove this when using a reverse proxy
-Environment=INSECURE=true
+Volume=/opt/containers/data/%p:/etc/wireguard:Z
+Network=homelab.network:ip=10.90.0.16
+PublishPort=51820:51820/udp
 
 AddCapability=NET_ADMIN
 AddCapability=SYS_MODULE
 AddCapability=NET_RAW
-
 Sysctl=net.ipv4.ip_forward=1
 Sysctl=net.ipv4.conf.all.src_valid_mark=1
 Sysctl=net.ipv6.conf.all.disable_ipv6=0
@@ -32,6 +23,8 @@ Sysctl=net.ipv6.conf.all.forwarding=1
 Sysctl=net.ipv6.conf.default.forwarding=1
 
 Label="traefik.enable=true"
+Label="traefik.http.services.%p.loadbalancer.server.port=51821"
+Label="subdomain=wg"
 
 Timezone=local
 
@@ -39,6 +32,8 @@ Timezone=local
 Restart=on-failure
 TimeoutStartSec=100
 TimeoutStopSec=100
+
+ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
 WantedBy=multi-user.target default.target
