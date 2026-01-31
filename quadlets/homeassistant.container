@@ -9,19 +9,14 @@ ContainerName=homeassistant
 Image=ghcr.io/home-assistant/home-assistant:stable
 AutoUpdate=registry
 
-# Does not work with dbus
-# UserNS=auto
-
 Network=host
+Volume=/opt/containers/data/%p:/config:Z,idmap
+Volume=/run/dbus/system_bus_socket:/run/dbus/system_bus_socket
 
 AddCapability=NET_ADMIN
 AddCapability=NET_RAW
-
 # Required for SELinux allowing access to certain hardware devices, such as Bluetooth
 SecurityLabelType=spc_t
-
-Volume=/opt/containers/data/%p:/config:Z,idmap
-Volume=/run/dbus/system_bus_socket:/run/dbus/system_bus_socket
 
 Label="traefik.enable=true"
 Label="traefik.http.services.%p.loadbalancer.server.port=8123"
