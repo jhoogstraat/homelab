@@ -12,12 +12,11 @@ AutoUpdate=registry
 # HealthCmd=curl http://127.0.0.1:3001
 UserNS=auto
 
-Network=homelab.network
-IP=10.90.0.3
+Network=homelab.network:ip=10.90.0.3
 PublishPort=443:443
 PublishPort=8080:8080
 
-# Podman socket connection with SELinux
+# Podman socket connection with SELinux (https://github.com/containers/podman/discussions/9860#discussioncomment-545142)
 SecurityLabelDisable=true
 
 Volume=/opt/containers/config/%p:/etc/traefik:Z,idmap

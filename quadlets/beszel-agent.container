@@ -15,6 +15,9 @@ Pod=beszel.pod
 Environment=HUB_URL=http://localhots:8090
 EnvironmentFile=/opt/containers/secrets/beszel.env
 
+# Podman socket connection with SELinux (https://github.com/containers/podman/discussions/9860#discussioncomment-545142)
+SecurityLabelDisable=true
+
 Volume=/opt/containers/data/beszel/agent:/var/lib/beszel-agent:Z,idmap
 Volume=%t/podman/podman.sock:/var/run/docker.sock:idmap
 
