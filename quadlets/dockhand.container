@@ -1,0 +1,33 @@
+[Unit]
+Description=Dockhand Container Management
+
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=dockhand
+Image=docker.io/fnsys/dockhand:latest
+AutoUpdate=registry
+
+Network=homelab.network:ip=10.90.0.17
+
+UserNS=auto
+# Podman socket connection with SELinux (https://github.com/containers/podman/discussions/9860#discussioncomment-545142)
+SecurityLabelDisable=true
+
+Volume=/opt/containers/data/%p:/app/data:Z,idmap
+Volume=%t/podman/podman.sock:/var/run/docker.sock:idmap
+
+Label="traefik.enable=true"
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+ExecStartPre=mkdir -p /opt/containers/data/%p
+
+[Install]
+WantedBy=multi-user.target default.target
