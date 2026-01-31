@@ -189,6 +189,10 @@ pages:
                 url: https://memos.hoogstraat.de
                 check-url: http://memos:5230
                 icon: di:memos
+              - title: OneDev
+                url: https://onedev.hoogstraat.de
+                check-url: http://onedev:6610
+                icon: di:onedev
               - title: Beszel
                 url: https://beszel.hoogstraat.de
                 check-url: http://beszel:8090

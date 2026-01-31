@@ -1,0 +1,29 @@
+[Unit]
+Description=OneDev
+
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=onedev
+Image=docker.io/1dev/server:latest
+AutoUpdate=registry
+
+UserNS=auto
+
+Network=homelab.network:ip=10.90.0.15
+Volume=/opt/containers/data/%p:/opt/onedev:Z,idmap
+
+Label="traefik.enable=true"
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+ExecStartPre=mkdir -p /opt/containers/data/%p
+
+[Install]
+WantedBy=multi-user.target default.target
