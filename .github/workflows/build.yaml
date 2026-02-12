@@ -27,6 +27,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ./Containerfile
           tags: ghcr.io/${{ github.repository }}:latest
           platforms: linux/arm64
           provenance: false
