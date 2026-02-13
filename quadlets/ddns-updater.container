@@ -1,0 +1,29 @@
+[Unit]
+Description=Keep public DNS entries in sync
+
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=ddns-updater
+Image=ghcr.io/qdm12/ddns-updater:latest
+AutoUpdate=registry
+
+UserNS=auto
+
+Network=homelab.network:ip=10.90.0.5
+
+EnvironmentFile=/opt/containers/secrets/%p.env
+
+Label="traefik.enable=true"
+Label="subdomain=ddns"
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target default.target
