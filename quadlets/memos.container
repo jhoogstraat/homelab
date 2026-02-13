@@ -13,7 +13,7 @@ AutoUpdate=registry
 UserNS=auto
 
 Network=homelab.network
-IP=10.90.0.10
+Network=homelab.network:ip=10.90.0.10
 
 Volume=/opt/containers/data/%p:/var/opt/memos:Z,idmap
 

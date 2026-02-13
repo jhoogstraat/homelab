@@ -12,8 +12,7 @@ AutoUpdate=registry
 # HealthCmd=wget --no-verbose --spider http://127.0.0.1:5000
 UserNS=auto
 
-Network=homelab.network
-IP=10.90.0.4
+Network=homelab.network:ip=10.90.0.4
 
 Volume=/opt/containers/config/%p:/app/config:Z,idmap
 

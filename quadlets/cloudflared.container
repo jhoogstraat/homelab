@@ -15,8 +15,7 @@ Exec=tunnel --no-autoupdate run
 
 EnvironmentFile=/opt/containers/secrets/%p.env
 
-Network=homelab.network
-IP=10.90.0.9
+Network=homelab.network:ip=10.90.0.9
 
 Timezone=local
 

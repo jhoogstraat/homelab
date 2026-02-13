@@ -8,7 +8,7 @@ StartLimitBurst=2
 PodName=energymeter
 
 Network=homelab.network
-IP=10.90.0.5
+Network=homelab.network:ip=10.90.0.5
 
 UserNS=auto
 

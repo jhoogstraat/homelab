@@ -12,8 +12,7 @@ AutoUpdate=registry
 # HealthCmd=wget --no-verbose --spider --timeout=5 http://127.0.0.1:5000
 UserNS=auto
 
-Network=homelab.network
-IP=10.90.0.6
+Network=homelab.network:ip=10.90.0.6
 HostName=registry
 
 PublishPort=5000:5000

@@ -12,8 +12,7 @@ AutoUpdate=registry
 # HealthCmd=curl http://127.0.0.1:3001
 UserNS=auto
 
-Network=homelab.network
-IP=10.90.0.11
+Network=homelab.network:ip=10.90.0.11
 
 # User inside container is `nonroot` (uid:gid 999:999), so map root to this uid/gid.
 # Because of UserNS=auto, the `podman run` process is run with a random uid/gid, which has to be taken into account (@).

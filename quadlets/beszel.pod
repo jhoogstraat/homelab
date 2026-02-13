@@ -9,8 +9,7 @@ PodName=beszel
 
 UserNS=auto
 
-Network=homelab.network
-IP=10.90.0.14
+Network=homelab.network:ip=10.90.0.14
 
 UserNS=auto
 
