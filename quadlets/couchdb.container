@@ -24,7 +24,7 @@ Timezone=local
 
 # The _up endpoint is generally public. We use --fail so curl exits with non-zero on 404/500.
 HealthCmd=CMD-SHELL curl --fail -s http://127.0.0.1:5984/_up || exit 1
-HealthInterval=30s
+HealthInterval=5m
 HealthRetries=3
 HealthTimeout=10s
 
