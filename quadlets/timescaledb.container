@@ -1,0 +1,36 @@
+[Unit]
+Description=TimescaleDB (Telemetry Database)
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=timescaledb
+Image=docker.io/timescale/timescaledb:latest-pg18
+AutoUpdate=registry
+
+UserNS=auto
+
+Network=homelab.network:ip=10.90.0.18
+
+EnvironmentFile=/opt/containers/secrets/%p.env
+EnvironmentFile=/opt/containers/config/%p/%p.env
+
+Volume=/opt/containers/config/%p/init.sql:/docker-entrypoint-initdb.d/init.sql:Z,idmap
+Volume=/opt/containers/data/%p:/var/lib/postgresql/data:Z,idmap
+
+Timezone=local
+
+HealthCmd=CMD-SHELL pg_isready -U postgres || exit 1
+HealthInterval=5m
+HealthRetries=5
+HealthTimeout=5s
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+ExecStartPre=mkdir -p /opt/containers/data/%p
+
+[Install]
+WantedBy=multi-user.target default.target

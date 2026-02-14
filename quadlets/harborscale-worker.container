@@ -1,0 +1,24 @@
+[Unit]
+Description=HarborScale Worker
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=harborscale-worker
+Image=ghcr.io/jhoogstraat/telemetry-harbor-oss-worker:latest
+AutoUpdate=registry
+
+Pod=harborscale.pod
+
+EnvironmentFile=/opt/containers/secrets/harborscale.env
+EnvironmentFile=/opt/containers/config/harborscale/harborscale.env
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target default.target

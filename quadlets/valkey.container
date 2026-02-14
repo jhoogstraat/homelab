@@ -1,0 +1,28 @@
+[Unit]
+Description=Valkey (Redis Drop-in Replacement)
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=valkey
+Image=docker.io/valkey/valkey:9
+AutoUpdate=registry
+
+UserNS=auto
+
+Network=homelab.network:ip=10.90.0.19
+
+EnvironmentFile=/opt/containers/secrets/%p.env
+
+Exec=valkey-server --supervised systemd
+Notify=true
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target default.target

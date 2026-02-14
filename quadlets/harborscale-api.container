@@ -1,0 +1,28 @@
+[Unit]
+Description=HarborScale API
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=harborscale-api
+Image=ghcr.io/jhoogstraat/telemetry-harbor-oss-backend:latest
+AutoUpdate=registry
+
+Pod=harborscale.pod
+
+EnvironmentFile=/opt/containers/secrets/harborscale.env
+EnvironmentFile=/opt/containers/config/harborscale/harborscale.env
+
+Timezone=local
+
+Label="traefik.enable=true"
+Label="traefik.http.services.%p.loadbalancer.server.port=8000"
+Label="subdomain=harborscale"
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target default.target

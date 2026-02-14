@@ -1,0 +1,9 @@
+[Unit]
+Description=HarborScale Pod (API and Worker)
+
+[Pod]
+PodName=harborscale-pod
+Network=homelab.network:ip=10.90.0.20
+
+[Install]
+WantedBy=multi-user.target default.target

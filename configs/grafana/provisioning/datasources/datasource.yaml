@@ -1,0 +1,23 @@
+apiVersion: 1
+datasources:
+  - name: "TelemetryPostgres"
+    type: postgres
+    access: proxy
+    url: ${TIMESCALEDB_DATASOURCE_HOST}
+    database: telemetry
+    user: ${TIMESCALEDB_DATASOURCE_USER}
+    secureJsonData:
+      password: ${TIMESCALEDB_DATASOURCE_PASSWORD}
+    basicAuth: false
+    isDefault: true
+    readOnly: true
+    jsonData:
+      connMaxLifetime: 14400
+      database: ${TIMESCALEDB_DATASOURCE_DB}
+      maxIdleConns: 100
+      maxIdleConnsAuto: true
+      maxOpenConns: 100
+      postgresVersion: 1600
+      sslmode: disable
+      timescaledb: true
+    editable: false
