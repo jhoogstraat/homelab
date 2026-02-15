@@ -17,7 +17,8 @@ CREATE INDEX IF NOT EXISTS idx_ship_cargo_time ON cargo_data (ship_id, cargo_id,
 
 
 -- Set a retention policy to automatically manage old data
-SELECT add_retention_policy('cargo_data', INTERVAL '365 days');
+-- Keep data forever, for now
+-- SELECT add_retention_policy('cargo_data', INTERVAL '365 days');
 
 -- Enable compression for older data to optimize storage
 ALTER TABLE cargo_data SET (
