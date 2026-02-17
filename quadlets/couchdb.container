@@ -7,15 +7,14 @@ StartLimitBurst=2
 ContainerName=couchdb
 Image=docker.io/library/couchdb:latest
 AutoUpdate=registry
-
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.13
 
-EnvironmentFile=/opt/containers/secrets/couchdb.env
-
 Volume=/opt/containers/config/%p:/opt/couchdb/etc/local.d:Z,idmap
 Volume=/opt/containers/data/%p:/opt/couchdb/data:Z,idmap
+
+EnvironmentFile=/opt/containers/secrets/couchdb.env
 
 Label="traefik.enable=true"
 Label="traefik.http.services.%p.loadbalancer.server.port=5984"
@@ -33,7 +32,6 @@ Restart=on-failure
 TimeoutStartSec=30
 TimeoutStopSec=30
 
-# Create the specific subdirectories for data and config
 ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]

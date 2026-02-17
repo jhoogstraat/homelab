@@ -1,15 +1,12 @@
 [Unit]
 Description=n8n Secure Workflow Automation
-
-StartLimitIntervalSec=300
+StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Container]
 ContainerName=n8n
 Image=docker.n8n.io/n8nio/n8n
 AutoUpdate=registry
-
-# HealthCmd=curl http://127.0.0.1:3001
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.12
@@ -20,9 +17,9 @@ Volume=/opt/containers/data/%p:/home/node/.n8n:Z,idmap=uids=@0-1000-1;gids=@0-10
 
 EnvironmentFile=/opt/containers/config/%p/%p.env
 
-Timezone=local
-
 Label="traefik.enable=true"
+
+Timezone=local
 
 [Service]
 Restart=on-failure

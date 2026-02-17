@@ -7,16 +7,15 @@ StartLimitBurst=2
 ContainerName=timescaledb
 Image=docker.io/timescale/timescaledb:latest-pg18
 AutoUpdate=registry
-
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.18
 
-EnvironmentFile=/opt/containers/secrets/%p.env
-EnvironmentFile=/opt/containers/config/%p/%p.env
-
 Volume=/opt/containers/config/%p/init.sql:/docker-entrypoint-initdb.d/init.sql:Z,idmap
 Volume=/opt/containers/data/%p:/var/lib/postgresql/data:Z,idmap
+
+EnvironmentFile=/opt/containers/secrets/%p.env
+EnvironmentFile=/opt/containers/config/%p/%p.env
 
 Timezone=local
 

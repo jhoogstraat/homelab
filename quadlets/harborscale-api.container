@@ -13,11 +13,11 @@ Pod=harborscale.pod
 EnvironmentFile=/opt/containers/secrets/harborscale.env
 EnvironmentFile=/opt/containers/config/harborscale/harborscale.env
 
-Timezone=local
-
 Label="traefik.enable=true"
 Label="traefik.http.services.%p.loadbalancer.server.port=8000"
 Label="subdomain=harborscale"
+
+Timezone=local
 
 [Service]
 Restart=on-failure

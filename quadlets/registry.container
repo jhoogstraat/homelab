@@ -1,15 +1,12 @@
 [Unit]
 Description=Homelab Docker Registry
-
-StartLimitIntervalSec=300
+StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Container]
 ContainerName=registry
 Image=docker.io/registry:3
 AutoUpdate=registry
-
-# HealthCmd=wget --no-verbose --spider --timeout=5 http://127.0.0.1:5000
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.6

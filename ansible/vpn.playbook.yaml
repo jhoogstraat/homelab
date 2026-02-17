@@ -10,7 +10,7 @@
         permanent: true
         immediate: true
 
-    - name: Open port 51821/tcp for wg-easy (wan)
+    - name: Close port 51821/tcp for wg-easy admin (use tunnel instead)
       ansible.posix.firewalld:
         port: 51821/tcp
         state: disabled

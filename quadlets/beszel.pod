@@ -1,14 +1,10 @@
 [Unit]
 Description=Pod for housing Beszel
-
-StartLimitIntervalSec=300
+StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Pod]
 PodName=beszel
-
-UserNS=auto
-
 Network=homelab.network:ip=10.90.0.14
 
 UserNS=auto

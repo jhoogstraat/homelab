@@ -1,2 +1,26 @@
 admin_user: jh
 cockpit_user: cockpit
+services:
+  enabled:
+    - adguard
+    - beszel-pod
+    - cloudflared
+    - couchdb
+    - dockhand
+    - glance
+    - grafana
+    - harborscale-pod
+    - immobot
+    - n8n
+    - onedev
+    - papra
+    - registry
+    - timescaledb
+    - traefik
+    - valkey
+    - vaultwarden
+    - wg-easy
+  disabled:
+    - homeassistant
+    - matter
+    - otbr

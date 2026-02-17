@@ -1,25 +1,23 @@
 [Unit]
 Description=Beszel Agent
-
-StartLimitIntervalSec=300
+StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Container]
 ContainerName=beszel-agent
-
 Image=docker.io/henrygd/beszel-agent:latest
 AutoUpdate=registry
 
 Pod=beszel.pod
-
-Environment=HUB_URL=http://localhots:8090
-EnvironmentFile=/opt/containers/secrets/beszel.env
 
 # Podman socket connection with SELinux (https://github.com/containers/podman/discussions/9860#discussioncomment-545142)
 SecurityLabelDisable=true
 
 Volume=/opt/containers/data/beszel/agent:/var/lib/beszel-agent:Z,idmap
 Volume=%t/podman/podman.sock:/var/run/docker.sock:idmap
+
+Environment=HUB_URL=http://localhost:8090
+EnvironmentFile=/opt/containers/secrets/beszel.env
 
 Timezone=local
 
@@ -29,6 +27,3 @@ TimeoutStartSec=60
 TimeoutStopSec=60
 
 ExecStartPre=mkdir -p /opt/containers/data/beszel/agent
-
-; [Install]
-; WantedBy=multi-user.target default.target

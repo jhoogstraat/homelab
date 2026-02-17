@@ -1,4 +1,4 @@
-- name: Update and install packages Fedora IoT on Raspberry Pi
+- name: Upgrade rpm-ostree image
   hosts: homelab
   remote_user: "{{ admin_user }}"
   become: true

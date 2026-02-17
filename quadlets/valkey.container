@@ -7,7 +7,6 @@ StartLimitBurst=2
 ContainerName=valkey
 Image=docker.io/valkey/valkey:9
 AutoUpdate=registry
-
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.19

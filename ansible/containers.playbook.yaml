@@ -31,10 +31,6 @@
         daemon_reload: true
       when: quadlet_copy_result.changed
 
-     # - name: debug copy results
-    #   ansible.builtin.debug:
-    #     var: quadlet_copy_result
-
     - name: Restart changed containers
       ansible.builtin.systemd:
         name: "{{ item.dest | basename | splitext | first }}"

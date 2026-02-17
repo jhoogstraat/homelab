@@ -1,6 +1,5 @@
 [Unit]
 Description=Immobot
-
 StartLimitIntervalSec=200
 StartLimitBurst=2
 
@@ -8,10 +7,6 @@ StartLimitBurst=2
 ContainerName=immobot
 Image=localhost:5000/immobot:latest
 AutoUpdate=registry
-
-Exec=/app/config.json
-
-# HealthCmd=curl http://127.0.0.1:3001
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.8
@@ -19,6 +14,8 @@ Network=homelab.network:ip=10.90.0.8
 Volume=/opt/containers/config/%p/config.json:/app/config.json:Z,idmap
 
 EnvironmentFile=/opt/containers/secrets/%p.env
+
+Exec=/app/config.json
 
 Timezone=local
 

@@ -1,4 +1,4 @@
-- name: configure linux on raspberry pi
+- name: Configure Linux on Raspberry Pi
   hosts: homelab
   remote_user: "{{ admin_user }}"
   become: true

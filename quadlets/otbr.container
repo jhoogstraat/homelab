@@ -1,17 +1,12 @@
 [Unit]
 Description=OpenThread Border Router
-
-StartLimitIntervalSec=500
+StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Container]
 ContainerName=otbr
 Image=docker.io/openthread/border-router:latest
 AutoUpdate=registry
-# Pod=homeassistant.pod
-
-# Guide:
-# https://github.com/openthread/ot-br-posix/issues/3124#issuecomment-3734337579
 
 # Does not work with /dev/net/tun, even with --privileged
 # UserNS=auto
@@ -21,11 +16,6 @@ Network=host
 AddCapability=NET_ADMIN
 AddCapability=NET_RAW
 
-# Unmask=all
-# SecurityLabelDisable=true
-# AddCapability=all
-# Seccomp=unconfined
-
 AddDevice=/dev/ttyUSB0
 AddDevice=/dev/net/tun
 
@@ -33,8 +23,8 @@ Volume=/opt/containers/data/%p:/data:Z,idmap
 
 EnvironmentFile=/opt/containers/config/%p/config.env
 
+# When network=host, these cannot be set by the quadlet. See setup-host script:
 # https://raw.githubusercontent.com/openthread/ot-br-posix/refs/heads/main/etc/docker/border-router/setup-host
-# When network=host this cannot be set by the quadlet.
 # Sysctl=net.ipv6.conf.end0.accept_ra=2
 # Sysctl=net.ipv6.conf.end0.accept_ra_rt_info_max_plen=64
 # Sysctl=net.ipv6.conf.all.forwarding=1

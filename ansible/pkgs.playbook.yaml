@@ -1,5 +1,4 @@
-# Update and install packages
-- name: Update and install packages Fedora IoT on Raspberry Pi
+- name: Install packages on Fedora IoT
   hosts: homelab
   remote_user: "{{ admin_user }}"
   become: true

@@ -1,6 +1,5 @@
 [Unit]
 Description=Glance
-
 StartLimitIntervalSec=200
 StartLimitBurst=2
 
@@ -8,8 +7,6 @@ StartLimitBurst=2
 ContainerName=glance
 Image=docker.io/glanceapp/glance:latest
 AutoUpdate=registry
-
-# HealthCmd=wget --no-verbose --spider http://127.0.0.1:5000
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.4

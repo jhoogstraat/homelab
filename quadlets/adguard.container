@@ -1,6 +1,5 @@
 [Unit]
 Description=Adguard Home DNS Server
-
 StartLimitIntervalSec=200
 StartLimitBurst=2
 
@@ -8,13 +7,11 @@ StartLimitBurst=2
 ContainerName=adguard
 Image=docker.io/adguard/adguardhome:latest
 AutoUpdate=registry
-
-# HealthCmd=curl http://127.0.0.1:3001
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.2
 
-# cannot bind on all interfaces, because aardvark-dns binds 53 on bridge interface for internal container DNS resolution.
+# Cannot bind on all interfaces, because aardvark-dns binds 53 on bridge interface for internal container DNS resolution.
 # Also, systemd-resolved normally binds port 53. That is disabled in the configure playbook.
 PublishPort=192.168.0.3:53:53/tcp
 PublishPort=192.168.0.3:53:53/udp

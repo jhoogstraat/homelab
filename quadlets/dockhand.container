@@ -1,6 +1,5 @@
 [Unit]
 Description=Dockhand Container Management
-
 StartLimitIntervalSec=200
 StartLimitBurst=2
 
@@ -8,10 +7,10 @@ StartLimitBurst=2
 ContainerName=dockhand
 Image=docker.io/fnsys/dockhand:latest
 AutoUpdate=registry
+UserNS=auto
 
 Network=homelab.network:ip=10.90.0.17
 
-UserNS=auto
 # Podman socket connection with SELinux (https://github.com/containers/podman/discussions/9860#discussioncomment-545142)
 SecurityLabelDisable=true
 

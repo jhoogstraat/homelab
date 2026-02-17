@@ -1,9 +1,16 @@
 [Unit]
 Description=HarborScale Pod (API and Worker)
+StartLimitIntervalSec=200
+StartLimitBurst=2
 
 [Pod]
 PodName=harborscale-pod
 Network=homelab.network:ip=10.90.0.20
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target default.target

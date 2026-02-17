@@ -1,6 +1,5 @@
 [Unit]
 Description=OneDev
-
 StartLimitIntervalSec=200
 StartLimitBurst=2
 
@@ -8,10 +7,10 @@ StartLimitBurst=2
 ContainerName=onedev
 Image=docker.io/1dev/server:latest
 AutoUpdate=registry
-
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.15
+
 Volume=/opt/containers/data/%p:/opt/onedev:Z,idmap
 
 Label="traefik.enable=true"

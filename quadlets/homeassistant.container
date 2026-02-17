@@ -1,7 +1,6 @@
 [Unit]
 Description=Home Assistant
-
-StartLimitIntervalSec=500
+StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Container]
@@ -10,11 +9,13 @@ Image=ghcr.io/home-assistant/home-assistant:stable
 AutoUpdate=registry
 
 Network=host
+
 Volume=/opt/containers/data/%p:/config:Z,idmap
 Volume=/run/dbus/system_bus_socket:/run/dbus/system_bus_socket
 
 AddCapability=NET_ADMIN
 AddCapability=NET_RAW
+
 # Required for SELinux allowing access to certain hardware devices, such as Bluetooth
 SecurityLabelType=spc_t
 

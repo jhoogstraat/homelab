@@ -1,6 +1,5 @@
 [Unit]
 Description=Papra document management
-
 StartLimitIntervalSec=200
 StartLimitBurst=2
 
@@ -8,8 +7,6 @@ StartLimitBurst=2
 ContainerName=papra
 Image=ghcr.io/papra-hq/papra:latest-rootless
 AutoUpdate=registry
-
-# HealthCmd=curl http://127.0.0.1:3001
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.11
@@ -28,7 +25,7 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=300
+TimeoutStartSec=60
 TimeoutStopSec=30
 
 ExecStartPre=mkdir -p /opt/containers/data/%p/data
