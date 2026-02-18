@@ -1,0 +1,39 @@
+[Unit]
+Description=OpenClaw Gateway
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=openclaw
+Image=ghcr.io/openclaw/openclaw:2026.2.17-arm64
+
+UserNS=auto
+
+Network=homelab.network:ip=10.90.0.10
+
+# User inside container is node (uid:gid 1000:1000), so map root to this uid/gid.
+# Because of UserNS=auto, the `podman run` process is run with a random uid/gid, which has to be taken into account (@).
+Volume=/opt/containers/data/%p:/home/node/.openclaw:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+
+Environment=HOME=/home/node
+Environment=XDG_CONFIG_HOME=/home/node/.openclaw
+Environment=TERM=xterm-256color
+
+EnvironmentFile=/opt/containers/secrets/%p.env
+
+Exec=node openclaw.mjs gateway --allow-unconfigured --bind lan
+
+Label="traefik.enable=true"
+Label="traefik.http.services.%p.loadbalancer.server.port=18789"
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=90
+TimeoutStopSec=30
+
+ExecStartPre=mkdir -p /opt/containers/data/%p
+
+[Install]
+WantedBy=multi-user.target default.target
