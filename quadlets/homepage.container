@@ -1,0 +1,32 @@
+[Unit]
+Description=Personal homepage
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=homepage
+Image=ghcr.io/jhoogstraat/homepage:latest
+AutoUpdate=registry
+UserNS=auto
+RunInit=true
+
+Network=homelab.network:ip=10.90.0.5
+
+Volume=/opt/containers/data/%p:/app/.spotify:Z,idmap
+
+EnvironmentFile=/opt/containers/config/%p/%p.env
+EnvironmentFile=/opt/containers/secrets/%p.env
+
+Label="traefik.enable=true"
+
+Timezone=local
+
+[Service]
+Restart=on-failure
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+ExecStartPre=mkdir -p /opt/containers/data/%p
+
+[Install]
+WantedBy=multi-user.target default.target
