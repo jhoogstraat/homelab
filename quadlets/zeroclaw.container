@@ -1,0 +1,33 @@
+[Unit]
+Description=Zeroclaw
+StartLimitIntervalSec=200
+StartLimitBurst=2
+
+[Container]
+ContainerName=zeroclaw
+Image=ghcr.io/jhoogstraat/zeroclaw-docker:latest
+
+UserNS=auto
+RunInit=true
+
+Network=homelab.network:ip=10.90.0.22
+
+Volume=/opt/containers/data/%p:/openclaw-data/workspace:Z,idmap
+
+Environment=TERM=xterm-256color
+
+EnvironmentFile=/opt/containers/secrets/%p.env
+
+Exec=daemon
+
+Timezone=local
+
+[Service]
+Restart=always
+TimeoutStartSec=90
+TimeoutStopSec=30
+
+ExecStartPre=mkdir -p /opt/containers/data/%p
+
+[Install]
+WantedBy=multi-user.target default.target
