@@ -7,6 +7,8 @@ StartLimitBurst=2
 ContainerName=homepage
 Image=ghcr.io/jhoogstraat/homepage:latest
 AutoUpdate=registry
+Pull=newer
+
 UserNS=auto
 RunInit=true
 
