@@ -8,17 +8,14 @@ ContainerName=zeroclaw
 Image=ghcr.io/jhoogstraat/zeroclaw-docker:latest
 
 UserNS=auto
-RunInit=true
 
 Network=homelab.network:ip=10.90.0.22
 
-Volume=/opt/containers/data/%p:/openclaw-data/workspace:Z,idmap
+Volume=/opt/containers/data/%p:/openclaw-data:Z,idmap
 
 Environment=TERM=xterm-256color
 
 EnvironmentFile=/opt/containers/secrets/%p.env
-
-Exec=daemon
 
 Timezone=local
 
