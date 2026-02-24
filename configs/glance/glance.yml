@@ -173,6 +173,23 @@ pages:
             cache: 1m
             title: Services
             sites:
+              - title: Papra
+                url: https://papra.hoogstraat.de
+                check-url: http://papra:1221
+                icon: di:papra
+              - title: Grafana
+                url: https://grafana.hoogstraat.de
+                check-url: http://grafana:3000
+                icon: di:grafana
+              - title: n8n
+                url: https://n8n.hoogstraat.de
+                check-url: http://n8n:5678
+                icon: di:n8n
+
+          - type: monitor
+            cache: 1m
+            title: Controle Center
+            sites:
               - title: AdGuard Home
                 url: https://adguard.hoogstraat.de
                 check-url: http://adguard
@@ -181,26 +198,14 @@ pages:
                 url: https://vault.hoogstraat.de
                 check-url: http://vaultwarden:80
                 icon: di:vaultwarden
-              - title: Papra
-                url: https://papra.hoogstraat.de
-                check-url: http://papra:1221
-                icon: di:papra
-              - title: Memos
-                url: https://memos.hoogstraat.de
-                check-url: http://memos:5230
-                icon: di:memos
-              - title: OneDev
-                url: https://onedev.hoogstraat.de
-                check-url: http://onedev:6610
-                icon: di:onedev
+              - title: Dockhand
+                url: https://dockhand.hoogstraat.de
+                check-url: http://dockhand:3000
+                icon: di:dockhand
               - title: Beszel
                 url: https://beszel.hoogstraat.de
                 check-url: http://beszel:8090
                 icon: di:beszel
-              - title: n8n
-                url: https://n8n.hoogstraat.de
-                check-url: http://n8n:5678
-                icon: di:n8n
               - title: Wireguard
                 url: https://wg.hoogstraat.de
                 check-url: http://wg-easy:51821
