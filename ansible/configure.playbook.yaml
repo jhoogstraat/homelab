@@ -70,3 +70,11 @@
         state: enabled
         permanent: true
         immediate: true
+
+    - name: Home Assistant HomeKit Bridge
+      ansible.posix.firewalld:
+        port: 21063-21064/tcp
+        permanent: true
+        state: enabled
+        immediate: true
+
