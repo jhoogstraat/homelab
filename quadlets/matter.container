@@ -1,17 +1,25 @@
 [Unit]
-Description=Python Matter Server
+Description=Open Home Foundation Matter(.js) Server
 StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Container]
 ContainerName=matter
-Image=ghcr.io/matter-js/python-matter-server:stable
+Image=ghcr.io/matter-js/matterjs-server:stable
 AutoUpdate=registry
-UserNS=auto
 
 Network=host
 
+User=root
+UserNS=auto
+
 Volume=/opt/containers/data/%p:/data:Z,idmap
+
+# For bluetooth commissioning via HA or the Dashboard
+Environment=BLUETOOTH_ADAPTER=0
+
+Label=traefik.enable=true
+Label=traefik.http.services.%p.loadbalancer.server.port=5580
 
 Timezone=local
 
