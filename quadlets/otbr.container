@@ -30,6 +30,9 @@ EnvironmentFile=/opt/containers/config/%p/config.env
 # Sysctl=net.ipv6.conf.all.forwarding=1
 # Sysctl=net.ipv4.ip_forward=1
 
+Label=traefik.enable=true
+Label=traefik.http.services.%p.loadbalancer.server.port=7070
+
 Timezone=local
 
 [Service]
