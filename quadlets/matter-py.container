@@ -1,26 +1,26 @@
 [Unit]
-Description=Open Home Foundation Matter(.js) Server
+Description=Open Home Foundation Matter Server
 StartLimitIntervalSec=200
 StartLimitBurst=2
 
 [Container]
-ContainerName=matter
-Image=ghcr.io/matter-js/matterjs-server:stable
+ContainerName=matter-py
+Image=ghcr.io/matter-js/python-matter-server:stable
 AutoUpdate=registry
 
 Network=host
 
 User=root
-
-AddCapability=NET_ADMIN
-AddCapability=NET_RAW
+UserNS=auto
 
 Volume=/opt/containers/data/%p:/data:Z,idmap
+Volume=/run/dbus:/run/dbus:ro
 
 # For bluetooth commissioning via HA or the Dashboard
-Environment=BLUETOOTH_ADAPTER=0
-Environment=LOG_LEVEL=info
-Environment=PRIMARY_INTERFACE=end0
+# Required for SELinux allowing access to certain hardware devices, such as Bluetooth
+SecurityLabelType=spc_t
+
+Exec=--storage-path /data --paa-root-cert-dir /data/credentials --bluetooth-adapter 0
 
 Label=traefik.enable=true
 Label=traefik.http.services.%p.loadbalancer.server.port=5580

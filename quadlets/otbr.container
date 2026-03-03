@@ -5,11 +5,8 @@ StartLimitBurst=2
 
 [Container]
 ContainerName=otbr
-Image=docker.io/openthread/border-router:latest
+Image=docker.io/denniswitt/homeassistant-otbr:2
 AutoUpdate=registry
-
-# Does not work with /dev/net/tun, even with --privileged
-# UserNS=auto
 
 Network=host
 
@@ -21,7 +18,7 @@ AddDevice=/dev/net/tun
 
 Volume=/opt/containers/data/%p:/data:Z,idmap
 
-EnvironmentFile=/opt/containers/config/%p/config.env
+EnvironmentFile=/opt/containers/config/%p/%p.env
 
 # When network=host, these cannot be set by the quadlet. See setup-host script:
 # https://raw.githubusercontent.com/openthread/ot-br-posix/refs/heads/main/etc/docker/border-router/setup-host
