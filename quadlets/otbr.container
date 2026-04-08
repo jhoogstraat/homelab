@@ -5,7 +5,7 @@ StartLimitBurst=2
 
 [Container]
 ContainerName=otbr
-Image=docker.io/denniswitt/homeassistant-otbr:2
+Image=ghcr.io/denniswitt/homeassistant-otbr:3
 AutoUpdate=registry
 
 Network=host
