@@ -38,6 +38,22 @@
         state: restarted
       when: dns_config.changed
 
+    - name: Configure Matter sysctl settings
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/99-matter.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          net.ipv6.conf.end0.forwarding=0
+          net.netfilter.nf_conntrack_udp_timeout_stream=3600
+      register: matter_sysctl_config
+
+    - name: Reload sysctl settings
+      ansible.builtin.command: sysctl --system
+      changed_when: false
+      when: matter_sysctl_config.changed
+
     - name: Start Cockpit socket
       ansible.builtin.systemd:
         name: cockpit.socket
@@ -77,4 +93,3 @@
         permanent: true
         state: enabled
         immediate: true
-
