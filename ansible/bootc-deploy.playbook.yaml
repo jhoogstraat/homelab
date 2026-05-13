@@ -1,0 +1,36 @@
+- name: Deploy homelab bootc image
+  hosts: homelab
+  remote_user: "{{ admin_user }}"
+  become: true
+  vars:
+    bootc_image: "ghcr.io/{{ github_repository | default('CHANGE_ME/homelab') }}:latest"
+    secrets_target_path: /var/opt/containers/secrets
+  vars_prompt:
+    - name: age_private_key
+      prompt: Insert the whole age decryption key
+      private: true
+  tasks:
+    - name: Switch to the requested bootc image
+      ansible.builtin.command: "bootc switch {{ bootc_image }}"
+      register: bootc_switch
+      changed_when: "'No changes' not in bootc_switch.stdout"
+
+    - name: Reboot into the new image
+      ansible.builtin.reboot:
+        reboot_timeout: 2000
+      when: bootc_switch.changed
+
+    - name: Sync decrypted secrets outside the immutable image
+      ansible.builtin.include_role:
+        name: sync_secrets
+
+    - name: Reload systemd units from the deployed image
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Start enabled homelab services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop: "{{ services.enabled }}"

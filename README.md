@@ -14,7 +14,7 @@
 
 - This repo contains the source of my personal homelab that runs a Raspberry Pi 4 Model B 8GB locally on my network.
 
-- Containers run using [podman](https://podman.io/) and [systemd](https://systemd.io/) as Quadlets and are deployed using [ansible](https://www.ansible.com/).
+- The host OS is moving to an immutable [bootc](https://bootc-dev.github.io/bootc/) image built from this repository. Containers run using [podman](https://podman.io/) and [systemd](https://systemd.io/) as Quadlets.
 
 - Secrets are encrypted using [sops](https://github.com/getsops/sops) and a [age](https://github.com/FiloSottile/age) asymmetric key pair.
 
@@ -23,11 +23,10 @@
 
 # 🧑‍💻 Setup
 
-1. Use the private key of the root.pub public ssh key to generate a installable fedora iot image.
-2. Then use the ansible `bootstrap` playbook to setup some bare minimums, like users and permissions.
-3. Use the `configure` playbook to setup system components like the firewall.
-4. Configure your specific cert provider inside `traefik.yml`.
-5. Finally use the `containers` playbook to deploy all containers.
+1. Build and publish the bootc image from `Containerfile`.
+2. Install or switch the host to that image.
+3. Configure your specific cert provider inside `traefik.yml` before building the image.
+4. Use the Ansible `bootc-deploy` playbook for image switches and decrypted secrets.
 
 # Technical details
 
@@ -46,7 +45,9 @@
 ├── 📁 scripts                      # Builds and helper scripts
 ├── 📁 secrets                      # SOPS-encrypted secrets
 ├── 📁 users                        # Public ssh keys for users
+├── .containerignore                # Keeps secrets and local metadata out of image builds
 ├── .sops.yaml                      # SOPS configuration
+├── Containerfile                   # Immutable bootc host image definition
 └── README.md
 ```
 
@@ -63,9 +64,37 @@ See also https://github.com/containers/podman/issues/20845 and https://github.co
 Additionally, newer linux kernels support `idmapped` mounts, which allow the system to remap the ownership of files on the fly for a specific mount point, without actually changing the file ownership on the physical disk.
 This is used to map config and data files into containers with the correct ownership. Special attention is given to containers that do not run the root user inside. Here the mapping has to be matched to the target uid:gid inside the container (see n8n as an example).
 
+## Immutable Host Image
+
+`Containerfile` is the source for the host OS. It follows Fedora's build-from-scratch bootc flow by using `quay.io/fedora/fedora-bootc:44` as a builder and running `/usr/libexec/bootc-base-imagectl build-rootfs --manifest=fedora-iot`. The final image starts from `scratch`, copies that rootfs, marks itself as a bootc container, and then layers the existing Ansible-managed host state into the image:
+
+- bootstrap users, SSH policy, sudo policy, hostname, and timezone
+- host/service and admin CLI packages layered immutably with `rpm-ostree install`, including Bluetooth, Cockpit, WireGuard tools, `zsh`, and interactive diagnostics/editing tools
+- DNS, sysctl, local registry, firewall, and enabled systemd services from `configure.playbook.yaml` and `vpn.playbook.yaml`
+- Quadlets from `quadlets/`
+- non-secret container configuration from `configs/`
+
+The intended mutable paths are limited to runtime data and decrypted secrets under `/var/opt/containers`. The image defines `/opt/containers/data` and `/opt/containers/secrets` as symlinks to those mutable paths so existing Quadlets can continue using their current paths.
+
+Secrets are not baked into the image. `.containerignore` excludes `secrets/` and encrypted env files from the build context.
+
 ## Deployment
 
-Ansible is used to deploy and manage the homelab.
+The target deployment model is GitOps-style image promotion: change the repository, build a new image, then switch the host to that image.
+
+The GitHub workflow builds and pushes `ghcr.io/jhoogstraat/homelab` for `linux/arm64` on manual runs and on pushes to `main` that affect image inputs.
+
+The Fedora IoT rootfs compose requires a Linux builder that permits the namespace operations used by `rpm-ostree`/`bwrap`. A regular Docker Buildx build or a restricted macOS Podman VM is not sufficient.
+
+Deploy a new image with:
+
+```bash
+ansible-playbook -i ansible/inventory/hosts ansible/bootc-deploy.playbook.yaml -e bootc_image=ghcr.io/jhoogstraat/homelab:latest
+```
+
+The playbook runs `bootc switch`, reboots when a new deployment is staged, syncs decrypted secrets to `/var/opt/containers/secrets`, reloads systemd, and starts the enabled services from inventory.
+
+The older Ansible playbooks remain for reference during the migration:
 
 The `bootstrap` playbook is used to setup bare minimums on a fresh fedora iot installation, like creating the admin user and setting up ssh access.
 
