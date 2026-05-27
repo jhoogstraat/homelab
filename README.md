@@ -66,7 +66,7 @@ This is used to map config and data files into containers with the correct owner
 
 ## Immutable Host Image
 
-`Containerfile` is the source for the host OS. It follows Fedora's build-from-scratch bootc flow by using `quay.io/fedora/fedora-bootc:44` as a builder and running `/usr/libexec/bootc-base-imagectl build-rootfs --manifest=fedora-iot`. The final image starts from `scratch`, copies that rootfs, marks itself as a bootc container, and then layers the existing Ansible-managed host state into the image:
+`Containerfile` is the source for the host OS. It follows Fedora's build-from-scratch bootc flow by using `quay.io/fedora/fedora-bootc:45` as a builder and running `/usr/libexec/bootc-base-imagectl build-rootfs --manifest=fedora-iot`. The final image starts from `scratch`, copies that rootfs, marks itself as a bootc container, and then layers the existing Ansible-managed host state into the image:
 
 - bootstrap users, SSH policy, sudo policy, hostname, and timezone
 - host/service and admin CLI packages layered immutably with `rpm-ostree install`, including Bluetooth, Cockpit, WireGuard tools, `zsh`, and interactive diagnostics/editing tools
