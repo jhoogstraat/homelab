@@ -29,7 +29,7 @@
         content: |
           [Resolve]
           DNS=1.1.1.1 8.8.8.8
-          DNSStubListener=
+          DNSStubListener=no
       register: dns_config
 
     - name: Restart systemd-resolved

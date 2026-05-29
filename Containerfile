@@ -62,7 +62,7 @@ RUN <<-'EOF'
 	cat > /etc/systemd/resolved.conf.d/custom-dns.conf <<-'EOT'
 	[Resolve]
 	DNS=1.1.1.1 8.8.8.8
-	DNSStubListener=
+	DNSStubListener=no
 	EOT
 
 	# https://github.com/matter-js/matterjs-server/main/docs/os_requirements.md
