@@ -198,10 +198,6 @@ pages:
                 url: https://vault.hoogstraat.de
                 check-url: http://vaultwarden:80
                 icon: di:vaultwarden
-              - title: Dockhand
-                url: https://dockhand.hoogstraat.de
-                check-url: http://dockhand:3000
-                icon: di:dockhand
               - title: Beszel
                 url: https://beszel.hoogstraat.de
                 check-url: http://beszel:8090

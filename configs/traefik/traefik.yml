@@ -6,7 +6,7 @@ global:
 # Enable traefik ui dashboard
 api:
   dashboard: true
-  insecure: true
+  insecure: false
 
 # Log level INFO|DEBUG|ERROR
 log:

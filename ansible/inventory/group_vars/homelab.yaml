@@ -4,23 +4,22 @@ services:
   enabled:
     - adguard
     - beszel-pod
+    - beszel-agent
+    - beszel-ui
     - cloudflared
     - couchdb
-    - dockhand
     - glance
     - grafana
-    - harborscale-pod
     - immobot
     - n8n
     - onedev
     - papra
     - registry
-    - timescaledb
     - traefik
-    - valkey
     - vaultwarden
     - wg-easy
   disabled:
     - homeassistant
+    - homepage
     - matter
     - otbr
