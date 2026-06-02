@@ -1,7 +1,8 @@
 [Unit]
 Description=Cloudflare Daemon for a ZeroTrust Tunnel
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Wants=adguard.container
+After=adguard.container
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=cloudflared
@@ -19,7 +20,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=30
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=30
 
 [Install]

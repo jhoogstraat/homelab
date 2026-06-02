@@ -1,7 +1,6 @@
 [Unit]
 Description=Home Assistant
-StartLimitIntervalSec=200
-StartLimitBurst=2
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=homeassistant
@@ -29,12 +28,10 @@ Timezone=local
 
 [Service]
 Restart=on-failure
+RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
 
 # Copy configuration to data dir, as Home Assistant throws everything (config and data) into one single directory.
 ExecStartPre=mkdir -p /opt/containers/data/%p
 ExecStartPre=cp /opt/containers/config/%p/configuration.yaml /opt/containers/data/%p/configuration.yaml
-
-[Install]
-WantedBy=multi-user.target default.target

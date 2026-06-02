@@ -1,7 +1,8 @@
 [Unit]
 Description=Grafana Visualization
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Wants=adguard.container
+After=adguard.container
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=grafana
@@ -12,7 +13,6 @@ User=0
 
 Network=homelab.network:ip=10.90.0.21
 
-Volume=/opt/containers/config/%p/provisioning:/etc/grafana/provisioning:Z,idmap
 Volume=/opt/containers/data/%p:/var/lib/grafana:Z,idmap
 
 EnvironmentFile=/opt/containers/secrets/%p.env
@@ -24,7 +24,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=30
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=30
 
 ExecStartPre=mkdir -p /opt/containers/data/%p

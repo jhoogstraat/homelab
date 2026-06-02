@@ -1,7 +1,6 @@
 [Unit]
 Description=OpenThread Border Router
-StartLimitIntervalSec=200
-StartLimitBurst=2
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=otbr
@@ -34,6 +33,7 @@ Timezone=local
 
 [Service]
 Restart=on-failure
+RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
 

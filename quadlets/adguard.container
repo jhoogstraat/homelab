@@ -1,7 +1,6 @@
 [Unit]
 Description=Adguard Home DNS Server
-StartLimitIntervalSec=200
-StartLimitBurst=2
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=adguard
@@ -26,7 +25,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=30
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=30
 
 ExecStartPre=mkdir -p /opt/containers/data/%p

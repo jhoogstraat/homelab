@@ -90,7 +90,7 @@ COPY quadlets/ /usr/share/containers/systemd/
 COPY configs/ /opt/containers/config/
 
 RUN <<-'EOF'
-	systemctl enable bluetooth.service cockpit.socket firewalld.service podman-auto-update.timer podman.socket systemd-resolved.service
+	systemctl enable bluetooth.service cockpit.socket firewalld.service NetworkManager-wait-online.service podman-auto-update.timer podman.socket systemd-resolved.service
 	firewall-offline-cmd --zone=public --add-service=cockpit
 	firewall-offline-cmd --zone=public --add-service=https
 	firewall-offline-cmd --zone=public --add-service=dns

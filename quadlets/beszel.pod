@@ -1,7 +1,8 @@
 [Unit]
 Description=Pod for housing Beszel
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Wants=adguard.container
+After=adguard.container
+StartLimitIntervalSec=0
 
 [Pod]
 PodName=beszel
@@ -11,5 +12,6 @@ UserNS=auto
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=30
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=30

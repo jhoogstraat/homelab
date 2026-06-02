@@ -1,7 +1,8 @@
 [Unit]
 Description=Personal homepage
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Wants=adguard.container
+After=adguard.container
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=homepage
@@ -25,10 +26,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
+RestartSec=30
 TimeoutStartSec=60
 TimeoutStopSec=30
 
 ExecStartPre=mkdir -p /opt/containers/data/%p
-
-[Install]
-WantedBy=multi-user.target default.target

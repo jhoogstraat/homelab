@@ -1,7 +1,8 @@
 [Unit]
 Description=Wireguard Easy (wg-easy)
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Wants=adguard.container
+After=adguard.container
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=wg-easy
@@ -23,15 +24,13 @@ Sysctl=net.ipv6.conf.all.disable_ipv6=0
 Sysctl=net.ipv6.conf.all.forwarding=1
 Sysctl=net.ipv6.conf.default.forwarding=1
 
-Label="traefik.enable=true"
-Label="traefik.http.services.%p.loadbalancer.server.port=51821"
-Label="subdomain=wg"
 
 Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=100
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=100
 
 ExecStartPre=mkdir -p /opt/containers/data/%p

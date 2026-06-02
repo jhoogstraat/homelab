@@ -1,7 +1,8 @@
 [Unit]
 Description=CouchDB (obsidian livesync)
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Wants=adguard.container
+After=adguard.container
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=couchdb
@@ -29,7 +30,8 @@ HealthTimeout=10s
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=30
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=30
 
 ExecStartPre=mkdir -p /opt/containers/data/%p

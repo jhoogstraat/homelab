@@ -1,7 +1,9 @@
 [Unit]
 Description=Beszel Agent
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Requires=beszel.pod
+Wants=podman.socket
+After=beszel.pod podman.socket
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=beszel-agent
@@ -23,7 +25,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=60
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=60
 
 ExecStartPre=mkdir -p /opt/containers/data/beszel/agent

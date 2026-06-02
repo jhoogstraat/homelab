@@ -1,7 +1,8 @@
 [Unit]
 Description=Traefik Reverse Proxy
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Wants=adguard.container podman.socket
+After=adguard.container podman.socket
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=traefik
@@ -12,7 +13,6 @@ UserNS=auto
 Network=homelab.network:ip=10.90.0.3
 
 PublishPort=443:443
-PublishPort=8080:8080
 
 SecurityLabelDisable=true
 
@@ -27,7 +27,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=30
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=30
 
 ExecStartPre=mkdir -p /opt/containers/data/%p

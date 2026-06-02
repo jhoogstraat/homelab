@@ -1,7 +1,8 @@
 [Unit]
 Description=n8n Secure Workflow Automation
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Wants=adguard.container
+After=adguard.container
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=n8n
@@ -23,7 +24,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=90
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=30
 
 ExecStartPre=mkdir -p /opt/containers/data/%p

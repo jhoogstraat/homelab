@@ -1,7 +1,6 @@
 [Unit]
 Description=Homelab Docker Registry
-StartLimitIntervalSec=200
-StartLimitBurst=2
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=registry
@@ -12,19 +11,19 @@ UserNS=auto
 Network=homelab.network:ip=10.90.0.6
 HostName=registry
 
-PublishPort=5000:5000
+PublishPort=127.0.0.1:5000:5000
 
 Volume=/opt/containers/data/%p:/var/lib/registry:Z,idmap
 
 Environment=REGISTRY_STORAGE_DELETE_ENABLED=true
 
-Label="traefik.enable=true"
 
 Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=60
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=60
 
 ExecStartPre=mkdir -p /opt/containers/data/%p

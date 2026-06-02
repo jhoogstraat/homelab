@@ -1,7 +1,8 @@
 [Unit]
 Description=Vaultwarden (Bitwarden in Rust)
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Wants=adguard.container
+After=adguard.container
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=vaultwarden
@@ -25,7 +26,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=60
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=60
 
 ExecStartPre=mkdir -p /opt/containers/data/%p

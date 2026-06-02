@@ -1,7 +1,8 @@
 [Unit]
 Description=Beszel UI
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Requires=beszel.pod
+After=beszel.pod
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=beszel-ui
@@ -20,7 +21,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=30
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=30
 
 ExecStartPre=mkdir -p /opt/containers/data/beszel/data

@@ -1,7 +1,8 @@
 [Unit]
 Description=Immobot
-StartLimitIntervalSec=200
-StartLimitBurst=2
+Wants=registry.container adguard.container
+After=registry.container adguard.container
+StartLimitIntervalSec=0
 
 [Container]
 ContainerName=immobot
@@ -21,7 +22,8 @@ Timezone=local
 
 [Service]
 Restart=on-failure
-TimeoutStartSec=30
+RestartSec=30
+TimeoutStartSec=300
 TimeoutStopSec=30
 
 [Install]
