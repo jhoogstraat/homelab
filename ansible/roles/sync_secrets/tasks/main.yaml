@@ -7,23 +7,85 @@
 
 - name: Decrypt and copy secrets
   block:
+    - name: Ensure secrets parent directory exists
+      ansible.builtin.file:
+        path: "{{ secrets_target_path | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+
     - name: Create temporary directory for copying secrets
       ansible.builtin.tempfile:
         state: directory
-        suffix: _secrets
+        path: "{{ secrets_target_path | dirname }}"
+        prefix: ".{{ secrets_target_path | basename }}."
+        suffix: ".new"
       register: tmp_secrets_dir
+
+    - name: Secure temporary secrets directory
+      ansible.builtin.file:
+        path: "{{ tmp_secrets_dir.path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
 
     - name: Decrypt and copy to tmp dir
       ansible.builtin.copy:
         content: "{{ lookup('community.sops.sops', item, age_key=age_private_key) }}"
         dest: "{{ tmp_secrets_dir.path }}/{{ item | basename | regex_replace('\\.enc', '') }}"
-        mode: u=rw
+        owner: root
+        group: root
+        mode: '0600'
       loop: "{{ lookup('fileglob', secrets_local_path, wantlist=True) }}"
 
-    - name: Atomically replace secrets directory
-      ansible.builtin.shell: rm -rf {{ secrets_target_path }} && mv -T {{ tmp_secrets_dir.path }} {{ secrets_target_path }}
-      args:
-        removes: "{{ tmp_secrets_dir.path }}"
+    - name: Prepare previous secrets backup path
+      ansible.builtin.set_fact:
+        previous_secrets_path: "{{ tmp_secrets_dir.path }}.previous"
+
+    - name: Check existing secrets directory
+      ansible.builtin.stat:
+        path: "{{ secrets_target_path }}"
+      register: existing_secrets_dir
+
+    - name: Move existing secrets directory aside
+      ansible.builtin.command:
+        argv:
+          - mv
+          - -T
+          - "{{ secrets_target_path }}"
+          - "{{ previous_secrets_path }}"
+      when: existing_secrets_dir.stat.exists
+
+    - name: Move new secrets directory into place
+      block:
+        - name: Rename staged secrets directory
+          ansible.builtin.command:
+            argv:
+              - mv
+              - -T
+              - "{{ tmp_secrets_dir.path }}"
+              - "{{ secrets_target_path }}"
+
+      rescue:
+        - name: Restore previous secrets directory after failed replacement
+          ansible.builtin.command:
+            argv:
+              - mv
+              - -T
+              - "{{ previous_secrets_path }}"
+              - "{{ secrets_target_path }}"
+          when: existing_secrets_dir.stat.exists
+
+        - name: Fail secret replacement
+          ansible.builtin.fail:
+            msg: "Failed to replace secrets directory; previous contents were restored when present."
+
+    - name: Remove previous secrets backup
+      ansible.builtin.file:
+        path: "{{ previous_secrets_path }}"
+        state: absent
 
   always:
     - name: Cleanup tmp secrets directory
