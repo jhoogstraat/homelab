@@ -163,6 +163,9 @@ def capture_recovery(active):
     running = command("podman", "ps", "--format", "json", stdout=subprocess.PIPE)
     records = []
     for container in json.loads(running.stdout):
+        # Pod infra containers have no application image to restore.
+        if container.get("IsInfra"):
+            continue
         image = command("podman", "image", "inspect", container["ImageID"],
                         stdout=subprocess.PIPE)
         details = json.loads(image.stdout)[0]
