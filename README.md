@@ -4,7 +4,7 @@ A Raspberry Pi 4 running a Fedora bootc host and Podman Quadlets. Git describes 
 
 - **Host:** CI builds `ghcr.io/jhoogstraat/homelab:latest` for ARM64. Weekly bootc upgrades apply host changes and may reboot.
 - **Applications:** Podman follows the tags in `quadlets/` daily. Updates replace containers without a host rebuild or reboot. A successful full backup is required before either kind of update.
-- **Configuration:** `configs/environment/` is Git-owned infrastructure. `configs/defaults/` initializes device configuration once. Subsequent app UI changes or local file edits survive redeployment.
+- **Configuration:** use each application's supported UI, files or environment variables. `configs/environment/` is Git-owned infrastructure; `configs/defaults/` initializes device configuration once. Subsequent app UI changes or local file edits survive redeployment.
 - **Storage:** `/var/lib/homelab/apps/<app>/` holds local POSIX configuration/data. Encrypted, deduplicated restic backups go to a remote S3-compatible repository. The current SD-card backup pauses services during upload; a USB SSD is the recommended storage upgrade.
 - **Secrets:** only SOPS ciphertext is packaged in the image. The age key, S3 credentials and restic password are provisioned locally with root-only permissions.
 

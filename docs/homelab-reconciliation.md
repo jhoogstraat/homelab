@@ -1,6 +1,6 @@
 # Host, applications and storage ownership
 
-The operating mode is: publish infrastructure changes through Git, configure supported application settings through the app, and recover device state from encrypted backups. There is no Ansible sync in normal operation.
+The operating mode is: publish infrastructure changes through Git, configure each application through its simplest supported interface, and recover device state from encrypted backups. There is no Ansible sync in normal operation.
 
 ## Reconciliation
 
@@ -25,6 +25,20 @@ Application image changes follow Podman's native registry comparison and rollbac
 References: [bootc filesystem persistence](https://bootc.dev/bootc/bootc-filesystem.7.html), [Fedora base-image interfaces](https://gitlab.com/fedora/bootc/base-images), [Podman auto-update and rollback](https://docs.podman.io/en/latest/markdown/podman-auto-update.1.html), [SOPS release](https://github.com/getsops/sops/releases/tag/v3.13.3).
 
 ## Configuration ownership
+
+Choose the configuration method per application and setting. Use an existing UI when it supports the setting; otherwise use the documented configuration file or environment variable. There is no requirement that everything be browser-editable, use environment variables, or support S3 directly. The common storage/backup layout preserves those different native formats without translating them into a new configuration system.
+
+| Application or setting | Simplest supported method |
+| --- | --- |
+| AdGuard, Beszel hub, wg-easy; Grafana dashboards, Vaultwarden admin settings, Papra documents | Existing application UI, with its state persisted and backed up |
+| CouchDB runtime configuration | Fauxton/configuration API, persisted in writable `local.d`; native INI files remain available |
+| Glance dashboard | Edit native `glance.yml` on the device; Glance reloads valid file changes |
+| Home Assistant | UI for supported integrations/settings; native YAML for settings requiring files |
+| Grafana server options and Papra instance options | Documented `GF_*`/Papra environment variables through local `app.env`; restart the affected container |
+| Traefik and registry hosting | Native static configuration/environment and Quadlet routing/mounts in Git |
+| Cloudflare tunnel settings | Cloudflare dashboard; connector credentials remain protected on the device |
+| Custom homepage | Application source for compiled content; documented environment for runtime connections |
+| Matter/Thread settings | Existing server or Home Assistant management interface; hardware/network parameters in Git |
 
 | Owner | Examples | Change mechanism |
 | --- | --- | --- |
