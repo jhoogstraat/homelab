@@ -13,7 +13,7 @@ HostName=registry
 
 PublishPort=127.0.0.1:5000:5000
 
-Volume=/opt/containers/data/%p:/var/lib/registry:Z,idmap
+Volume=/var/lib/homelab/apps/%p/data:/var/lib/registry:Z,idmap
 
 Environment=REGISTRY_STORAGE_DELETE_ENABLED=true
 
@@ -26,7 +26,6 @@ RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=60
 
-ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=homelab.target

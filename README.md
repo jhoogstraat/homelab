@@ -1,162 +1,38 @@
-![Header Image](https://raw.githubusercontent.com/Mafyuh/homelab-svg-assets/main/assets/header_.png)
+# Homelab
 
-<div align="center">
+A Raspberry Pi 4 running a Fedora bootc host and Podman Quadlets. Git describes how services run; application settings and data live on the device and are backed up together.
 
-# homelab (wip)
+- **Host:** CI builds `ghcr.io/jhoogstraat/homelab:latest` for ARM64. Weekly bootc upgrades apply host changes and may reboot.
+- **Applications:** Podman follows the tags in `quadlets/` daily. Updates replace containers without a host rebuild or reboot. A successful full backup is required before either kind of update.
+- **Configuration:** use each application's supported UI, files or environment variables. `configs/environment/` is Git-owned infrastructure; `configs/defaults/` initializes device configuration once. Subsequent app UI changes or local file edits survive redeployment.
+- **Storage:** `/var/lib/homelab/apps/<app>/` holds local POSIX configuration/data. Encrypted, deduplicated restic backups go to a remote S3-compatible repository. The current SD-card backup pauses services during upload; a USB SSD is the recommended storage upgrade.
+- **Secrets:** only SOPS ciphertext is packaged in the image. The age key, S3 credentials and restic password are provisioned locally with root-only permissions.
 
-| Hardware | OS | Tools | Secrets |
-|---|---|---|---|
-[![Raspberry Pi Badge](https://img.shields.io/badge/Raspberry%20Pi-black?logo=raspberrypi&logoColor=fff&style=for-the-badge)](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/) | [![Fedora](https://img.shields.io/badge/Fedora-black?style=for-the-badge&logo=fedora&logoColor=white)](https://fedoraproject.org/de/iot/) | [![Podman](https://img.shields.io/badge/Podman-black?logo=podman&logoColor=fff&style=for-the-badge)](https://podman.io/) [![Ansible](https://img.shields.io/badge/-Ansible-black?logo=ansible&logoColor=red&style=for-the-badge)](https://www.ansible.com/) | [![SOPS](https://img.shields.io/badge/-SOPS-black?logoColor=fff&style=for-the-badge)](https://github.com/getsops/sops) [![age](https://img.shields.io/badge/-age-black?logoColor=fff&style=for-the-badge)](https://github.com/FiloSottile/age)
+Read [the architecture and ownership boundaries](docs/homelab-reconciliation.md), [migration, backup and recovery instructions](docs/operations.md), and the application inventories: [stateful services](docs/application-storage.md), [infrastructure and home automation](docs/application-storage-other.md).
 
-</div>
+Immobot, OneDev and n8n are retired. Their existing state is archived during migration. All other apps are retained; Home Assistant, homepage, Matter and OTBR remain optional, matching the previous inventory.
 
-# 📖 Overview
+## Repository
 
-- This repo contains the source of my personal homelab that runs a Raspberry Pi 4 Model B 8GB locally on my network.
+| Path | Purpose |
+| --- | --- |
+| `Containerfile` | Fedora host, packages, SSH/firewall policy and maintenance services |
+| `quadlets/` | Application images, networking, mounts, hardware and routing |
+| `configs/environment/` | Git-owned hosting settings, reapplied at boot |
+| `configs/defaults/` | Initial application settings; never overwrite device edits |
+| `secrets/*.enc.env` | Encrypted container environment files |
+| `scripts/homelab` | Initialization, cold backup, guarded updates and legacy migration |
+| `scripts/build-host` | Host setup during image build, using Bash syntax supported by the CI builder |
+| `systemd/` | Host timers and shared application lifecycle |
+| `tests/` | State preservation and failure recovery checks |
 
-- The host OS is moving to an immutable [bootc](https://bootc-dev.github.io/bootc/) image built from this repository. Containers run using [podman](https://podman.io/) and [systemd](https://systemd.io/) as Quadlets.
+The old Ansible deployment is removed. Its last version remains in Git history at `dafdde0`; it must not keep syncing configuration after cutover.
 
-- Secrets are encrypted using [sops](https://github.com/getsops/sops) and a [age](https://github.com/FiloSottile/age) asymmetric key pair.
+## Development
 
-- TLS termination and reverse proxying is done using [traefik](https://traefik.io/).
-
-
-# 🧑‍💻 Setup
-
-1. Build and publish the bootc image from `Containerfile`.
-2. Install or switch the host to that image.
-3. Configure your specific cert provider inside `traefik.yml` before building the image.
-4. Use the Ansible `bootc-deploy` playbook for image switches and decrypted secrets.
-
-# Technical details
-
-## 🗃️ Folder Structure
-```shell
-├── 📁 .github                      # CI/CD workflows and actions
-├── 📁 ansible                      # Application deployments
-│   ├── 📁 inventory
-│   ├── 📁 roles
-│   └──    ansible.cfg
-├── 📁 configs                      # Configuration files for containers
-│   ├── 📁 adguard
-│   ├── 📁 traefik
-│   └── 📁 other apps
-├── 📁 quadlets                     # Systemd unit file templates for pods and containers
-├── 📁 scripts                      # Builds and helper scripts
-├── 📁 secrets                      # SOPS-encrypted secrets
-├── 📁 users                        # Public ssh keys for users
-├── .containerignore                # Keeps secrets and local metadata out of image builds
-├── .sops.yaml                      # SOPS configuration
-├── Containerfile                   # Immutable bootc host image definition
-└── README.md
+```sh
+python3 -m unittest discover -s tests -v
+podman build --arch arm64 --tag homelab-bootc:build .
 ```
 
-## Containers
-
-`systemd` unit files are used to define podman pods and containers. This allows them to really nicely integrate into the linux system (like starting on boot, restart on failure, dependency resolution, etc.).
-It is like a integrated kubernetes-lite.
-
-Containers to not run rootless, but use `userns=auto` to run processes in a random user namespace.
-This prevents container processes to be able to attack each other, as they all run in different user namespaces.
-If a attacker manages to break out of one container, they still cannot access files or processes of other containers or the host, as they are now a random user without privileges.
-See also https://github.com/containers/podman/issues/20845 and https://github.com/containers/podman/discussions/13728.
-
-Additionally, newer linux kernels support `idmapped` mounts, which allow the system to remap the ownership of files on the fly for a specific mount point, without actually changing the file ownership on the physical disk.
-This is used to map config and data files into containers with the correct ownership. Special attention is given to containers that do not run the root user inside. Here the mapping has to be matched to the target uid:gid inside the container (see n8n as an example).
-
-## Immutable Host Image
-
-`Containerfile` is the source for the host OS. It follows Fedora's build-from-scratch bootc flow by using `quay.io/fedora/fedora-bootc:45` as a builder and running `/usr/libexec/bootc-base-imagectl build-rootfs --manifest=fedora-iot`. The final image starts from `scratch`, copies that rootfs, marks itself as a bootc container, and then layers the existing Ansible-managed host state into the image:
-
-- bootstrap users, SSH policy, sudo policy, hostname, and timezone
-- host/service and admin CLI packages layered immutably with `rpm-ostree install`, including Bluetooth, Cockpit, WireGuard tools, `zsh`, and interactive diagnostics/editing tools
-- DNS, sysctl, local registry, firewall, and enabled systemd services from `configure.playbook.yaml` and `vpn.playbook.yaml`
-- Quadlets from `quadlets/`
-- non-secret container configuration from `configs/`
-
-The intended mutable paths are limited to runtime data and decrypted secrets under `/var/opt/containers`. The image defines `/opt/containers/data` and `/opt/containers/secrets` as symlinks to those mutable paths so existing Quadlets can continue using their current paths.
-
-Secrets are not baked into the image. `.containerignore` excludes `secrets/` and encrypted env files from the build context.
-
-## Deployment
-
-The target deployment model is GitOps-style image promotion: change the repository, build a new image, then switch the host to that image.
-
-The GitHub workflow builds and pushes `ghcr.io/jhoogstraat/homelab` for `linux/arm64` on manual runs and on pushes to `main` that affect image inputs.
-
-The Fedora IoT rootfs compose requires a Linux builder that permits the namespace operations used by `rpm-ostree`/`bwrap`. A regular Docker Buildx build or a restricted macOS Podman VM is not sufficient.
-
-Deploy a new image with:
-
-```bash
-ansible-playbook -i ansible/inventory/hosts ansible/bootc-deploy.playbook.yaml -e bootc_image=ghcr.io/jhoogstraat/homelab:latest
-```
-
-The playbook runs `bootc switch`, reboots when a new deployment is staged, syncs decrypted secrets to `/var/opt/containers/secrets`, reloads systemd, and starts the enabled services from inventory.
-
-The older Ansible playbooks remain for reference during the migration:
-
-The `bootstrap` playbook is used to setup bare minimums on a fresh fedora iot installation, like creating the admin user and setting up ssh access.
-
-The `configure` playbook sets up basic port forwarding (mainly 443 and 53).
-
-The `containers` playbook deploys all containers defined in the `quadlets` folder + their respective configuration files from the `configs` folder + any necessary secrets from the `secrets` folder.
-Secrets are first decrypted using the age private key before being copied to the server. This means that you have to enter your age private key each time when running the playbook.
-The playbooks is not (yet) idempotent, but already tries to only restart containers if something changed. If anything goes wrong you can always restart services manually using `systemtl restart <service>`.
-
-## Routing
-
-Each service is exposed under its own subdomain, e.g. `adguard.example.com`.
-
-Traefik is configured via `traefik.yml`. Basic rules for tls, entrypoints and the docker provider life there.
-Inside of the container quadlets you only have to define `traefik.enable=true` for traefik to pick up the service and route it correctly. Otherwise it will be skipped.
-Using the `defaultRule` option from traefik, the subdomain is either defined by the container name or an explicit custom `subdomain=xyz` label (see vaultwarden quadlet for an example).
-
-### TLS
-Traefik automatically provisions and renews TLS certificates using Let's Encrypt.
-It uses a DNS challenge to issue a wildcard certificate (`*.example.com`) that all services then use.
-
-*This must be adapted to your specific environment. Define your DNS provider and environment args required inside `traefik.yml`*.
-
-## Users
-
-- `root.pub`: Used when installing linux
-- `jh.pub`: The jh user that has sudo permissions without password
-
-## 🔒 Secrets
-
-Secrets are encrypted using sops and an age key that is stored securely, e.g. in bitwarden, as a secure note.
-
-How to edit secrets (using bitwarden):
-1. Unlock the vault by reading the master password from stdin or a file and then setting the `BW_SESSION` environment variable:
-```bash
-    export BW_SESSION=$(bw unlock --raw)
-```
-
-2. Instruct SOPS to retrieve the age private key by executing the following command and taking its output:
-```bash
-    export SOPS_AGE_KEY_CMD="zsh -c \"bw list items --search 'homelab secrets age de-/encryption key' | jq -r '.[0].fields[] | select(.name == \\\"private key\\\") | .value'\""
-```
-
-3. Edit the secrets file using sops:
-```bash
-    sops edit files/secrets/.env.adguard
-```
-
-### Creating a new secret
-
-
-
-## Backup
-
-TODO!
-
-## Helpful commands
-
-- `/usr/lib/systemd/system-generators/podman-system-generator --dryrun`
-- `systemd-analyze --generators=true verify X.service` - Check for errors during systemd unit generation
-- `journalctl`
-    - `-r` - Show all messages in the journal sorted by recently.
-    - `-f` - Follow logs as they are coming in.
-    - `-u` - Select a service unit to filter for.
-    - `-n X` - Show the last X lines of the journal.
+CI runs these checks on pull requests and publishes only from `main` or a manual workflow run. Linux is required to build bootc. Image build/lint and Quadlet generation do not prove that the Pi boots or that its radio devices work; the migration guide includes those checks.

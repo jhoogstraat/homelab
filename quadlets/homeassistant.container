@@ -17,7 +17,7 @@ AddCapability=NET_RAW
 # Required for SELinux allowing access to certain hardware devices, such as Bluetooth
 SecurityLabelType=spc_t
 
-Volume=/opt/containers/data/%p:/config:Z
+Volume=/var/lib/homelab/apps/%p/config:/config:Z
 Volume=/run/dbus:/run/dbus:ro
 
 Label="traefik.enable=true"
@@ -31,7 +31,3 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
-
-# Copy configuration to data dir, as Home Assistant throws everything (config and data) into one single directory.
-ExecStartPre=mkdir -p /opt/containers/data/%p
-ExecStartPre=cp /opt/containers/config/%p/configuration.yaml /opt/containers/data/%p/configuration.yaml

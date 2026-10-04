@@ -15,10 +15,10 @@ RunInit=true
 
 Network=homelab.network:ip=10.90.0.5
 
-Volume=/opt/containers/data/%p:/app/.spotify:Z,idmap
+Volume=/var/lib/homelab/apps/%p/data:/app/.spotify:Z,idmap
 
-EnvironmentFile=/opt/containers/config/%p/%p.env
-EnvironmentFile=/opt/containers/secrets/%p.env
+EnvironmentFile=/var/lib/homelab/environment/%p/%p.env
+EnvironmentFile=/var/lib/homelab/secrets/%p.env
 
 Label="traefik.enable=true"
 
@@ -29,5 +29,3 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=60
 TimeoutStopSec=30
-
-ExecStartPre=mkdir -p /opt/containers/data/%p

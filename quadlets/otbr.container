@@ -15,9 +15,9 @@ AddCapability=NET_RAW
 AddDevice=/dev/serial/by-id/usb-Itead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_V2_56fc5dba521fef11a58a4ad0639e525b-if00-port0:/dev/ttyUSB0
 AddDevice=/dev/net/tun
 
-Volume=/opt/containers/data/%p:/data:Z,idmap
+Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
 
-EnvironmentFile=/opt/containers/config/%p/%p.env
+EnvironmentFile=/var/lib/homelab/environment/%p/%p.env
 
 # When network=host, these cannot be set by the quadlet. See setup-host script:
 # https://raw.githubusercontent.com/openthread/ot-br-posix/refs/heads/main/etc/docker/border-router/setup-host
@@ -36,5 +36,3 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
-
-ExecStartPre=mkdir -p /opt/containers/data/%p

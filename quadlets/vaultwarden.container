@@ -13,11 +13,11 @@ UserNS=auto
 Network=homelab.network:ip=10.90.0.7
 HostName=vaultwarden
 
-Volume=/opt/containers/data/%p:/data:Z,idmap
+Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
 
 Environment=DOMAIN=https://vault.hoogstraat.de
 
-EnvironmentFile=/opt/containers/secrets/%p.env
+EnvironmentFile=/var/lib/homelab/secrets/%p.env
 
 Label="traefik.enable=true"
 Label="subdomain=vault"
@@ -30,7 +30,6 @@ RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=60
 
-ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=homelab.target

@@ -2,5 +2,9 @@
 .github
 .DS_Store
 ansible
-secrets
-**/*.enc.env
+__pycache__
+**/__pycache__
+secrets/*
+!secrets/*.enc.env
+**/*.key
+**/*password*

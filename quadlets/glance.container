@@ -12,9 +12,9 @@ UserNS=auto
 
 Network=homelab.network:ip=10.90.0.4
 
-Volume=/opt/containers/config/%p:/app/config:Z,idmap
+Volume=/var/lib/homelab/apps/%p/config:/app/config:Z,idmap
 
-EnvironmentFile=/opt/containers/secrets/adguard.env
+EnvironmentFile=/var/lib/homelab/secrets/adguard.env
 
 Label="traefik.enable=true"
 
@@ -27,4 +27,4 @@ TimeoutStartSec=300
 TimeoutStopSec=30
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=homelab.target

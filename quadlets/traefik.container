@@ -16,8 +16,8 @@ PublishPort=443:443
 
 SecurityLabelDisable=true
 
-Volume=/opt/containers/config/%p:/etc/traefik:Z,idmap
-Volume=/opt/containers/data/%p:/opt/traefik:Z,idmap
+Volume=/var/lib/homelab/environment/%p:/etc/traefik:ro,Z,idmap
+Volume=/var/lib/homelab/apps/%p/data:/opt/traefik:Z,idmap
 Volume=%t/podman/podman.sock:/var/run/docker.sock:idmap
 
 Environment=ACME_DNS_API_BASE=https://auth.acme-dns.io
@@ -31,7 +31,6 @@ RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=30
 
-ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=homelab.target

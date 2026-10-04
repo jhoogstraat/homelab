@@ -14,11 +14,12 @@ Network=homelab.network:ip=10.90.0.11
 
 # User inside container is `nonroot` (uid:gid 999:999), so map root to this uid/gid.
 # Because of UserNS=auto, the `podman run` process is run with a random uid/gid, which has to be taken into account (@).
-Volume=/opt/containers/data/%p/data:/app/app-data:Z,idmap=uids=@0-999-1;gids=@0-999-1
-Volume=/opt/containers/data/%p/ingestion:/app/ingestion:Z,idmap=uids=@0-999-1;gids=@0-999-1
+Volume=/var/lib/homelab/apps/%p/data:/app/app-data:Z,idmap=uids=@0-999-1;gids=@0-999-1
+Volume=/var/lib/homelab/apps/%p/ingestion:/app/ingestion:Z,idmap=uids=@0-999-1;gids=@0-999-1
 
-EnvironmentFile=/opt/containers/config/%p/papra.env
-EnvironmentFile=/opt/containers/secrets/%p.env
+EnvironmentFile=/var/lib/homelab/environment/%p/papra.env
+EnvironmentFile=/var/lib/homelab/apps/%p/config/app.env
+EnvironmentFile=/var/lib/homelab/secrets/%p.env
 
 Label="traefik.enable=true"
 
@@ -30,8 +31,6 @@ RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=30
 
-ExecStartPre=mkdir -p /opt/containers/data/%p/data
-ExecStartPre=mkdir -p /opt/containers/data/%p/ingestion
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=homelab.target

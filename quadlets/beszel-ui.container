@@ -11,7 +11,7 @@ AutoUpdate=registry
 
 Pod=beszel.pod
 
-Volume=/opt/containers/data/beszel/data:/beszel_data:Z,idmap
+Volume=/var/lib/homelab/apps/beszel-ui/data:/beszel_data:Z,idmap
 
 Label="traefik.enable=true"
 Label="traefik.http.services.%p.loadbalancer.server.port=8090"
@@ -25,4 +25,6 @@ RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=30
 
-ExecStartPre=mkdir -p /opt/containers/data/beszel/data
+
+[Install]
+WantedBy=homelab.target
