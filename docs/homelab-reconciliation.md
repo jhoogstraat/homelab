@@ -30,11 +30,11 @@ Choose the configuration method per application and setting. Use an existing UI 
 
 | Application or setting | Simplest supported method |
 | --- | --- |
-| AdGuard, Beszel hub, wg-easy; Grafana dashboards, Vaultwarden admin settings, Papra documents | Existing application UI, with its state persisted and backed up |
+| AdGuard, Beszel hub, Vaultwarden admin settings, Papra documents | Existing application UI, with its state persisted and backed up |
 | CouchDB runtime configuration | Fauxton/configuration API, persisted in writable `local.d`; native INI files remain available |
 | Glance dashboard | Edit native `glance.yml` on the device; Glance reloads valid file changes |
 | Home Assistant | UI for supported integrations/settings; native YAML for settings requiring files |
-| Grafana server options and Papra instance options | Documented `GF_*`/Papra environment variables through local `app.env`; restart the affected container |
+| Papra instance options | Documented Papra environment variables through local `app.env`; restart the affected container |
 | Traefik and registry hosting | Native static configuration/environment and Quadlet routing/mounts in Git |
 | Cloudflare tunnel settings | Cloudflare dashboard; connector credentials remain protected on the device |
 | Custom homepage | Application source for compiled content; documented environment for runtime connections |
@@ -43,7 +43,7 @@ Choose the configuration method per application and setting. Use an existing UI 
 | Owner | Examples | Change mechanism |
 | --- | --- | --- |
 | Git / host image | Images and tags, networks, ports, proxy routes/TLS provider, hardware, deployment URLs, SSH/firewall policy, encrypted connection secrets | PR, CI, bootc update |
-| Seed on first install | AdGuard YAML, HA YAML, Glance dashboard, CouchDB `zz-local.ini`, Grafana/Papra `app.env` | Copied only if absent |
+| Seed on first install | AdGuard YAML, HA YAML, Glance dashboard, CouchDB `zz-local.ini`, Papra `app.env` | Copied only if absent |
 | Device / application | Users, dashboards, workflows, documents, peers, integrations, pairing keys, all databases | App UI/API, or local files when the app has no editor |
 | Device / operator | age key, S3 endpoint/credentials, restic password, optional registry authentication and local enablement overrides | Root-only local provisioning; no image rebuild |
 

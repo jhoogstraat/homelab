@@ -20,7 +20,7 @@ SOURCE = Path(os.environ.get("HOMELAB_SOURCE", "/usr/share/homelab"))
 QUADLETS = Path(os.environ.get("HOMELAB_QUADLETS", "/usr/share/containers/systemd"))
 LEGACY_QUADLETS = Path(os.environ.get("HOMELAB_LEGACY_QUADLETS", "/etc/containers/systemd"))
 RUN = Path(os.environ.get("HOMELAB_RUN", "/run/homelab"))
-RETIRED = ("immobot", "onedev", "n8n")
+RETIRED = ("immobot", "onedev", "n8n", "grafana", "wg-easy")
 
 
 def command(*args, **kwargs):
@@ -266,12 +266,11 @@ def migrate(data, config, secrets):
                     command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{old_config}/", f"{target / 'config'}/")
                 if name == "papra" and (data / "papra/ingestion").exists():
                     command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{data / 'papra/ingestion'}/", f"{target / 'ingestion'}/")
-                if name in ("papra", "grafana") and (old_config / f"{name}.env").exists():
-                    content = (old_config / f"{name}.env").read_text()
-                    if name == "papra":
-                        content = "\n".join(line for line in content.splitlines() if line.startswith(
-                            ("DOCUMENTS_OCR_LANGUAGES=", "DOCUMENT_STORAGE_MAX_UPLOAD_SIZE=",
-                             "INGESTION_FOLDER_IS_ENABLED="))) + "\n"
+                if name == "papra" and (old_config / "papra.env").exists():
+                    content = (old_config / "papra.env").read_text()
+                    content = "\n".join(line for line in content.splitlines() if line.startswith(
+                        ("DOCUMENTS_OCR_LANGUAGES=", "DOCUMENT_STORAGE_MAX_UPLOAD_SIZE=",
+                         "INGESTION_FOLDER_IS_ENABLED="))) + "\n"
                     atomic_file(target / "config/app.env", content.encode())
             for app in RETIRED:
                 retired = staged / "_retired" / app
