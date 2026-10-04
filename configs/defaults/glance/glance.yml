@@ -176,10 +176,6 @@ pages:
                 url: https://papra.hoogstraat.de
                 check-url: http://papra:1221
                 icon: di:papra
-              - title: Grafana
-                url: https://grafana.hoogstraat.de
-                check-url: http://grafana:3000
-                icon: di:grafana
 
           - type: monitor
             cache: 1m
@@ -197,10 +193,6 @@ pages:
                 url: https://beszel.hoogstraat.de
                 check-url: http://beszel:8090
                 icon: di:beszel
-              - title: Wireguard
-                url: https://wg.hoogstraat.de
-                check-url: http://wg-easy:51821
-                icon: di:wireguard
 
 # Add more pages here:
 # - name: Your page name

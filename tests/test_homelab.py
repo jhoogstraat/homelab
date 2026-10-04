@@ -167,7 +167,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(self.calls, [("systemctl", "start", "glance.service")])
 
     def test_retired_app_is_quiesced_when_it_still_runs(self):
-        for name in ("immobot", "onedev", "n8n"):
+        for name in homelab.RETIRED:
             with self.subTest(app=name):
                 self.calls.clear()
                 def retired_active(args, **kwargs):
@@ -188,7 +188,7 @@ class LifecycleTests(unittest.TestCase):
         legacy = Path(self.directory.name) / "legacy"
         legacy.mkdir()
         (legacy / "glance.container").write_text("old deployment")
-        for name in ("immobot", "onedev", "n8n"):
+        for name in homelab.RETIRED:
             (legacy / (name + ".container")).write_text("old " + name)
         (legacy / "other.container").write_text("unrelated")
         (self.state / "apps/glance").mkdir()
@@ -196,7 +196,7 @@ class LifecycleTests(unittest.TestCase):
             homelab.retire_legacy()
         self.assertEqual((legacy / "other.container").read_text(), "unrelated")
         self.assertFalse((legacy / "glance.container").exists())
-        for name in ("immobot", "onedev", "n8n"):
+        for name in homelab.RETIRED:
             self.assertFalse((legacy / (name + ".container")).exists())
             self.assertEqual((self.state / "recovery/legacy-quadlets" / (name + ".container")).read_text(), "old " + name)
         self.assertNotIn(("systemctl", "start", "glance.service"), self.calls)
@@ -207,7 +207,9 @@ class LifecycleTests(unittest.TestCase):
         old_data, old_config, old_secrets = [legacy / name for name in ("data", "config", "secrets")]
         for directory in (old_data / "homeassistant", old_data / "beszel/data", old_data / "beszel/agent",
                           old_data / "papra/data", old_data / "papra/ingestion", old_config / "glance", old_secrets,
-                          old_data / "onedev/site", old_data / "n8n", old_config / "onedev", old_config / "n8n"):
+                          old_data / "onedev/site", old_data / "n8n", old_config / "onedev", old_config / "n8n",
+                          old_data / "grafana", old_config / "grafana",
+                          old_data / "wg-easy", old_config / "wg-easy"):
             directory.mkdir(parents=True)
             (directory / ".state").write_bytes(b"preserve hidden state")
         (old_config / "glance/glance.yml").write_text("device preference")
@@ -228,7 +230,7 @@ class LifecycleTests(unittest.TestCase):
             if tuple(args[:2]) == ("podman", "save"):
                 Path(args[args.index("--output") + 1]).write_bytes(b"archived writable layer")
             if args[0] == "systemctl" and "is-active" in args:
-                if args[-1] in ("n8n.service", "onedev.service"):
+                if args[-1] in ("n8n.service", "onedev.service", "grafana.service", "wg-easy.service"):
                     return subprocess.CompletedProcess(args, 0)
                 return self.active(args, **kwargs)
             self.calls.append(tuple(args))
@@ -246,8 +248,8 @@ class LifecycleTests(unittest.TestCase):
         archive = self.state / "apps/_retired/immobot/legacy-image.tar"
         self.assertEqual(archive.read_bytes(), b"archived writable layer")
         self.assertEqual(archive.stat().st_mode & 0o777, 0o600)
-        self.assertLess(self.calls.index(("podman", "commit", "--pause=true", "--quiet", "immobot")), self.calls.index(("systemctl", "stop", "glance.service", "n8n.service", "onedev.service")))
-        for app in ("onedev", "n8n"):
+        self.assertLess(self.calls.index(("podman", "commit", "--pause=true", "--quiet", "immobot")), self.calls.index(("systemctl", "stop", "glance.service", "grafana.service", "n8n.service", "onedev.service", "wg-easy.service")))
+        for app in ("onedev", "n8n", "grafana", "wg-easy"):
             retired = self.state / "apps/_retired" / app
             self.assertEqual((retired / "config/.state").read_bytes(), b"preserve hidden state")
             self.assertEqual(retired.stat().st_mode & 0o777, 0o700)
