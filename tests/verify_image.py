@@ -5,6 +5,11 @@ import sys
 from pathlib import Path
 
 image = sys.argv[1]
+for flag in ([], ["-g"]):
+    ranges = subprocess.check_output(["podman", "run", "--rm", image,
+                                      "getsubids", *flag, "containers"], text=True)
+    assert any(line.split()[2:] == ["2147483647", "2147483648"]
+               for line in ranges.splitlines()), ranges
 result = subprocess.run(["podman", "run", "--rm", image,
                          "/usr/lib/systemd/system-generators/podman-system-generator", "--dryrun"],
                         check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

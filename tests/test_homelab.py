@@ -87,6 +87,20 @@ class LifecycleTests(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 homelab.prepare()
         self.assertEqual((self.state / "secrets").readlink(), previous)
+
+    @unittest.skipUnless(os.geteuid() == 0, "Root required for container file ownership")
+    def test_couchdb_deployment_config_keeps_service_ownership_after_rotation(self):
+        source = self.source / "environment/couchdb/10-initalize-secure.ini"
+        source.parent.mkdir()
+        source.write_text("[couchdb]\nsingle_node = true\n")
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+            source.write_text("[couchdb]\nsingle_node = true\nmax_document_size = 50000000\n")
+            homelab.prepare()
+        deployed = self.state / source.relative_to(self.source)
+        self.assertEqual(deployed.read_text(), source.read_text())
+        self.assertEqual((deployed.stat().st_uid, deployed.stat().st_gid), (5984, 5984))
+        self.assertEqual(deployed.stat().st_mode & 0o777, 0o644)
         self.assertEqual((self.state / "secrets/glance.env").read_text(), "TOKEN=secret\n")
 
     def test_unreachable_repository_never_stops_applications(self):
