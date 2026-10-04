@@ -134,13 +134,16 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(self.calls, [("systemctl", "start", "glance.service")])
 
     def test_retired_app_is_quiesced_when_it_still_runs(self):
-        def retired_active(args, **kwargs):
-            return subprocess.CompletedProcess(args, 0 if args[-1] == "immobot.service" else 3)
-        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", retired_active):
-            homelab.pause()
-            homelab.resume()
-        self.assertEqual(self.calls, [("systemctl", "stop", "immobot.service"),
-                                     ("systemctl", "start", "immobot.service")])
+        for name in ("immobot", "onedev", "n8n"):
+            with self.subTest(app=name):
+                self.calls.clear()
+                def retired_active(args, **kwargs):
+                    return subprocess.CompletedProcess(args, 0 if args[-1] == name + ".service" else 3)
+                with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", retired_active):
+                    homelab.pause()
+                    homelab.resume()
+                self.assertEqual(self.calls, [("systemctl", "stop", name + ".service"),
+                                             ("systemctl", "start", name + ".service")])
 
 
     def test_no_autoupdate_records_does_not_interrupt_apps(self):
@@ -152,14 +155,17 @@ class LifecycleTests(unittest.TestCase):
         legacy = Path(self.directory.name) / "legacy"
         legacy.mkdir()
         (legacy / "glance.container").write_text("old deployment")
-        (legacy / "immobot.container").write_text("old bot")
+        for name in ("immobot", "onedev", "n8n"):
+            (legacy / (name + ".container")).write_text("old " + name)
         (legacy / "other.container").write_text("unrelated")
         (self.state / "apps/glance").mkdir()
         with patch.object(homelab, "LEGACY_QUADLETS", legacy), patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
             homelab.retire_legacy()
         self.assertEqual((legacy / "other.container").read_text(), "unrelated")
         self.assertFalse((legacy / "glance.container").exists())
-        self.assertEqual((self.state / "recovery/legacy-quadlets/immobot.container").read_text(), "old bot")
+        for name in ("immobot", "onedev", "n8n"):
+            self.assertFalse((legacy / (name + ".container")).exists())
+            self.assertEqual((self.state / "recovery/legacy-quadlets" / (name + ".container")).read_text(), "old " + name)
         self.assertNotIn(("systemctl", "start", "glance.service"), self.calls)
 
     @unittest.skipUnless(sys.platform == "linux" and shutil.which("rsync"), "Linux rsync required for migration")
@@ -167,11 +173,13 @@ class LifecycleTests(unittest.TestCase):
         legacy = Path(self.directory.name) / "legacy"
         old_data, old_config, old_secrets = [legacy / name for name in ("data", "config", "secrets")]
         for directory in (old_data / "homeassistant", old_data / "beszel/data", old_data / "beszel/agent",
-                          old_data / "papra/data", old_data / "papra/ingestion", old_config / "glance", old_secrets):
+                          old_data / "papra/data", old_data / "papra/ingestion", old_config / "glance", old_secrets,
+                          old_data / "onedev/site", old_data / "n8n", old_config / "onedev", old_config / "n8n"):
             directory.mkdir(parents=True)
             (directory / ".state").write_bytes(b"preserve hidden state")
         (old_config / "glance/glance.yml").write_text("device preference")
         (old_data / "homeassistant/configuration.yaml").write_text("existing HA config")
+        (old_data / "n8n/config").write_text('{"encryptionKey":"test-key"}')
         for name in ("homeassistant", "beszel-ui", "beszel-agent", "papra"):
             (self.quadlets / (name + ".container")).write_text("[Container]\n")
         real_run = subprocess.run
@@ -187,6 +195,8 @@ class LifecycleTests(unittest.TestCase):
             if tuple(args[:2]) == ("podman", "save"):
                 Path(args[args.index("--output") + 1]).write_bytes(b"archived writable layer")
             if args[0] == "systemctl" and "is-active" in args:
+                if args[-1] in ("n8n.service", "onedev.service"):
+                    return subprocess.CompletedProcess(args, 0)
                 return self.active(args, **kwargs)
             self.calls.append(tuple(args))
             return subprocess.CompletedProcess(args, 0)
@@ -203,7 +213,16 @@ class LifecycleTests(unittest.TestCase):
         archive = self.state / "apps/_retired/immobot/legacy-image.tar"
         self.assertEqual(archive.read_bytes(), b"archived writable layer")
         self.assertEqual(archive.stat().st_mode & 0o777, 0o600)
-        self.assertLess(self.calls.index(("podman", "commit", "--pause=true", "--quiet", "immobot")), self.calls.index(("systemctl", "stop", "glance.service")))
+        self.assertLess(self.calls.index(("podman", "commit", "--pause=true", "--quiet", "immobot")), self.calls.index(("systemctl", "stop", "glance.service", "n8n.service", "onedev.service")))
+        for app in ("onedev", "n8n"):
+            retired = self.state / "apps/_retired" / app
+            self.assertEqual((retired / "config/.state").read_bytes(), b"preserve hidden state")
+            self.assertEqual(retired.stat().st_mode & 0o777, 0o700)
+            self.assertFalse((self.state / "apps" / app).exists())
+        self.assertEqual((self.state / "apps/_retired/onedev/data/site/.state").read_bytes(), b"preserve hidden state")
+        self.assertEqual((self.state / "apps/_retired/n8n/data/config").read_text(), '{"encryptionKey":"test-key"}')
+        self.assertTrue((old_data / "onedev/site/.state").exists())
+        self.assertTrue((old_data / "n8n/config").exists())
         with self.assertRaises(RuntimeError):
             homelab.migrate(old_data, old_config, old_secrets)
 

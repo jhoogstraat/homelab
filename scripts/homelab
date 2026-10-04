@@ -20,6 +20,7 @@ SOURCE = Path(os.environ.get("HOMELAB_SOURCE", "/usr/share/homelab"))
 QUADLETS = Path(os.environ.get("HOMELAB_QUADLETS", "/usr/share/containers/systemd"))
 LEGACY_QUADLETS = Path(os.environ.get("HOMELAB_LEGACY_QUADLETS", "/etc/containers/systemd"))
 RUN = Path(os.environ.get("HOMELAB_RUN", "/run/homelab"))
+RETIRED = ("immobot", "onedev", "n8n")
 
 
 def command(*args, **kwargs):
@@ -127,8 +128,8 @@ def prepare():
 def units():
     containers = [f"{p.stem}.service" for p in QUADLETS.glob("*.container")]
     pods = [f"{p.stem}-pod.service" for p in QUADLETS.glob("*.pod")]
-    # Include the retired app while migrating, so its old writer is quiesced.
-    return sorted(containers + pods + ["immobot.service"])
+    # Include retired apps while migrating, so their old writers are quiesced.
+    return sorted(containers + pods + [f"{name}.service" for name in RETIRED])
 
 
 def resume():
@@ -253,7 +254,7 @@ def migrate(data, config, secrets):
                 if source.is_dir():
                     command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{source}/", f"{old_target}/")
                 old_config = config / name
-                if old_config.is_dir() and name in ("adguard", "glance", "immobot", "couchdb"):
+                if old_config.is_dir() and name in ("adguard", "glance", "couchdb"):
                     command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{old_config}/", f"{target / 'config'}/")
                 if name == "papra" and (data / "papra/ingestion").exists():
                     command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{data / 'papra/ingestion'}/", f"{target / 'ingestion'}/")
@@ -264,13 +265,14 @@ def migrate(data, config, secrets):
                             ("DOCUMENTS_OCR_LANGUAGES=", "DOCUMENT_STORAGE_MAX_UPLOAD_SIZE=",
                              "INGESTION_FOLDER_IS_ENABLED="))) + "\n"
                     atomic_file(target / "config/app.env", content.encode())
-            retired = staged / "_retired/immobot"
-            retired.mkdir(parents=True, mode=0o700)
-            for source, name in ((data / "immobot", "data"), (config / "immobot", "config")):
-                if source.is_dir():
-                    command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{source}/", f"{retired / name}/")
+            for app in RETIRED:
+                retired = staged / "_retired" / app
+                retired.mkdir(parents=True, mode=0o700)
+                for source, name in ((data / app, "data"), (config / app, "config")):
+                    if source.is_dir():
+                        command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{source}/", f"{retired / name}/")
             if retired_image.exists():
-                retired_image.replace(retired / "legacy-image.tar")
+                retired_image.replace(staged / "_retired/immobot/legacy-image.tar")
             if destination.exists():
                 destination.rmdir()
             staged.rename(destination)
@@ -291,7 +293,7 @@ def retire_legacy():
     if not (ROOT / "apps").is_dir() or not any((ROOT / "apps").iterdir()):
         raise RuntimeError("Migrate application state before retiring legacy units")
     known = [p.name for p in QUADLETS.iterdir() if p.is_file()]
-    known.append("immobot.container")
+    known.extend(f"{name}.container" for name in RETIRED)
     existing = [LEGACY_QUADLETS / name for name in known if (LEGACY_QUADLETS / name).exists()]
     archive = ROOT / "recovery/legacy-quadlets"
     if archive.exists():

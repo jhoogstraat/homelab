@@ -10,7 +10,7 @@ A Raspberry Pi 4 running a Fedora bootc host and Podman Quadlets. Git describes 
 
 Read [the architecture and ownership boundaries](docs/homelab-reconciliation.md), [migration, backup and recovery instructions](docs/operations.md), and the application inventories: [stateful services](docs/application-storage.md), [infrastructure and home automation](docs/application-storage-other.md).
 
-Immobot is retired. Its existing state is archived during migration. Home Assistant, homepage, Matter and OTBR remain optional, matching the previous inventory.
+Immobot, OneDev and n8n are retired. Their existing state is archived during migration. All other apps are retained; Home Assistant, homepage, Matter and OTBR remain optional, matching the previous inventory.
 
 ## Repository
 
