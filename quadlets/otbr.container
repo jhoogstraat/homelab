@@ -4,7 +4,7 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=otbr
-Image=docker.io/denniswitt/homeassistant-otbr:3
+Image=ghcr.io/wittdennis/homeassistant-otbr:3
 AutoUpdate=registry
 
 Network=host
@@ -12,7 +12,7 @@ Network=host
 AddCapability=NET_ADMIN
 AddCapability=NET_RAW
 
-AddDevice=/dev/ttyUSB0
+AddDevice=/dev/serial/by-id/usb-Itead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_V2_56fc5dba521fef11a58a4ad0639e525b-if00-port0:/dev/ttyUSB0
 AddDevice=/dev/net/tun
 
 Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
