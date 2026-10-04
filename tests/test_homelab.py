@@ -95,6 +95,25 @@ class LifecycleTests(unittest.TestCase):
                 homelab.backup()
         self.assertFalse((self.run / "paused-units.json").exists())
 
+    def test_recovery_inventory_ignores_image_less_pod_infrastructure(self):
+        def inventory(*args, **kwargs):
+            result = self.fake_command(*args, **kwargs)
+            if args[:2] == ("podman", "ps"):
+                result.stdout = json.dumps([
+                    {"Names": ["beszel-infra"], "ImageID": "", "Image": "", "IsInfra": True},
+                    {"Names": ["beszel-ui"], "ImageID": "sha256:app", "Image": "beszel:latest", "IsInfra": False},
+                ]).encode()
+            elif args[:3] == ("podman", "image", "inspect"):
+                self.assertEqual(args[3], "sha256:app")
+                result.stdout = json.dumps([{"Id": "sha256:app", "RepoDigests": ["beszel@sha256:app"]}]).encode()
+            return result
+        with patch.object(homelab, "command", inventory):
+            homelab.capture_recovery(["beszel-pod.service", "beszel-ui.service"])
+        records = json.loads((self.state / "recovery/images.json").read_text())
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["names"], ["beszel-ui"])
+        self.assertEqual(records[0]["digests"], ["beszel@sha256:app"])
+
     def test_backup_failure_restarts_only_previously_running_apps(self):
         def fail_upload(*args, **kwargs):
             result = self.fake_command(*args, **kwargs)
