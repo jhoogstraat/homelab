@@ -44,7 +44,12 @@ No S3 endpoint is configured yet. Apps can start without one; automatic backups/
 
 Create a dedicated private bucket/prefix and scoped S3 credentials. Restic needs ListBucket plus GetObject, PutObject and DeleteObject for backup/pruning. Use HTTPS with normal certificate validation and the provider's required region. With a private CA, provide the CA through restic's supported certificate configuration; do not disable TLS verification. Preserve the remote S3 server's own data independently.
 
-Keep the maintenance timers stopped until the first successful backup and restore drill; after cutover stop the newly enabled timers again while completing acceptance.
+Keep the maintenance timers stopped until the first successful backup and restore drill; after cutover stop the newly enabled timers again while completing acceptance. On this Pi they are persistently masked to retain this hold across reboots. After the S3 backup and restore drill pass, release the hold with:
+
+```sh
+sudo systemctl unmask homelab-backup.timer podman-auto-update.timer bootc-fetch-apply-updates.timer
+sudo systemctl enable --now homelab-backup.timer podman-auto-update.timer bootc-fetch-apply-updates.timer
+```
 
 Copy `configs/backup.env.example` locally to `/var/lib/homelab/credentials/backup.env`, set actual endpoint, bucket/prefix, region and access keys, then set root:root 0600. Store a high-entropy restic password in `/var/lib/homelab/credentials/restic-password` with the same permissions. The example is a template, not a working destination. The repository password is required for restore and cannot be recovered merely from S3 credentials.
 

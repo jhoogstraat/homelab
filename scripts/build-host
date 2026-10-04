@@ -6,9 +6,18 @@ cat > /usr/lib/sysusers.d/homelab-users.conf <<-'EOT'
 u jh 1000 "Joshua" /var/empty /bin/zsh
 m jh wheel
 u cockpit 4000 "Rootless unprivileged peasant with password to login to cockpit" /var/empty /bin/bash
+u containers - "Podman user namespace allocation" /var/empty /usr/sbin/nologin
 EOT
 
 systemd-sysusers /usr/lib/sysusers.d/homelab-users.conf
+# libsubid 4.20 resolves range owners through NSS, including rootful UserNS=auto.
+for file in /etc/subuid /etc/subgid; do
+    if ! grep -q '^containers:' "$file"; then
+        printf 'containers:2147483647:2147483648\n' >> "$file"
+    fi
+done
+getsubids containers
+getsubids -g containers
 usermod --lock root
 install -d -m 0755 /usr/share/homelab/ssh
 printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/wheel-nopasswd

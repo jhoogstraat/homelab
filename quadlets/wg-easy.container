@@ -14,6 +14,10 @@ PublishPort=51820:51820/udp
 
 Volume=/var/lib/homelab/apps/%p/data:/etc/wireguard:Z
 
+Label="traefik.enable=true"
+Label="traefik.http.services.%p.loadbalancer.server.port=51821"
+Label="subdomain=wg"
+
 AddCapability=NET_ADMIN
 AddCapability=SYS_MODULE
 AddCapability=NET_RAW

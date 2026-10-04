@@ -73,6 +73,11 @@ def prepare():
 
     # Git owns environment files; app defaults are copied only when absent.
     copy_files(SOURCE / "environment", ROOT / "environment")
+    # CouchDB's entrypoint chowns files before dropping to UID 5984. Give the
+    # read-only deployment file that ownership so initialization can skip it.
+    couchdb_defaults = ROOT / "environment/couchdb/10-initalize-secure.ini"
+    if couchdb_defaults.exists():
+        os.chown(couchdb_defaults, 5984, 5984)
     for path in (ROOT / "environment").rglob("*"):
         if path.is_file() and not (SOURCE / "environment" / path.relative_to(ROOT / "environment")).exists():
             path.unlink()
