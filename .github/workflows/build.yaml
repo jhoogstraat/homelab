@@ -42,7 +42,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y podman python3 restic rsync
 
       - name: Verify initialization and maintenance
-        run: python3 -m unittest discover -s tests -v
+        run: sudo python3 -m unittest discover -s tests -v
 
       - name: Log in to the Container registry
         if: github.event_name != 'pull_request'
