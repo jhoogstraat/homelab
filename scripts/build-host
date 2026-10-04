@@ -1,0 +1,74 @@
+#!/bin/bash
+# Executed only while building the host image.
+set -xeuo pipefail
+
+cat > /usr/lib/sysusers.d/homelab-users.conf <<-'EOT'
+u jh 1000 "Joshua" /var/empty /bin/zsh
+m jh wheel
+u cockpit 4000 "Rootless unprivileged peasant with password to login to cockpit" /var/empty /bin/bash
+EOT
+
+systemd-sysusers /usr/lib/sysusers.d/homelab-users.conf
+usermod --lock root
+install -d -m 0755 /usr/share/homelab/ssh
+printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/wheel-nopasswd
+chmod 0440 /etc/sudoers.d/wheel-nopasswd
+rm -rf /var/home/jh /var/home/cockpit /tmp/* /var/tmp/*
+
+install -d -m 0755 /etc/ssh/sshd_config.d
+cat > /etc/ssh/sshd_config.d/30-homelab.conf <<-'EOT'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+PubkeyAuthentication yes
+Match User jh
+    AuthorizedKeysFile /usr/share/homelab/ssh/jh.keys
+EOT
+
+echo 'pi1.local' > /etc/hostname
+ln -snf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+install -d -m 0755 /etc/containers/registries.conf.d /etc/systemd/resolved.conf.d
+
+cat > /etc/containers/registries.conf.d/local_registry.conf <<-'EOT'
+[[registry]]
+location = "localhost:5000"
+insecure = true
+EOT
+
+cat > /etc/systemd/resolved.conf.d/custom-dns.conf <<-'EOT'
+[Resolve]
+DNS=1.1.1.1 8.8.8.8
+DNSStubListener=no
+EOT
+
+# https://github.com/matter-js/matterjs-server/main/docs/os_requirements.md
+cat > /etc/sysctl.d/99-matter.conf <<-'EOT'
+net.ipv6.conf.end0.forwarding=0
+net.netfilter.nf_conntrack_udp_timeout_stream=3600
+EOT
+
+cat > /usr/lib/tmpfiles.d/homelab-containers.conf <<-'EOT'
+d /var/lib/homelab 0755 root root -
+d /var/lib/homelab/credentials 0700 root root -
+d /var/cache/restic 0700 root root -
+d /var/lib/PackageKit 0755 root root -
+d /var/lib/bluetooth 0700 root root -
+d /var/lib/bluetooth/mesh 0755 root root -
+d /var/lib/iscsi 0755 root root -
+d /var/lib/iscsi/ifaces 0755 root root -
+d /var/lib/iscsi/isns 0755 root root -
+d /var/lib/iscsi/nodes 0755 root root -
+d /var/lib/iscsi/send_targets 0755 root root -
+d /var/lib/iscsi/slp 0755 root root -
+d /var/lib/iscsi/static 0755 root root -
+EOT
+
+systemctl enable bluetooth.service cockpit.socket firewalld.service NetworkManager-wait-online.service podman-auto-update.timer podman.socket systemd-resolved.service homelab.target homelab-backup.timer bootc-fetch-apply-updates.timer
+firewall-offline-cmd --zone=public --add-service=cockpit
+firewall-offline-cmd --zone=public --add-service=https
+firewall-offline-cmd --zone=public --add-service=dns
+firewall-offline-cmd --zone=public --add-port=21063-21064/tcp
+firewall-offline-cmd --zone=public --add-port=51820/udp
+firewall-offline-cmd --zone=public --remove-port=51821/tcp || true
+rm -rf /run/cockpit /run/selinux-policy /var/lib/dnf /tmp/* /var/tmp/*
+rm -f /usr/libexec/homelab-build-host

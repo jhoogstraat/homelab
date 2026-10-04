@@ -22,6 +22,7 @@ Immobot, OneDev and n8n are retired. Their existing state is archived during mig
 | `configs/defaults/` | Initial application settings; never overwrite device edits |
 | `secrets/*.enc.env` | Encrypted container environment files |
 | `scripts/homelab` | Initialization, cold backup, guarded updates and legacy migration |
+| `scripts/build-host` | Host setup during image build, using Bash syntax supported by the CI builder |
 | `systemd/` | Host timers and shared application lifecycle |
 | `tests/` | State preservation and failure recovery checks |
 

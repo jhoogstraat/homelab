@@ -1,5 +1,5 @@
 FROM ghcr.io/getsops/sops:v3.13.3 AS sops
-FROM quay.io/fedora/fedora-bootc:45
+FROM quay.io/fedora/fedora-bootc:44
 COPY --from=sops /usr/local/bin/sops /usr/bin/sops
 
 LABEL containers.bootc=1
@@ -8,85 +8,15 @@ STOPSIGNAL SIGRTMIN+3
 CMD ["/sbin/init"]
 SHELL ["/bin/bash", "-xeuo", "pipefail", "-c"]
 
-RUN <<-'EOF'
-	dnf -y install \
-		bind-utils bluez btop cockpit cockpit-podman fd-find git htop ncurses \
-		neovim python3 restic ripgrep rsync tcpdump which wireguard-tools wireshark-cli zsh \
-		arm-image-installer bcm283x-firmware uboot-images-armv8 brcmfmac-firmware \
-		NetworkManager-wifi firewalld chrony
-	dnf clean all
-	rm -rf /var/cache/* /var/log/* /run/dnf /tmp/* /var/tmp/*
-EOF
-
-RUN <<-'EOF'
-	cat > /usr/lib/sysusers.d/homelab-users.conf <<-'EOT'
-	u jh 1000 "Joshua" /var/empty /bin/zsh
-	m jh wheel
-	u cockpit 4000 "Rootless unprivileged peasant with password to login to cockpit" /var/empty /bin/bash
-	EOT
-
-	systemd-sysusers /usr/lib/sysusers.d/homelab-users.conf
-	usermod --lock root
-	install -d -m 0755 /usr/share/homelab/ssh
-	printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/wheel-nopasswd
-	chmod 0440 /etc/sudoers.d/wheel-nopasswd
-	rm -rf /var/home/jh /var/home/cockpit /tmp/* /var/tmp/*
-EOF
+RUN dnf -y install \
+	bind-utils bluez btop cockpit cockpit-podman fd-find git htop ncurses \
+	neovim python3 restic ripgrep rsync tcpdump which wireguard-tools wireshark-cli zsh \
+	arm-image-installer bcm283x-firmware uboot-images-armv8 brcmfmac-firmware \
+	NetworkManager-wifi firewalld chrony \
+	&& dnf clean all \
+	&& rm -rf /var/cache/* /var/log/* /run/dnf /tmp/* /var/tmp/*
 
 COPY --chmod=0644 users/jh.pub /usr/share/homelab/ssh/jh.keys
-
-RUN <<-'EOF'
-	install -d -m 0755 /etc/ssh/sshd_config.d
-	cat > /etc/ssh/sshd_config.d/30-homelab.conf <<-'EOT'
-	PasswordAuthentication no
-	KbdInteractiveAuthentication no
-	PermitRootLogin no
-	PubkeyAuthentication yes
-	Match User jh
-	    AuthorizedKeysFile /usr/share/homelab/ssh/jh.keys
-	EOT
-EOF
-
-RUN <<-'EOF'
-	echo 'pi1.local' > /etc/hostname
-	ln -snf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
-	install -d -m 0755 /etc/containers/registries.conf.d /etc/systemd/resolved.conf.d
-
-	cat > /etc/containers/registries.conf.d/local_registry.conf <<-'EOT'
-	[[registry]]
-	location = "localhost:5000"
-	insecure = true
-	EOT
-
-	cat > /etc/systemd/resolved.conf.d/custom-dns.conf <<-'EOT'
-	[Resolve]
-	DNS=1.1.1.1 8.8.8.8
-	DNSStubListener=no
-	EOT
-
-	# https://github.com/matter-js/matterjs-server/main/docs/os_requirements.md
-	cat > /etc/sysctl.d/99-matter.conf <<-'EOT'
-	net.ipv6.conf.end0.forwarding=0
-	net.netfilter.nf_conntrack_udp_timeout_stream=3600
-	EOT
-EOF
-
-RUN <<-'EOF'
-	cat > /usr/lib/tmpfiles.d/homelab-containers.conf <<-'EOT'
-	d /var/lib/homelab 0755 root root -
-	d /var/lib/homelab/credentials 0700 root root -
-	d /var/cache/restic 0700 root root -
-	d /var/lib/bluetooth 0700 root root -
-	d /var/lib/bluetooth/mesh 0755 root root -
-	d /var/lib/iscsi 0755 root root -
-	d /var/lib/iscsi/ifaces 0755 root root -
-	d /var/lib/iscsi/isns 0755 root root -
-	d /var/lib/iscsi/nodes 0755 root root -
-	d /var/lib/iscsi/send_targets 0755 root root -
-	d /var/lib/iscsi/slp 0755 root root -
-	d /var/lib/iscsi/static 0755 root root -
-	EOT
-EOF
 
 COPY quadlets/ /usr/share/containers/systemd/
 COPY configs/environment/ /usr/share/homelab/environment/
@@ -95,15 +25,8 @@ COPY secrets/*.enc.env /usr/share/homelab/secrets/
 COPY --chmod=0755 scripts/homelab /usr/libexec/homelab
 COPY systemd/ /usr/lib/systemd/system/
 
-RUN <<-'EOF'
-	systemctl enable bluetooth.service cockpit.socket firewalld.service NetworkManager-wait-online.service podman-auto-update.timer podman.socket systemd-resolved.service homelab.target homelab-backup.timer bootc-fetch-apply-updates.timer
-	firewall-offline-cmd --zone=public --add-service=cockpit
-	firewall-offline-cmd --zone=public --add-service=https
-	firewall-offline-cmd --zone=public --add-service=dns
-	firewall-offline-cmd --zone=public --add-port=21063-21064/tcp
-	firewall-offline-cmd --zone=public --add-port=51820/udp
-	firewall-offline-cmd --zone=public --remove-port=51821/tcp || true
-	rm -rf /run/cockpit /run/selinux-policy /var/lib/dnf /tmp/* /var/tmp/*
-EOF
+# Keep heredocs inside Bash; Ubuntu's packaged builder does not parse them.
+COPY scripts/build-host /usr/libexec/homelab-build-host
+RUN ["/bin/bash", "/usr/libexec/homelab-build-host"]
 
 RUN bootc container lint
