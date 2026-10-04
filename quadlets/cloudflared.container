@@ -12,7 +12,7 @@ UserNS=auto
 
 Network=homelab.network:ip=10.90.0.9
 
-EnvironmentFile=/opt/containers/secrets/%p.env
+EnvironmentFile=/var/lib/homelab/secrets/%p.env
 
 Exec=tunnel --no-autoupdate run
 
@@ -25,4 +25,4 @@ TimeoutStartSec=300
 TimeoutStopSec=30
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=homelab.target

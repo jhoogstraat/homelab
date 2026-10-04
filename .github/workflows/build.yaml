@@ -10,10 +10,26 @@ on:
       - configs/**
       - quadlets/**
       - users/**
+      - scripts/**
+      - systemd/**
+      - secrets/*.enc.env
+      - .github/workflows/build.yaml
+  pull_request:
+    paths:
+      - Containerfile
+      - .containerignore
+      - configs/**
+      - quadlets/**
+      - users/**
+      - scripts/**
+      - systemd/**
+      - secrets/*.enc.env
+      - tests/**
+      - .github/workflows/build.yaml
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
@@ -23,12 +39,16 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install Podman
-        run: sudo apt-get update && sudo apt-get install -y podman
+        run: sudo apt-get update && sudo apt-get install -y podman python3 restic rsync
+
+      - name: Verify initialization and maintenance
+        run: python3 -m unittest discover -s tests -v
 
       - name: Log in to the Container registry
+        if: github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: printf '%s' "$GITHUB_TOKEN" | podman login ghcr.io --username '${{ github.actor }}' --password-stdin
+        run: printf '%s' "$GITHUB_TOKEN" | sudo podman login --authfile /tmp/homelab-registry-auth.json ghcr.io --username '${{ github.actor }}' --password-stdin
 
       - name: Generate image metadata
         id: meta
@@ -41,18 +61,20 @@ jobs:
 
       - name: Build image
         run: |
-          podman build \
+          sudo podman build \
             --arch arm64 \
-            --cap-add SYS_ADMIN \
-            --security-opt seccomp=unconfined \
             --format docker \
             --tag homelab-bootc:build \
             --file ./Containerfile \
             .
 
+      - name: Validate packaged Quadlets and systemd dependencies
+        run: sudo python3 tests/verify_image.py homelab-bootc:build
+
       - name: Push image tags
+        if: github.event_name != 'pull_request'
         run: |
           while IFS= read -r tag; do
-            podman tag homelab-bootc:build "$tag"
-            podman push "$tag"
+            sudo podman tag homelab-bootc:build "$tag"
+            sudo podman push --authfile /tmp/homelab-registry-auth.json "$tag"
           done <<< '${{ steps.meta.outputs.tags }}'

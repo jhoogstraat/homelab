@@ -4,7 +4,7 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=otbr
-Image=ghcr.io/denniswitt/homeassistant-otbr:3
+Image=docker.io/denniswitt/homeassistant-otbr:3
 AutoUpdate=registry
 
 Network=host
@@ -15,9 +15,9 @@ AddCapability=NET_RAW
 AddDevice=/dev/ttyUSB0
 AddDevice=/dev/net/tun
 
-Volume=/opt/containers/data/%p:/data:Z,idmap
+Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
 
-EnvironmentFile=/opt/containers/config/%p/%p.env
+EnvironmentFile=/var/lib/homelab/environment/%p/%p.env
 
 # When network=host, these cannot be set by the quadlet. See setup-host script:
 # https://raw.githubusercontent.com/openthread/ot-br-posix/refs/heads/main/etc/docker/border-router/setup-host
@@ -36,5 +36,3 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
-
-ExecStartPre=mkdir -p /opt/containers/data/%p

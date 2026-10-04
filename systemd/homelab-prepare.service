@@ -1,0 +1,10 @@
+[Unit]
+Description=Initialize persistent app configuration and decrypt host secrets
+After=systemd-tmpfiles-setup.service
+Before=homelab.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/homelab prepare
+UMask=0077

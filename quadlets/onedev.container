@@ -12,7 +12,7 @@ UserNS=auto
 
 Network=homelab.network:ip=10.90.0.15
 
-Volume=/opt/containers/data/%p:/opt/onedev:Z,idmap
+Volume=/var/lib/homelab/apps/%p/data:/opt/onedev:Z,idmap
 
 Label="traefik.enable=true"
 
@@ -24,7 +24,6 @@ RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=30
 
-ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=homelab.target

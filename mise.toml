@@ -1,5 +1,3 @@
 [tools]
 sops = "latest"
-uv = "latest"
-ansible = { version = "latest", uvx = "true", uvx_args = "--with-executables-from ansible-core,ansible-lint,ansible" }
 yamllint = "latest"

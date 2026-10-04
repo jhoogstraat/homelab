@@ -12,7 +12,7 @@ AutoUpdate=registry
 Network=homelab.network:ip=10.90.0.16
 PublishPort=51820:51820/udp
 
-Volume=/opt/containers/data/%p:/etc/wireguard:Z
+Volume=/var/lib/homelab/apps/%p/data:/etc/wireguard:Z
 
 AddCapability=NET_ADMIN
 AddCapability=SYS_MODULE
@@ -33,7 +33,6 @@ RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=100
 
-ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=homelab.target

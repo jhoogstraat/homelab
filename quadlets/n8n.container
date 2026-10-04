@@ -6,7 +6,7 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=n8n
-Image=docker.n8n.io/n8nio/n8n
+Image=docker.n8n.io/n8nio/n8n:latest
 AutoUpdate=registry
 UserNS=auto
 
@@ -14,9 +14,9 @@ Network=homelab.network:ip=10.90.0.12
 
 # User inside container is node (uid:gid 1000:1000), so map root to this uid/gid.
 # Because of UserNS=auto, the `podman run` process is run with a random uid/gid, which has to be taken into account (@).
-Volume=/opt/containers/data/%p:/home/node/.n8n:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+Volume=/var/lib/homelab/apps/%p/data:/home/node/.n8n:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
 
-EnvironmentFile=/opt/containers/config/%p/%p.env
+EnvironmentFile=/var/lib/homelab/environment/%p/%p.env
 
 Label="traefik.enable=true"
 
@@ -28,7 +28,6 @@ RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=30
 
-ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=homelab.target

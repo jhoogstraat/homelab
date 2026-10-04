@@ -15,11 +15,11 @@ Pod=beszel.pod
 # Podman socket connection with SELinux (https://github.com/containers/podman/discussions/9860#discussioncomment-545142)
 SecurityLabelDisable=true
 
-Volume=/opt/containers/data/beszel/agent:/var/lib/beszel-agent:Z,idmap
+Volume=/var/lib/homelab/apps/beszel-agent/data:/var/lib/beszel-agent:Z,idmap
 Volume=%t/podman/podman.sock:/var/run/docker.sock:idmap
 
 Environment=HUB_URL=http://localhost:8090
-EnvironmentFile=/opt/containers/secrets/beszel.env
+EnvironmentFile=/var/lib/homelab/secrets/beszel.env
 
 Timezone=local
 
@@ -29,4 +29,6 @@ RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=60
 
-ExecStartPre=mkdir -p /opt/containers/data/beszel/agent
+
+[Install]
+WantedBy=homelab.target

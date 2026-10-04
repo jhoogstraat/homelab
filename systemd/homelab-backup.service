@@ -1,0 +1,14 @@
+[Unit]
+Description=Consistent encrypted homelab backup to S3
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/var/lib/homelab/credentials/backup.env
+Environment=RESTIC_CACHE_DIR=/var/cache/restic
+ExecStart=/usr/libexec/homelab backup
+ExecStopPost=/usr/libexec/homelab resume
+TimeoutStartSec=2h
+TimeoutStopSec=10min
+UMask=0077

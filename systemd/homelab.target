@@ -1,0 +1,7 @@
+[Unit]
+Description=Homelab applications
+Requires=homelab-prepare.service
+After=homelab-prepare.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,345 @@
+#!/usr/bin/python3
+"""Local application initialization and consistent, encrypted restic backups."""
+
+import argparse
+import contextlib
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+
+ROOT = Path(os.environ.get("HOMELAB_ROOT", "/var/lib/homelab"))
+SOURCE = Path(os.environ.get("HOMELAB_SOURCE", "/usr/share/homelab"))
+QUADLETS = Path(os.environ.get("HOMELAB_QUADLETS", "/usr/share/containers/systemd"))
+LEGACY_QUADLETS = Path(os.environ.get("HOMELAB_LEGACY_QUADLETS", "/etc/containers/systemd"))
+RUN = Path(os.environ.get("HOMELAB_RUN", "/run/homelab"))
+
+
+def command(*args, **kwargs):
+    return subprocess.run(args, check=True, **kwargs)
+
+
+@contextlib.contextmanager
+def maintenance():
+    RUN.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (RUN / "maintenance.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+def atomic_file(path, content, mode=0o600):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
+        temporary = Path(output.name)
+        try:
+            output.write(content)
+            output.flush()
+            os.fsync(output.fileno())
+            temporary.chmod(mode)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def copy_files(source, destination, seed=False):
+    for path in sorted(source.rglob("*")):
+        relative = path.relative_to(source)
+        target = destination / relative
+        if path.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+        elif path.is_file() and (not seed or not target.exists()):
+            if not target.exists() or target.read_bytes() != path.read_bytes():
+                atomic_file(target, path.read_bytes(), path.stat().st_mode & 0o777)
+
+
+def prepare():
+    ROOT.mkdir(parents=True, exist_ok=True, mode=0o755)
+    credentials = ROOT / "credentials"
+    credentials.mkdir(exist_ok=True, mode=0o700)
+    credentials.chmod(0o700)
+    for quadlet in QUADLETS.glob("*.container"):
+        app = ROOT / "apps" / quadlet.stem
+        (app / "data").mkdir(parents=True, exist_ok=True)
+        (app / "config").mkdir(exist_ok=True)
+    (ROOT / "apps/papra/ingestion").mkdir(parents=True, exist_ok=True)
+
+    # Git owns environment files; app defaults are copied only when absent.
+    copy_files(SOURCE / "environment", ROOT / "environment")
+    for path in (ROOT / "environment").rglob("*"):
+        if path.is_file() and not (SOURCE / "environment" / path.relative_to(ROOT / "environment")).exists():
+            path.unlink()
+    key = credentials / "age.key"
+    if not key.is_file() or key.stat().st_mode & 0o077:
+        raise RuntimeError(f"Provision a root-only age key (0600) at {key}")
+    encrypted = sorted((SOURCE / "secrets").glob("*.enc.env"))
+    if not encrypted:
+        raise RuntimeError("No encrypted secrets in the deployed image")
+    digest = hashlib.sha256()
+    for path in encrypted:
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes())
+    generations = ROOT / "secret-sets"
+    generations.mkdir(exist_ok=True, mode=0o700)
+    generations.chmod(0o700)
+    generation = generations / digest.hexdigest()
+    if not generation.exists():
+        with tempfile.TemporaryDirectory(dir=generations) as directory:
+            staged = Path(directory)
+            env = dict(os.environ, SOPS_AGE_KEY_FILE=str(key))
+            for path in encrypted:
+                result = command("sops", "decrypt", "--input-type", "dotenv",
+                                 "--output-type", "dotenv", str(path),
+                                 env=env, stdout=subprocess.PIPE)
+                atomic_file(staged / path.name.replace(".enc.env", ".env"), result.stdout)
+            # TemporaryDirectory tolerates its directory having been renamed.
+            staged.rename(generation)
+    secrets = ROOT / "secrets"
+    if secrets.exists() and not secrets.is_symlink():
+        raise RuntimeError(f"Move the old secrets directory aside before preparing: {secrets}")
+    link = ROOT / ".secrets-next"
+    link.unlink(missing_ok=True)
+    link.symlink_to(generation.relative_to(ROOT))
+    link.replace(secrets)
+    for app in (SOURCE / "defaults").iterdir():
+        if app.is_dir() and app.name != "adguard":
+            copy_files(app, ROOT / "apps" / app.name / "config", seed=True)
+    adguard = ROOT / "apps/adguard/config/AdGuardHome.yaml"
+    if not adguard.exists():
+        result = command("sops", "decrypt", "--input-type", "dotenv", "--output-type", "json",
+                         str(SOURCE / "secrets/adguard.enc.env"),
+                         env=dict(os.environ, SOPS_AGE_KEY_FILE=str(key)), stdout=subprocess.PIPE)
+        initial = json.loads(result.stdout)
+        if not re.fullmatch(r"\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}", initial["ADGUARD_PASSWORD_HASH"]):
+            raise RuntimeError("AdGuard's initial password must be a bcrypt hash")
+        content = (SOURCE / "defaults/adguard/AdGuardHome.yaml").read_text()
+        for name in ("ADGUARD_USERNAME", "ADGUARD_PASSWORD_HASH"):
+            content = content.replace("${" + name + "}", json.dumps(initial[name]))
+        atomic_file(adguard, content.encode())
+
+
+def units():
+    containers = [f"{p.stem}.service" for p in QUADLETS.glob("*.container")]
+    pods = [f"{p.stem}-pod.service" for p in QUADLETS.glob("*.pod")]
+    # Include the retired app while migrating, so its old writer is quiesced.
+    return sorted(containers + pods + ["immobot.service"])
+
+
+def resume():
+    manifest = RUN / "paused-units.json"
+    if manifest.exists():
+        names = json.loads(manifest.read_text())
+        if names:
+            command("systemctl", "start", *names)
+        manifest.unlink()
+
+
+def pause():
+    if (RUN / "paused-units.json").exists():
+        raise RuntimeError("A previous backup needs recovery: run homelab resume")
+    active = [name for name in units() if subprocess.run(
+        ["systemctl", "is-active", "--quiet", name], check=False).returncode == 0]
+    # Record before stopping: ExecStopPost can recover even after SIGKILL.
+    atomic_file(RUN / "paused-units.json", json.dumps(active).encode())
+    if active:
+        command("systemctl", "stop", *active)
+    return active
+
+
+def capture_recovery(active):
+    recovery = ROOT / "recovery"
+    recovery.mkdir(parents=True, exist_ok=True, mode=0o700)
+    atomic_file(recovery / "active-units.json", json.dumps(active).encode())
+    status = command("bootc", "status", "--json", stdout=subprocess.PIPE)
+    atomic_file(recovery / "bootc.json", status.stdout)
+    # No container environment/credentials are emitted into the manifest.
+    running = command("podman", "ps", "--format", "json", stdout=subprocess.PIPE)
+    records = []
+    for container in json.loads(running.stdout):
+        image = command("podman", "image", "inspect", container["ImageID"],
+                        stdout=subprocess.PIPE)
+        details = json.loads(image.stdout)[0]
+        records.append({"names": container["Names"], "image": container["Image"],
+                        "digests": details.get("RepoDigests", []), "id": details["Id"]})
+    atomic_file(recovery / "images.json", json.dumps(records, indent=2).encode())
+
+
+def device_sources():
+    sources = []
+    for path in ("/var/lib/bluetooth", "/etc/NetworkManager/system-connections",
+                 "/etc/machine-id", "/etc/containers/systemd", "/etc/containers/auth.json",
+                 "/etc/ostree/auth.json", "/etc/fstab",
+                 "/etc/systemd/system/homelab-prepare.service.d"):
+        if Path(path).exists():
+            sources.append(path)
+    sources.extend(str(p) for p in Path("/etc/ssh").glob("ssh_host_*"))
+    return sources
+
+
+def backup():
+    # Reject unreachable/uninitialized repositories before interrupting apps.
+    command("restic", "snapshots", "--json", stdout=subprocess.DEVNULL)
+    if not (ROOT / "apps").is_dir():
+        raise RuntimeError("Application storage is absent; refusing an empty backup")
+    active = [name for name in units() if subprocess.run(
+        ["systemctl", "is-active", "--quiet", name], check=False).returncode == 0]
+    capture_recovery(active)
+    try:
+        pause()
+        sources = [str(ROOT / name) for name in ("apps", "credentials", "recovery")]
+        # Include device identity and Bluetooth pairings needed after reinstall.
+        sources.extend(device_sources())
+        command("restic", "backup", "--tag", "homelab", *sources)
+    finally:
+        resume()
+    # Retention happens with applications running and only after a full backup.
+    command("restic", "forget", "--tag", "homelab", "--group-by", "host,tags",
+            "--keep-daily", "7", "--keep-weekly", "4", "--keep-monthly", "12", "--prune")
+
+
+def update_apps():
+    pending = command("podman", "auto-update", "--dry-run", "--format", "json",
+                      stdout=subprocess.PIPE)
+    if not any(item.get("Updated") == "pending" for item in json.loads(pending.stdout.strip() or b"[]")):
+        return
+    # A full backup must succeed before potentially irreversible DB migrations.
+    backup()
+    command("podman", "auto-update")
+
+
+def migrate(data, config, secrets):
+    destination = ROOT / "apps"
+    if destination.exists() and any(destination.iterdir()):
+        raise RuntimeError("Destination apps directory is not empty; do not overwrite existing state")
+    data = data.resolve(strict=True)
+    config = config.resolve(strict=True)
+    ROOT.mkdir(parents=True, exist_ok=True)
+    RUN.mkdir(parents=True, exist_ok=True, mode=0o700)
+    completed = False
+    try:
+        # Quadlet's --rm deletes the legacy writable layer on stop. Capture it
+        # first with Podman's native paused commit, then archive that image.
+        retired_image = ROOT / "recovery/immobot-image.tar"
+        if subprocess.run(["podman", "container", "exists", "immobot"], check=False).returncode == 0:
+            retired_image.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            image = command("podman", "commit", "--pause=true", "--quiet", "immobot",
+                            stdout=subprocess.PIPE).stdout.decode().strip()
+            command("podman", "save", "--output", str(retired_image), image)
+            retired_image.chmod(0o600)
+        pause()
+        with tempfile.TemporaryDirectory(dir=ROOT, prefix=".migration-") as directory:
+            staged = Path(directory) / "apps"
+            staged.mkdir()
+            for quadlet in QUADLETS.glob("*.container"):
+                name = quadlet.stem
+                source = data / name
+                target = staged / name
+                target.mkdir()
+                old_target = target / "data"
+                if name == "homeassistant":
+                    old_target = target / "config"
+                elif name == "beszel-ui":
+                    source = data / "beszel/data"
+                elif name == "beszel-agent":
+                    source = data / "beszel/agent"
+                elif name == "papra":
+                    source = data / "papra/data"
+                if source.is_dir():
+                    command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{source}/", f"{old_target}/")
+                old_config = config / name
+                if old_config.is_dir() and name in ("adguard", "glance", "immobot", "couchdb"):
+                    command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{old_config}/", f"{target / 'config'}/")
+                if name == "papra" and (data / "papra/ingestion").exists():
+                    command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{data / 'papra/ingestion'}/", f"{target / 'ingestion'}/")
+                if name in ("papra", "grafana") and (old_config / f"{name}.env").exists():
+                    content = (old_config / f"{name}.env").read_text()
+                    if name == "papra":
+                        content = "\n".join(line for line in content.splitlines() if line.startswith(
+                            ("DOCUMENTS_OCR_LANGUAGES=", "DOCUMENT_STORAGE_MAX_UPLOAD_SIZE=",
+                             "INGESTION_FOLDER_IS_ENABLED="))) + "\n"
+                    atomic_file(target / "config/app.env", content.encode())
+            retired = staged / "_retired/immobot"
+            retired.mkdir(parents=True, mode=0o700)
+            for source, name in ((data / "immobot", "data"), (config / "immobot", "config")):
+                if source.is_dir():
+                    command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{source}/", f"{retired / name}/")
+            if retired_image.exists():
+                retired_image.replace(retired / "legacy-image.tar")
+            if destination.exists():
+                destination.rmdir()
+            staged.rename(destination)
+        if secrets.is_dir():
+            credentials = ROOT / "credentials"
+            credentials.mkdir(exist_ok=True, mode=0o700)
+            command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{secrets}/", f"{credentials / 'legacy-secrets'}/")
+        print(f"Copied legacy state to {destination}; original directories remain intact.")
+        print("Legacy apps remain stopped. Continue cutover, or run homelab resume to abort.")
+        completed = True
+    finally:
+        if not completed:
+            resume()
+
+
+def retire_legacy():
+    """Archive only repository-owned legacy overrides before switching images."""
+    if not (ROOT / "apps").is_dir() or not any((ROOT / "apps").iterdir()):
+        raise RuntimeError("Migrate application state before retiring legacy units")
+    known = [p.name for p in QUADLETS.iterdir() if p.is_file()]
+    known.append("immobot.container")
+    existing = [LEGACY_QUADLETS / name for name in known if (LEGACY_QUADLETS / name).exists()]
+    archive = ROOT / "recovery/legacy-quadlets"
+    if archive.exists():
+        raise RuntimeError("Legacy Quadlet archive already exists; inspect it before retrying")
+    archive.mkdir(parents=True, mode=0o700)
+    paused = RUN / "paused-units.json"
+    active = json.loads(paused.read_text()) if paused.exists() else pause()
+    atomic_file(ROOT / "recovery/cutover-active-units.json", json.dumps(active).encode())
+    for path in existing:
+        shutil.copy2(path, archive / path.name)
+    for path in existing:
+        path.unlink()
+    command("systemctl", "daemon-reload")
+    # These are deliberately left stopped until the new image is booted.
+    (RUN / "paused-units.json").unlink()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="action", required=True)
+    for name in ("prepare", "backup", "resume", "update-apps", "update-host", "retire-legacy"):
+        sub.add_parser(name)
+    migration = sub.add_parser("migrate")
+    migration.add_argument("--data", type=Path, default=Path("/opt/containers/data"))
+    migration.add_argument("--config", type=Path, default=Path("/opt/containers/config"))
+    migration.add_argument("--secrets", type=Path, default=Path("/opt/containers/secrets"))
+    args = parser.parse_args()
+    with maintenance():
+        if args.action == "resume":
+            resume()
+        elif args.action == "prepare":
+            prepare()
+        elif args.action == "backup":
+            backup()
+        elif args.action == "update-apps":
+            update_apps()
+        elif args.action == "update-host":
+            backup()
+            command("bootc", "upgrade", "--apply")
+        elif args.action == "migrate":
+            migrate(args.data, args.config, args.secrets)
+        elif args.action == "retire-legacy":
+            retire_legacy()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (RuntimeError, OSError, subprocess.CalledProcessError) as error:
+        print(f"homelab: {error}", file=sys.stderr)
+        sys.exit(1)

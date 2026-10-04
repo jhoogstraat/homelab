@@ -1,8 +1,6 @@
-FROM quay.io/fedora/fedora-bootc:45 AS builder
-RUN /usr/libexec/bootc-base-imagectl build-rootfs --manifest=fedora-iot /target-rootfs
-
-FROM scratch
-COPY --from=builder /target-rootfs/ /
+FROM ghcr.io/getsops/sops:v3.13.3 AS sops
+FROM quay.io/fedora/fedora-bootc:45
+COPY --from=sops /usr/local/bin/sops /usr/bin/sops
 
 LABEL containers.bootc=1
 ENV container=oci
@@ -11,10 +9,12 @@ CMD ["/sbin/init"]
 SHELL ["/bin/bash", "-xeuo", "pipefail", "-c"]
 
 RUN <<-'EOF'
-	rpm-ostree install -y --idempotent \
+	dnf -y install \
 		bind-utils bluez btop cockpit cockpit-podman fd-find git htop ncurses \
-		neovim ripgrep rsync tcpdump which wireguard-tools wireshark-cli zsh
-	ostree container commit
+		neovim python3 restic ripgrep rsync tcpdump which wireguard-tools wireshark-cli zsh \
+		arm-image-installer bcm283x-firmware uboot-images-armv8 brcmfmac-firmware \
+		NetworkManager-wifi firewalld chrony
+	dnf clean all
 	rm -rf /var/cache/* /var/log/* /run/dnf /tmp/* /var/tmp/*
 EOF
 
@@ -27,7 +27,6 @@ RUN <<-'EOF'
 
 	systemd-sysusers /usr/lib/sysusers.d/homelab-users.conf
 	usermod --lock root
-	usermod --password '$6$fMTmOCP5eFVreSeb$dC/eKQPsoDu7tu0lsqAcfTvbVhNLLSBkT7ylDsPa6ucaM4Hy3msuPBnP3sTJXWlD5/ECnPYthEZPpVxt9h.pD1' cockpit
 	install -d -m 0755 /usr/share/homelab/ssh
 	printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/wheel-nopasswd
 	chmod 0440 /etc/sudoers.d/wheel-nopasswd
@@ -73,38 +72,38 @@ RUN <<-'EOF'
 EOF
 
 RUN <<-'EOF'
-	install -d -m 0755 /opt/containers /var/opt/containers/data /var/opt/containers/secrets
-	ln -sfn /var/opt/containers/data /opt/containers/data
-	ln -sfn /var/opt/containers/secrets /opt/containers/secrets
-
 	cat > /usr/lib/tmpfiles.d/homelab-containers.conf <<-'EOT'
-	d /var/opt/containers 0755 root root -
-	d /var/opt/containers/data 0755 root root -
-	d /var/opt/containers/secrets 0700 root root -
+	d /var/lib/homelab 0755 root root -
+	d /var/lib/homelab/credentials 0700 root root -
+	d /var/cache/restic 0700 root root -
 	d /var/lib/bluetooth 0700 root root -
 	d /var/lib/bluetooth/mesh 0755 root root -
+	d /var/lib/iscsi 0755 root root -
+	d /var/lib/iscsi/ifaces 0755 root root -
+	d /var/lib/iscsi/isns 0755 root root -
+	d /var/lib/iscsi/nodes 0755 root root -
+	d /var/lib/iscsi/send_targets 0755 root root -
+	d /var/lib/iscsi/slp 0755 root root -
+	d /var/lib/iscsi/static 0755 root root -
 	EOT
 EOF
 
 COPY quadlets/ /usr/share/containers/systemd/
-COPY configs/ /opt/containers/config/
+COPY configs/environment/ /usr/share/homelab/environment/
+COPY configs/defaults/ /usr/share/homelab/defaults/
+COPY secrets/*.enc.env /usr/share/homelab/secrets/
+COPY --chmod=0755 scripts/homelab /usr/libexec/homelab
+COPY systemd/ /usr/lib/systemd/system/
 
 RUN <<-'EOF'
-	systemctl enable bluetooth.service cockpit.socket firewalld.service NetworkManager-wait-online.service podman-auto-update.timer podman.socket systemd-resolved.service
+	systemctl enable bluetooth.service cockpit.socket firewalld.service NetworkManager-wait-online.service podman-auto-update.timer podman.socket systemd-resolved.service homelab.target homelab-backup.timer bootc-fetch-apply-updates.timer
 	firewall-offline-cmd --zone=public --add-service=cockpit
 	firewall-offline-cmd --zone=public --add-service=https
 	firewall-offline-cmd --zone=public --add-service=dns
 	firewall-offline-cmd --zone=public --add-port=21063-21064/tcp
 	firewall-offline-cmd --zone=public --add-port=51820/udp
 	firewall-offline-cmd --zone=public --remove-port=51821/tcp || true
-	rm -rf /run/cockpit /tmp/* /var/tmp/*
-EOF
-
-RUN <<-'EOF'
-	printf '\n[etc]\ntransient=true\n' >> /usr/lib/ostree/prepare-root.conf
-	kver=$(cd /usr/lib/modules && printf '%s\n' *)
-	dracut -vf "/usr/lib/modules/$kver/initramfs.img" "$kver"
-	rm -rf /var/cache/* /var/log/* /run/selinux-policy /tmp/* /var/tmp/*
+	rm -rf /run/cockpit /run/selinux-policy /var/lib/dnf /tmp/* /var/tmp/*
 EOF
 
 RUN bootc container lint

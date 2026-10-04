@@ -13,10 +13,10 @@ User=0
 
 Network=homelab.network:ip=10.90.0.21
 
-Volume=/opt/containers/data/%p:/var/lib/grafana:Z,idmap
+Volume=/var/lib/homelab/apps/%p/data:/var/lib/grafana:Z,idmap
 
-EnvironmentFile=/opt/containers/secrets/%p.env
-EnvironmentFile=/opt/containers/config/%p/%p.env
+EnvironmentFile=/var/lib/homelab/secrets/%p.env
+EnvironmentFile=/var/lib/homelab/apps/%p/config/app.env
 
 Label="traefik.enable=true"
 
@@ -28,7 +28,6 @@ RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=30
 
-ExecStartPre=mkdir -p /opt/containers/data/%p
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=homelab.target

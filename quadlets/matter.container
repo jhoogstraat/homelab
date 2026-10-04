@@ -14,7 +14,7 @@ User=root
 AddCapability=NET_ADMIN
 AddCapability=NET_RAW
 
-Volume=/opt/containers/data/%p:/data:Z,idmap
+Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
 
 # For bluetooth commissioning via HA or the Dashboard
 Environment=BLUETOOTH_ADAPTER=0
@@ -31,5 +31,3 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
-
-ExecStartPre=mkdir -p /opt/containers/data/%p

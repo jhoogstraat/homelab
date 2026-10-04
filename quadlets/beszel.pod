@@ -15,3 +15,6 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=30
+
+[Install]
+WantedBy=homelab.target
