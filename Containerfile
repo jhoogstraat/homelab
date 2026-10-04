@@ -1,5 +1,5 @@
 FROM ghcr.io/getsops/sops:v3.13.3 AS sops
-FROM quay.io/fedora/fedora-bootc:44
+FROM quay.io/fedora/fedora-bootc:45
 COPY --from=sops /usr/local/bin/sops /usr/bin/sops
 
 LABEL containers.bootc=1
