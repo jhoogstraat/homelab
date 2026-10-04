@@ -14,7 +14,7 @@ These are operator procedures for the Pi. Do not reformat the existing SD card. 
    sudo env HOMELAB_QUADLETS="$PWD/quadlets" "$PWD/scripts/homelab" migrate
    ```
 
-   Migration preserves numeric ownership, ACLs, non-SELinux xattrs, hidden files and existing configuration. It copies Beszel's split directories, Papra data/ingestion, HA's full config, and mutable AdGuard/Glance/CouchDB configuration. Papra local environment preferences are preserved. Immobot, OneDev, n8n, Grafana and wg-easy config/data are archived under `apps/_retired/<app>`, including OneDev repositories/database and n8n workflows, encrypted credentials and encryption key. Immobot's writable layer/image is additionally captured if present; legacy decrypted secrets are archived root-only. SELinux labels are recreated by the new host/container mounts rather than copying obsolete container labels. The immobot image archive is a filesystem recovery point captured before stop, not an app-specific logical database export. Source directories are retained. **Successful migration leaves legacy applications stopped** to prevent subsequent writes from diverging from the copy. On failure it attempts to resume them. To abort before retiring units, run `sudo "$PWD/scripts/homelab" resume`; discard/rename the incomplete destination before retrying a full migration.
+   Migration preserves numeric ownership, ACLs, non-SELinux xattrs, hidden files and existing configuration. It copies Beszel's split directories, Papra data/ingestion, HA's full config, and mutable AdGuard/Glance configuration. Papra local environment preferences are preserved. Immobot, OneDev, n8n, Grafana, wg-easy and CouchDB config/data are archived under `apps/_retired/<app>`, including OneDev repositories/database and n8n workflows, encrypted credentials and encryption key. Immobot's writable layer/image is additionally captured if present; legacy decrypted secrets are archived root-only. SELinux labels are recreated by the new host/container mounts rather than copying obsolete container labels. The immobot image archive is a filesystem recovery point captured before stop, not an app-specific logical database export. Source directories are retained. **Successful migration leaves legacy applications stopped** to prevent subsequent writes from diverging from the copy. On failure it attempts to resume them. To abort before retiring units, run `sudo "$PWD/scripts/homelab" resume`; discard/rename the incomplete destination before retrying a full migration.
 5. Retire the repo-owned legacy Quadlets, which otherwise take priority over the new image:
 
    ```sh
@@ -33,7 +33,7 @@ These are operator procedures for the Pi. Do not reformat the existing SD card. 
    Inspect the staged deployment and ensure it matches the reviewed image before running `sudo systemctl reboot`. If the actual layer list differs, review it rather than blindly removing additional packages. After the new image boots without local RPM modifications, use bootc for future updates.
 
    The helper archives known `.container`, `.pod` and `.network` files from `/etc/containers/systemd` under `recovery/legacy-quadlets`, including immobot, OneDev and n8n, and leaves unrelated overrides alone. Inspect repo-owned `.container.d` or generic drop-ins from earlier manual customization separately; these also override image settings and are not automatically deleted. No old Ansible sync should run after this point. Remove obsolete enablement links for immobot, OneDev and n8n if any remain. Existing device dashboards may still link to retired services; remove those links locally, since migration preserves dashboard edits instead of overwriting them with new seeds.
-6. On the new boot, inspect `bootc status`, `systemctl status homelab-prepare homelab.target`, `podman ps`, and `journalctl -u homelab-prepare`. Compare with `recovery/cutover-active-units.json`. Eleven services (including the Beszel pod) start by default; Home Assistant, homepage, Matter and OTBR remain optional. If previously enabled on this device, deliberately enable them with a local Quadlet install drop-in or a Git change. Confirm DNS at `192.168.0.3`, TLS, routing, SQL writes and all integrations. Verify any Thread radio device/interface is correct before enabling OTBR. The repository retains existing static addresses and network assumptions.
+6. On the new boot, inspect `bootc status`, `systemctl status homelab-prepare homelab.target`, `podman ps`, and `journalctl -u homelab-prepare`. Compare with `recovery/cutover-active-units.json`. Ten services (including the Beszel pod) start by default; Home Assistant, homepage, Matter and OTBR remain optional. If previously enabled on this device, deliberately enable them with a local Quadlet install drop-in or a Git change. Confirm DNS at `192.168.0.3`, TLS, routing, SQL writes and all integrations. Verify any Thread radio device/interface is correct before enabling OTBR. The repository retains existing static addresses and network assumptions.
 
    The inherited Pi fstab had a root entry with `defaults`, which made `systemd-remount-fs` try to remount the composefs root writable. After preserving `/etc/fstab` in recovery, `sudo bootc internals fixup-etc-fstab` applied bootc's native correction to the existing entry. Reload systemd and restart `systemd-remount-fs.service` to verify it succeeds; `/var` must remain writable. This addresses the [documented composefs/root-fstab incompatibility](https://bootc.dev/bootc/bootc-install.html#finding-and-configuring-the-physical-root-filesystem).
 7. Change a representative setting using each app's supported UI, file or environment variable, then verify persistence through a service restart. Glance/HA file settings are edited locally; Glance normally reloads valid YAML changes without restarting. Papra server environment changes require restarting their containers. Do not add a settings editor or convert native files to environment variables just to make the apps look alike. Verify a complete backup and a restore drill before relying on scheduled updates. Optional Cockpit password login is configured locally with `sudo passwd cockpit`; the image no longer contains a preset password hash. Preserve any needed local host configuration through persistent `/etc`.
@@ -48,7 +48,7 @@ Verified DNS, application HTTPS with certificate validation, registry access, Co
 
 The one-time age-encrypted recovery archive is at `~/Backups/homelab/2026-10-04-cutover/fedora-iot-recovery.tar.age` on the operator Mac. Validation authenticated the complete archive and restored the Vaultwarden SQLite files for a successful integrity check. This is not a scheduled Mac backup. Immobot, OneDev, n8n and the unused Valkey service are persistently masked, with recovery data retained. The three maintenance timers are also persistently masked until S3 backup and restore verification. Existing unmanaged Dockhand, HarborScale, TimescaleDB and ZeroClaw units had startup failures before cutover and remain outside this repository's managed app set.
 
-## Retirement after cutover: Grafana, wg-easy and HarborScale
+## Retirement after cutover: Grafana, wg-easy, HarborScale and CouchDB
 
 Grafana and wg-easy are removed from the managed application set at the owner's
 request. On an already deployed Pi, first take a successful backup, then stop
@@ -68,18 +68,23 @@ removing the definitions from `/etc/containers/systemd`. Both referenced HarborS
 environment files were already absent on the inspected Pi; record missing files
 rather than inventing configuration. HarborScale is absent from the repository.
 
-CouchDB remains the configured Obsidian LiveSync backend. The inspected instance
-has three application databases, with 15,112 documents across the two non-empty
-databases. Do not retire it merely because no server-side app depends on it;
-Obsidian clients connect to it directly.
+CouchDB was previously the Obsidian LiveSync backend, with 15,112 documents in
+two non-empty application databases. The owner confirmed Obsidian now uses
+iCloud and requested retirement. Back up first, stop and persistently mask
+`couchdb.service`, and move its complete data/config directory to
+`apps/_retired/couchdb`. Archive the Quadlet, Git-owned environment configuration,
+local credentials and pre-retirement image metadata under root-only recovery
+storage. Remove CouchDB from new images, including its special initialization
+ownership handling, defaults and encrypted secret. Retain its archived state in
+S3 backups; restoring an older host image must not restart this obsolete service.
 
-## Configure the future S3 backup server
+## Configure the S3 backup server
 
-No S3 endpoint is configured yet. Apps can start without one; automatic backups/updates fail closed until provisioning is complete.
+The Pi is provisioned with `s3:https://s3.hoogstraat.eu/backups/restic` on Garage, region `us-east-1`, using path-style bucket access and normal TLS verification. The bucket has a 1 TiB quota and no lifecycle expiration. A full repository read and complete restore/content verification passed, including seven SQLite databases. Missing or unreachable backup configuration still prevents automatic updates.
 
 Create a dedicated private bucket/prefix and scoped S3 credentials. Restic needs ListBucket plus GetObject, PutObject and DeleteObject for backup/pruning. Use HTTPS with normal certificate validation and the provider's required region. With a private CA, provide the CA through restic's supported certificate configuration; do not disable TLS verification. Preserve the remote S3 server's own data independently.
 
-Keep the maintenance timers stopped until the first successful backup and restore drill; after cutover stop the newly enabled timers again while completing acceptance. On this Pi they are persistently masked to retain this hold across reboots. After the S3 backup and restore drill pass, release the hold with:
+For a new device, keep maintenance timers stopped until the first successful backup and restore drill. The inspected Pi has passed this acceptance gate and all three timers are enabled. If a device has been persistently masked for cutover, release that hold only after its S3 backup and restore drill pass:
 
 ```sh
 sudo systemctl unmask homelab-backup.timer podman-auto-update.timer bootc-fetch-apply-updates.timer
@@ -87,6 +92,14 @@ sudo systemctl enable --now homelab-backup.timer podman-auto-update.timer bootc-
 ```
 
 Copy `configs/backup.env.example` locally to `/var/lib/homelab/credentials/backup.env`, set actual endpoint, bucket/prefix, region and access keys, then set root:root 0600. Store a high-entropy restic password in `/var/lib/homelab/credentials/restic-password` with the same permissions. The example is a template, not a working destination. The repository password is required for restore and cannot be recovered merely from S3 credentials.
+
+The provisioned password is at `/var/lib/homelab/credentials/restic-password` on
+the Pi (root:root, mode 0600). Its independent operator Mac copy is at
+`~/Backups/homelab/2026-10-04-cutover/restic-recovery/restic-password`, with mode
+0600 inside a mode-0700 recovery directory. That directory also contains S3
+credentials and recovery instructions. These are private local files, not Git
+contents. Restic's generated password unlocks S3 backups; the separate one-time
+`fedora-iot-recovery.tar.age` archive uses the existing SOPS age identity.
 
 Use the same environment for manual restic commands:
 
@@ -122,7 +135,7 @@ A failed upload or a killed backup triggers service recovery. For direct command
    ```
 
    Use the **actual repository and digest** from `images.json`. Do this for each app needing an older image; do not let `latest` migrate restored databases before validating them. Pre-pull these exact images. A digest records identity, not guaranteed registry availability: retain needed custom images externally or in the backed-up registry, and start that registry first if an image depends on it. If no pullable digest was recorded, recover the matching retained image before proceeding.
-5. Run `systemctl start homelab-prepare.service` (restart it if already completed), `systemctl daemon-reload`, then start the recorded app set excluding retired immobot, OneDev, n8n, Grafana and wg-easy. Verify authentication, configuration persistence, Vaultwarden attachments and login, Papra original document download, CouchDB documents, AdGuard rules, Beszel reconnection and HA/Matter/Thread pairings as applicable. Glance content, Traefik certificates and homepage Spotify refresh tokens should also survive. Never connect a second restored HA/Matter instance to the same real devices during a test.
+5. Run `systemctl start homelab-prepare.service` (restart it if already completed), `systemctl daemon-reload`, then start the recorded app set excluding retired immobot, OneDev, n8n, Grafana, wg-easy and CouchDB. Verify authentication, configuration persistence, Vaultwarden attachments and login, Papra original document download, AdGuard rules, Beszel reconnection and HA/Matter/Thread pairings as applicable. Glance content, Traefik certificates and homepage Spotify refresh tokens should also survive. Never connect a second restored HA/Matter instance to the same real devices during a test.
 6. Take a new successful backup. Only after verification and any explicit app migration should you remove image holds, reload systemd and re-enable timers. Restore time depends on data size, S3 throughput and image availability; measure it rather than assume it.
 
 ## Moving application storage to an SSD

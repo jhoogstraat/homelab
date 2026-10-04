@@ -88,21 +88,6 @@ class LifecycleTests(unittest.TestCase):
                 homelab.prepare()
         self.assertEqual((self.state / "secrets").readlink(), previous)
 
-    @unittest.skipUnless(os.geteuid() == 0, "Root required for container file ownership")
-    def test_couchdb_deployment_config_keeps_service_ownership_after_rotation(self):
-        source = self.source / "environment/couchdb/10-initalize-secure.ini"
-        source.parent.mkdir()
-        source.write_text("[couchdb]\nsingle_node = true\n")
-        with patch.object(homelab, "command", self.fake_command):
-            homelab.prepare()
-            source.write_text("[couchdb]\nsingle_node = true\nmax_document_size = 50000000\n")
-            homelab.prepare()
-        deployed = self.state / source.relative_to(self.source)
-        self.assertEqual(deployed.read_text(), source.read_text())
-        self.assertEqual((deployed.stat().st_uid, deployed.stat().st_gid), (5984, 5984))
-        self.assertEqual(deployed.stat().st_mode & 0o777, 0o644)
-        self.assertEqual((self.state / "secrets/glance.env").read_text(), "TOKEN=secret\n")
-
     def test_unreachable_repository_never_stops_applications(self):
         with patch.object(homelab, "command", side_effect=subprocess.CalledProcessError(1, "restic")):
             with self.assertRaises(subprocess.CalledProcessError):
@@ -209,7 +194,8 @@ class LifecycleTests(unittest.TestCase):
                           old_data / "papra/data", old_data / "papra/ingestion", old_config / "glance", old_secrets,
                           old_data / "onedev/site", old_data / "n8n", old_config / "onedev", old_config / "n8n",
                           old_data / "grafana", old_config / "grafana",
-                          old_data / "wg-easy", old_config / "wg-easy"):
+                          old_data / "wg-easy", old_config / "wg-easy",
+                          old_data / "couchdb", old_config / "couchdb"):
             directory.mkdir(parents=True)
             (directory / ".state").write_bytes(b"preserve hidden state")
         (old_config / "glance/glance.yml").write_text("device preference")
@@ -230,7 +216,7 @@ class LifecycleTests(unittest.TestCase):
             if tuple(args[:2]) == ("podman", "save"):
                 Path(args[args.index("--output") + 1]).write_bytes(b"archived writable layer")
             if args[0] == "systemctl" and "is-active" in args:
-                if args[-1] in ("n8n.service", "onedev.service", "grafana.service", "wg-easy.service"):
+                if args[-1] in ("n8n.service", "onedev.service", "grafana.service", "wg-easy.service", "couchdb.service"):
                     return subprocess.CompletedProcess(args, 0)
                 return self.active(args, **kwargs)
             self.calls.append(tuple(args))
@@ -248,8 +234,8 @@ class LifecycleTests(unittest.TestCase):
         archive = self.state / "apps/_retired/immobot/legacy-image.tar"
         self.assertEqual(archive.read_bytes(), b"archived writable layer")
         self.assertEqual(archive.stat().st_mode & 0o777, 0o600)
-        self.assertLess(self.calls.index(("podman", "commit", "--pause=true", "--quiet", "immobot")), self.calls.index(("systemctl", "stop", "glance.service", "grafana.service", "n8n.service", "onedev.service", "wg-easy.service")))
-        for app in ("onedev", "n8n", "grafana", "wg-easy"):
+        self.assertLess(self.calls.index(("podman", "commit", "--pause=true", "--quiet", "immobot")), self.calls.index(("systemctl", "stop", "couchdb.service", "glance.service", "grafana.service", "n8n.service", "onedev.service", "wg-easy.service")))
+        for app in ("onedev", "n8n", "grafana", "wg-easy", "couchdb"):
             retired = self.state / "apps/_retired" / app
             self.assertEqual((retired / "config/.state").read_bytes(), b"preserve hidden state")
             self.assertEqual(retired.stat().st_mode & 0o777, 0o700)

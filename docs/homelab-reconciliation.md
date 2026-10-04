@@ -8,7 +8,7 @@ The ARM64 host image derives directly from Fedora's published `fedora-bootc:45` 
 
 At boot, `homelab-prepare.service` materializes Git-owned environment files into `/var/lib/homelab/environment`, atomically selects a complete decrypted secret generation, and seeds missing application config files. Every container/pod requires successful initialization. This avoids booting partially decrypted deployments. The generated environment copy permits SELinux labeling; container mounts of Git-owned files remain read-only. Device application config is never reseeded when it exists.
 
-Quadlets and systemd provide startup, dependencies and process restart. Existing CouchDB health checks now kill an unhealthy container so systemd can restart it. Other apps retain their existing process restart policy; this is not a claim that every application has a functional health check. The Beszel containers and pod now have explicit boot activation.
+Quadlets and systemd provide startup, dependencies and process restart. Applications retain their existing process restart policies; this is not a claim that every application has a functional health check. The Beszel containers and pod have explicit boot activation.
 
 Timers use the host's Europe/Berlin timezone:
 
@@ -31,7 +31,6 @@ Choose the configuration method per application and setting. Use an existing UI 
 | Application or setting | Simplest supported method |
 | --- | --- |
 | AdGuard, Beszel hub, Vaultwarden admin settings, Papra documents | Existing application UI, with its state persisted and backed up |
-| CouchDB runtime configuration | Fauxton/configuration API, persisted in writable `local.d`; native INI files remain available |
 | Glance dashboard | Edit native `glance.yml` on the device; Glance reloads valid file changes |
 | Home Assistant | UI for supported integrations/settings; native YAML for settings requiring files |
 | Papra instance options | Documented Papra environment variables through local `app.env`; restart the affected container |
@@ -43,7 +42,7 @@ Choose the configuration method per application and setting. Use an existing UI 
 | Owner | Examples | Change mechanism |
 | --- | --- | --- |
 | Git / host image | Images and tags, networks, ports, proxy routes/TLS provider, hardware, deployment URLs, SSH/firewall policy, encrypted connection secrets | PR, CI, bootc update |
-| Seed on first install | AdGuard YAML, HA YAML, Glance dashboard, CouchDB `zz-local.ini`, Papra `app.env` | Copied only if absent |
+| Seed on first install | AdGuard YAML, HA YAML, Glance dashboard, Papra `app.env` | Copied only if absent |
 | Device / application | Users, dashboards, workflows, documents, peers, integrations, pairing keys, all databases | App UI/API, or local files when the app has no editor |
 | Device / operator | age key, S3 endpoint/credentials, restic password, optional registry authentication and local enablement overrides | Root-only local provisioning; no image rebuild |
 

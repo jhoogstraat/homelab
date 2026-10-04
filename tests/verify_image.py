@@ -32,7 +32,7 @@ for quadlet in Path("quadlets").glob("*"):
     if quadlet.suffix != ".network":
         assert any("homelab-prepare.service" in line.split("=", 1)[1].split() for line in units[name].splitlines() if line.startswith("Requires=")), name
         assert "PartOf=homelab.target" in units[name], name
-assert not {"immobot.service", "onedev.service", "n8n.service", "grafana.service", "wg-easy.service"} & units.keys()
+assert not {"immobot.service", "onedev.service", "n8n.service", "grafana.service", "wg-easy.service", "couchdb.service"} & units.keys()
 assert units.keys() == expected, units.keys() ^ expected
 print(f"Validated {len(expected)} packaged Quadlet units")
 subprocess.run(["podman", "run", "--rm", image, "/bin/bash", "-euc",

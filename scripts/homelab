@@ -20,7 +20,7 @@ SOURCE = Path(os.environ.get("HOMELAB_SOURCE", "/usr/share/homelab"))
 QUADLETS = Path(os.environ.get("HOMELAB_QUADLETS", "/usr/share/containers/systemd"))
 LEGACY_QUADLETS = Path(os.environ.get("HOMELAB_LEGACY_QUADLETS", "/etc/containers/systemd"))
 RUN = Path(os.environ.get("HOMELAB_RUN", "/run/homelab"))
-RETIRED = ("immobot", "onedev", "n8n", "grafana", "wg-easy")
+RETIRED = ("immobot", "onedev", "n8n", "grafana", "wg-easy", "couchdb")
 
 
 def command(*args, **kwargs):
@@ -73,11 +73,6 @@ def prepare():
 
     # Git owns environment files; app defaults are copied only when absent.
     copy_files(SOURCE / "environment", ROOT / "environment")
-    # CouchDB's entrypoint chowns files before dropping to UID 5984. Give the
-    # read-only deployment file that ownership so initialization can skip it.
-    couchdb_defaults = ROOT / "environment/couchdb/10-initalize-secure.ini"
-    if couchdb_defaults.exists():
-        os.chown(couchdb_defaults, 5984, 5984)
     for path in (ROOT / "environment").rglob("*"):
         if path.is_file() and not (SOURCE / "environment" / path.relative_to(ROOT / "environment")).exists():
             path.unlink()
@@ -262,7 +257,7 @@ def migrate(data, config, secrets):
                 if source.is_dir():
                     command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{source}/", f"{old_target}/")
                 old_config = config / name
-                if old_config.is_dir() and name in ("adguard", "glance", "couchdb"):
+                if old_config.is_dir() and name in ("adguard", "glance"):
                     command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{old_config}/", f"{target / 'config'}/")
                 if name == "papra" and (data / "papra/ingestion").exists():
                     command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{data / 'papra/ingestion'}/", f"{target / 'ingestion'}/")
