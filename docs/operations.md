@@ -48,7 +48,7 @@ Verified DNS, application HTTPS with certificate validation, registry access, Co
 
 The one-time age-encrypted recovery archive is at `~/Backups/homelab/2026-10-04-cutover/fedora-iot-recovery.tar.age` on the operator Mac. Validation authenticated the complete archive and restored the Vaultwarden SQLite files for a successful integrity check. This is not a scheduled Mac backup. Immobot, OneDev, n8n and the unused Valkey service are persistently masked, with recovery data retained. The three maintenance timers are also persistently masked until S3 backup and restore verification. Existing unmanaged Dockhand, HarborScale, TimescaleDB and ZeroClaw units had startup failures before cutover and remain outside this repository's managed app set.
 
-## Retirement after cutover: Grafana, wg-easy, HarborScale and CouchDB
+## Retirement after cutover
 
 Grafana and wg-easy are removed from the managed application set at the owner's
 request. On an already deployed Pi, first take a successful backup, then stop
@@ -77,6 +77,32 @@ local credentials and pre-retirement image metadata under root-only recovery
 storage. Remove CouchDB from new images, including its special initialization
 ownership handling, defaults and encrypted secret. Retain its archived state in
 S3 backups; restoring an older host image must not restart this obsolete service.
+
+### Legacy local services retired on 2026-10-05
+
+The owner also retired Dockhand, TimescaleDB and ZeroClaw. These services were
+unmanaged local Quadlets under `/etc/containers/systemd` and had already failed
+before cutover. They were never part of this repository's application set.
+
+Take a successful pre-retirement backup, then archive the local definitions and
+any available referenced data/configuration under root-only recovery storage.
+Expand Quadlet `%p` to the service name when locating their bind mounts and
+environment files. On the inspected Pi, all referenced persistent application
+paths were absent; record that absence in the recovery ledger. The Podman socket
+mounted by Dockhand is a runtime endpoint, not application data to archive.
+
+Persistently mask and stop `dockhand.service`, `timescaledb.service` and
+`zeroclaw.service`, remove their three archived local Quadlets, and reload systemd.
+Keep the HarborScale API, worker and pod masks, and clear failed state only for
+these retired units with `systemctl reset-failed`. Preserve unrelated local
+Quadlets, running applications and cached container images.
+
+The recovery archive is
+`/var/lib/homelab/recovery/retired-legacy-services-2026-10-05`. Follow retirement
+with an encrypted restic backup, repository check and verified restoration of
+the archived definitions. The completed cleanup leaves 13 retained application
+containers plus the Beszel infrastructure container, with no failed systemd
+units. All three automatic maintenance timers remain active.
 
 ## Configure the S3 backup server
 
