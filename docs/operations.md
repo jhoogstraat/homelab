@@ -147,6 +147,30 @@ The backup includes all of `apps`, root-only credentials, recovery metadata, Blu
 
 A failed upload or a killed backup triggers service recovery. For direct command-line maintenance, use `/usr/libexec/homelab backup`, `update-apps` or `update-host` **with the backup environment loaded**; systemd invocation is preferred because it also supplies termination recovery. Inspect logs for failures; a timer alone is not an alerting system. Beszel can monitor service/availability failures after configuring alerts in its UI. For an interrupted manual helper, inspect and run `homelab resume` rather than deleting its recovery manifest.
 
+### Backup recovery hardening
+
+The backup still stops writers for the complete restic scan/upload. No local staging, filesystem migration or new storage is introduced. Home Assistant now has a 60-second container shutdown allowance inside its existing 100-second systemd allowance. The helper refuses capture if Home Assistant fails to stop cleanly or any application writer remains active. Other containers' existing handling of nonzero shutdown exits is retained.
+
+Recovery intent is root-only at `/var/lib/homelab/maintenance/paused-units.json`, written and synced before stopping services. It is deliberately outside the backed-up application/recovery trees so restoring a snapshot does not restore a stale instruction to start applications. Old `/run/homelab/paused-units.json` files are still supported and are promoted to persistent storage before recovery begins. Do not delete either manifest to bypass a failed restart.
+
+`homelab-recover.service` runs after preparation at boot and uses the same maintenance lock as backups and updates. It starts recorded services without restarting those already running. Neither application units nor `homelab.target` are ordered after this recovery unit: doing so could deadlock recovery while it waits for those units to start. Both manifests are removed and their directories synced only after recovery succeeds.
+
+Recovery waits up to 120 seconds for resumed services to be active, Home Assistant HTTP to respond, Matter to answer a WebSocket `get_nodes` request, and OTBR to report an attached Thread role. These are service/protocol checks, not a guarantee that every individual light is reachable. Failed readiness retains recovery intent and prevents pruning/updates. `ExecStopPost` can retry recovery after a failed maintenance command; repeated failure remains visible in systemd.
+
+The live Pi uses reversible overrides while these changes await normal host-image publication:
+
+- Tested helper: `/var/lib/homelab/maintenance/homelab`, invoked with `/usr/bin/python3` because Fedora disallows directly executing a helper from this data location.
+- Maintenance overrides: `90-backup-hardening.conf` under the local drop-in directories for `homelab-backup.service`, `podman-auto-update.service`, and `bootc-fetch-apply-updates.service`.
+- HA override: `/etc/containers/systemd/homeassistant.container.d/90-backup-hardening.conf`.
+- Boot recovery unit: `/etc/systemd/system/homelab-recover.service`, enabled for `multi-user.target`.
+- Original and installed helper plus deployment inventory: `/var/lib/homelab/recovery/backup-hardening-2026-10-10-python`.
+
+The helper and local systemd overrides are included in remote backups. Use systemd for manual backups/updates on this device so they use the override rather than the old packaged helper. For manual recovery, use `sudo /usr/bin/python3 /var/lib/homelab/maintenance/homelab resume`.
+
+Before removing overrides, stop the maintenance timers, finish any pending recovery with the current helper, and verify both manifests are absent. Once a booted host image contains these fixes, remove only the inventoried overrides and local helper, reload systemd, and enable the packaged recovery unit. To roll back to the old image/helper instead, disable boot recovery and remove the inventoried local unit/overrides only after recovery completes, then reload systemd and restore the previously active timers. Preserve unrelated device drop-ins and application data.
+
+Validation on 2026-10-10: all 20 Linux tests passed, including isolated real restic backup/restore and recovery after loss of the runtime directory. The installed Quadlet generator and systemd dependency verification passed. A controlled HA restart shut down cleanly in 15.4 seconds and passed HTTP readiness after 36.3 seconds total. The full live backup saved snapshot `6fc1d4c1`, completed successfully at 14:49:05 CEST, and cleared recovery intent after readiness passed. HA shut down cleanly during that backup too; HA HTTPS returned 200, Matter answered its protocol probe, OTBR reported `router`, all maintenance timers remained active, and no systemd units were failed. Boot recovery is enabled and its service startup passed; a physical reboot/power-loss test was not performed. The host image was not rebuilt; the local overrides remain until normal image publication.
+
 ## Restore drill and disaster recovery
 
 1. Preserve the restic password and S3 credentials on a separate trusted system. Load the environment above. Choose a specific successful snapshot using `restic snapshots --tag homelab`, then `restic restore <snapshot-id> --target /var/tmp/homelab-restore`. Run `restic check --read-data-subset=10%` periodically and a full `restic check --read-data` when practical. A successful upload is not a restore drill.

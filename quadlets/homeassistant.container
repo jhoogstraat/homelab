@@ -4,6 +4,7 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=homeassistant
+StopTimeout=60
 Image=ghcr.io/home-assistant/home-assistant:stable
 AutoUpdate=registry
 

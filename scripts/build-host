@@ -59,6 +59,7 @@ EOT
 cat > /usr/lib/tmpfiles.d/homelab-containers.conf <<-'EOT'
 d /var/lib/homelab 0755 root root -
 d /var/lib/homelab/credentials 0700 root root -
+d /var/lib/homelab/maintenance 0700 root root -
 d /var/cache/restic 0700 root root -
 d /var/lib/PackageKit 0755 root root -
 d /var/lib/bluetooth 0700 root root -
@@ -72,7 +73,7 @@ d /var/lib/iscsi/slp 0755 root root -
 d /var/lib/iscsi/static 0755 root root -
 EOT
 
-systemctl enable bluetooth.service cockpit.socket firewalld.service NetworkManager-wait-online.service podman-auto-update.timer podman.socket systemd-resolved.service homelab.target homelab-backup.timer bootc-fetch-apply-updates.timer
+systemctl enable bluetooth.service cockpit.socket firewalld.service NetworkManager-wait-online.service podman-auto-update.timer podman.socket systemd-resolved.service homelab.target homelab-recover.service homelab-backup.timer bootc-fetch-apply-updates.timer
 firewall-offline-cmd --zone=public --add-service=cockpit
 firewall-offline-cmd --zone=public --add-service=https
 firewall-offline-cmd --zone=public --add-service=dns

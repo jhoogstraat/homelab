@@ -13,6 +13,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
+import urllib.request
 
 
 ROOT = Path(os.environ.get("HOMELAB_ROOT", "/var/lib/homelab"))
@@ -42,11 +45,20 @@ def atomic_file(path, content, mode=0o600):
         try:
             output.write(content)
             output.flush()
+            os.fchmod(output.fileno(), mode)
             os.fsync(output.fileno())
-            temporary.chmod(mode)
             temporary.replace(path)
+            sync_directory(path.parent)
         finally:
             temporary.unlink(missing_ok=True)
+
+
+def sync_directory(path):
+    descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def copy_files(source, destination, seed=False):
@@ -132,24 +144,144 @@ def units():
     return sorted(containers + pods + [f"{name}.service" for name in RETIRED])
 
 
+def pause_manifests():
+    # Keep compatibility with interrupted maintenance from the old helper.
+    return (ROOT / "maintenance/paused-units.json", RUN / "paused-units.json")
+
+
+def paused_units():
+    names = []
+    found = False
+    for manifest in pause_manifests():
+        if manifest.exists():
+            found = True
+            try:
+                entries = json.loads(manifest.read_text())
+            except ValueError as error:
+                raise RuntimeError(f"Invalid recovery manifest: {manifest}") from error
+            if not isinstance(entries, list) or any(
+                not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.@:-]*\.service", name)
+                for name in entries
+            ):
+                raise RuntimeError(f"Invalid recovery units: {manifest}")
+            names.extend(entries)
+    return list(dict.fromkeys(names)) if found else None
+
+
+def save_paused_units(names):
+    manifest = pause_manifests()[0]
+    manifest.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    manifest.parent.chmod(0o700)
+    sync_directory(ROOT)
+    atomic_file(manifest, json.dumps(names).encode())
+
+
+def clear_paused_units():
+    for manifest in pause_manifests():
+        if manifest.exists():
+            manifest.unlink()
+            sync_directory(manifest.parent)
+
+
+MATTER_PROBE = """
+const timer = setTimeout(() => process.exit(1), 5000);
+const ws = new WebSocket(process.argv[1]);
+ws.addEventListener('error', () => process.exit(1));
+ws.addEventListener('close', () => process.exit(1));
+ws.addEventListener('open', () => ws.send(JSON.stringify({
+    message_id: 'homelab-ready', command: 'get_nodes', args: {}
+})));
+ws.addEventListener('message', event => {
+    try {
+        const data = JSON.parse(event.data);
+        if (data.message_id === 'homelab-ready') {
+            clearTimeout(timer);
+            process.exit(Array.isArray(data.result) && data.error_code === undefined ? 0 : 1);
+        }
+    } catch { process.exit(1); }
+});
+"""
+
+
+def unit_ready(name):
+    try:
+        active = subprocess.run(["systemctl", "is-active", "--quiet", name],
+                                check=False, timeout=5, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+        if active.returncode:
+            return False
+        if name == "homeassistant.service":
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open("http://127.0.0.1:8123/", timeout=3) as response:
+                return response.status == 200
+        if name == "matter.service":
+            url = "ws://127.0.0.1:5580/ws"
+            entries = ROOT / "apps/homeassistant/config/.storage/core.config_entries"
+            if entries.exists():
+                for entry in json.loads(entries.read_text()).get("data", {}).get("entries", []):
+                    if entry.get("domain") == "matter":
+                        url = entry.get("data", {}).get("url", url)
+                        break
+            command("podman", "exec", "matter", "node", "-e", MATTER_PROBE, url,
+                    timeout=10, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if name == "otbr.service":
+            result = command("podman", "exec", "otbr", "ot-ctl", "state",
+                             timeout=10, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            return result.stdout.splitlines()[0].strip() in (b"router", b"leader", b"child")
+        return True
+    except (OSError, ValueError, IndexError, urllib.error.URLError,
+            subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return False
+
+
+def wait_ready(names, timeout=120):
+    pending = set(names)
+    deadline = time.monotonic() + timeout
+    while pending:
+        pending = {name for name in pending if not unit_ready(name)}
+        if not pending:
+            return
+        if time.monotonic() >= deadline:
+            raise RuntimeError("Services did not become ready: " + ", ".join(sorted(pending)))
+        time.sleep(2)
+
+
 def resume():
-    manifest = RUN / "paused-units.json"
-    if manifest.exists():
-        names = json.loads(manifest.read_text())
+    names = paused_units()
+    if names is not None:
+        # Promote old /run intent before restarting, so even failed recovery is durable.
+        if pause_manifests()[1].exists():
+            save_paused_units(names)
+            pause_manifests()[1].unlink()
+            sync_directory(RUN)
         if names:
             command("systemctl", "start", *names)
-        manifest.unlink()
+            wait_ready(names)
+        clear_paused_units()
 
 
 def pause():
-    if (RUN / "paused-units.json").exists():
+    if paused_units() is not None:
         raise RuntimeError("A previous backup needs recovery: run homelab resume")
     active = [name for name in units() if subprocess.run(
         ["systemctl", "is-active", "--quiet", name], check=False).returncode == 0]
-    # Record before stopping: ExecStopPost can recover even after SIGKILL.
-    atomic_file(RUN / "paused-units.json", json.dumps(active).encode())
+    # Persist before stopping: recovery must survive both SIGKILL and reboot.
+    save_paused_units(active)
     if active:
         command("systemctl", "stop", *active)
+        result = command("systemctl", "show", "--property=ActiveState", "--property=Result",
+                         *active, stdout=subprocess.PIPE)
+        states = [dict(line.split("=", 1) for line in block.splitlines() if "=" in line)
+                  for block in result.stdout.decode().strip().split("\n\n")]
+        if len(states) != len(active) or any(
+            state.get("ActiveState") not in ("inactive", "failed") for state in states
+        ):
+            raise RuntimeError("Application writers did not stop; refusing backup")
+        # Some third-party containers return nonzero on SIGTERM. Enforce clean
+        # shutdown for HA without changing those applications' existing policy.
+        if any(name == "homeassistant.service" and state.get("Result") != "success"
+               for name, state in zip(active, states)):
+            raise RuntimeError("Home Assistant did not stop cleanly; refusing backup")
     return active
 
 
@@ -179,9 +311,17 @@ def device_sources():
     for path in ("/var/lib/bluetooth", "/etc/NetworkManager/system-connections",
                  "/etc/machine-id", "/etc/containers/systemd", "/etc/containers/auth.json",
                  "/etc/ostree/auth.json", "/etc/fstab",
-                 "/etc/systemd/system/homelab-prepare.service.d"):
+                 "/etc/systemd/system/homelab-prepare.service.d",
+                 "/etc/systemd/system/homelab-recover.service",
+                 "/etc/systemd/system/homelab-backup.service.d",
+                 "/etc/systemd/system/podman-auto-update.service.d",
+                 "/etc/systemd/system/bootc-fetch-apply-updates.service.d"):
         if Path(path).exists():
             sources.append(path)
+    # Reversible device override until the tested helper is packaged in the host image.
+    local_helper = ROOT / "maintenance/homelab"
+    if local_helper.exists():
+        sources.append(str(local_helper))
     sources.extend(str(p) for p in Path("/etc/ssh").glob("ssh_host_*"))
     return sources
 
@@ -301,8 +441,9 @@ def retire_legacy():
     if archive.exists():
         raise RuntimeError("Legacy Quadlet archive already exists; inspect it before retrying")
     archive.mkdir(parents=True, mode=0o700)
-    paused = RUN / "paused-units.json"
-    active = json.loads(paused.read_text()) if paused.exists() else pause()
+    active = paused_units()
+    if active is None:
+        active = pause()
     atomic_file(ROOT / "recovery/cutover-active-units.json", json.dumps(active).encode())
     for path in existing:
         shutil.copy2(path, archive / path.name)
@@ -310,7 +451,7 @@ def retire_legacy():
         path.unlink()
     command("systemctl", "daemon-reload")
     # These are deliberately left stopped until the new image is booted.
-    (RUN / "paused-units.json").unlink()
+    clear_paused_units()
 
 
 def main():
