@@ -34,6 +34,8 @@ for quadlet in Path("quadlets").glob("*"):
         assert "PartOf=homelab.target" in units[name], name
 assert not {"immobot.service", "onedev.service", "n8n.service", "grafana.service", "wg-easy.service", "couchdb.service"} & units.keys()
 assert units.keys() == expected, units.keys() ^ expected
+assert "--stop-timeout 60 " in units["homeassistant.service"]
+assert "TimeoutStopSec=100" in units["homeassistant.service"]
 print(f"Validated {len(expected)} packaged Quadlet units")
 subprocess.run(["podman", "run", "--rm", image, "/bin/bash", "-euc",
                 "mkdir -p /tmp/units; /usr/lib/systemd/system-generators/podman-system-generator /tmp/units; "

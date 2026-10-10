@@ -60,6 +60,8 @@ class LifecycleTests(unittest.TestCase):
             output = b"[]"
         elif args[:3] == ("podman", "auto-update", "--dry-run"):
             output = b'[{"Updated":"pending"}]'
+        elif args[:2] == ("systemctl", "show"):
+            output = b"\n\n".join([b"ActiveState=inactive\nResult=success"] * len(args[4:]))
         return subprocess.CompletedProcess(args, 0, stdout=output)
 
     def active(self, args, **kwargs):
@@ -146,10 +148,78 @@ class LifecycleTests(unittest.TestCase):
 
     def test_recovery_after_killed_backup_is_repeatable(self):
         (self.run / "paused-units.json").write_text(json.dumps(["glance.service"]))
-        with patch.object(homelab, "command", self.fake_command):
+        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
             homelab.resume()
             homelab.resume()
         self.assertEqual(self.calls, [("systemctl", "start", "glance.service")])
+
+    def test_pause_intent_survives_loss_of_runtime_directory(self):
+        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
+            homelab.pause()
+            manifest = self.state / "maintenance/paused-units.json"
+            self.assertEqual(json.loads(manifest.read_text()), ["glance.service"])
+            self.assertEqual(manifest.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(manifest.parent.stat().st_mode & 0o777, 0o700)
+            shutil.rmtree(self.run)
+            homelab.resume()
+        self.assertFalse(manifest.exists())
+        self.assertIn(("systemctl", "start", "glance.service"), self.calls)
+
+    def test_failed_readiness_keeps_recovery_intent_and_blocks_updates(self):
+        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active), patch.object(homelab, "wait_ready", side_effect=RuntimeError("Not ready")):
+            with self.assertRaisesRegex(RuntimeError, "Not ready"):
+                homelab.update_apps()
+        self.assertTrue((self.state / "maintenance/paused-units.json").exists())
+        self.assertNotIn(("podman", "auto-update"), self.calls)
+        self.assertFalse(any(call[:2] == ("restic", "forget") for call in self.calls))
+
+    def test_legacy_runtime_intent_is_promoted_before_failed_restart(self):
+        (self.run / "paused-units.json").write_text(json.dumps(["glance.service"]))
+        with patch.object(homelab, "command", side_effect=subprocess.CalledProcessError(1, "systemctl")):
+            with self.assertRaises(subprocess.CalledProcessError):
+                homelab.resume()
+        shutil.rmtree(self.run)
+        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
+            homelab.resume()
+        self.assertFalse((self.state / "maintenance/paused-units.json").exists())
+        self.assertIn(("systemctl", "start", "glance.service"), self.calls)
+
+    def test_unclean_stop_prevents_upload_and_recovers_services(self):
+        (self.quadlets / "homeassistant.container").write_text("[Container]\n")
+        def stopped(*args, **kwargs):
+            result = self.fake_command(*args, **kwargs)
+            if args[:2] == ("systemctl", "show"):
+                result.stdout = b"ActiveState=failed\nResult=exit-code\n"
+            return result
+        active = lambda args, **kwargs: subprocess.CompletedProcess(args, 0 if args[-1] == "homeassistant.service" else 3)
+        with patch.object(homelab, "command", stopped), patch.object(homelab.subprocess, "run", active), patch.object(homelab, "unit_ready", return_value=True):
+            with self.assertRaisesRegex(RuntimeError, "cleanly"):
+                homelab.backup()
+        self.assertFalse(any(call[:2] == ("restic", "backup") for call in self.calls))
+        self.assertIn(("systemctl", "start", "homeassistant.service"), self.calls)
+
+    def test_nonzero_exit_of_stopped_writer_preserves_existing_backup_policy(self):
+        def stopped(*args, **kwargs):
+            result = self.fake_command(*args, **kwargs)
+            if args[:2] == ("systemctl", "show"):
+                result.stdout = b"ActiveState=failed\nResult=exit-code\n"
+            return result
+        with patch.object(homelab, "command", stopped), patch.object(homelab.subprocess, "run", self.active):
+            homelab.backup()
+        self.assertTrue(any(call[:2] == ("restic", "backup") for call in self.calls))
+
+    def test_thread_must_be_attached_not_merely_running(self):
+        def state(*args, **kwargs):
+            return subprocess.CompletedProcess(args, 0, stdout=b"detached\nDone\n")
+        with patch.object(homelab.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)), patch.object(homelab, "command", state):
+            self.assertFalse(homelab.unit_ready("otbr.service"))
+        with patch.object(homelab, "unit_ready", side_effect=[False, True]), patch.object(homelab.time, "sleep"):
+            homelab.wait_ready(["otbr.service"])
+
+    def test_readiness_timeout_preserves_the_failed_service_name(self):
+        with patch.object(homelab, "unit_ready", return_value=False), patch.object(homelab.time, "monotonic", side_effect=[0, 1, 3]), patch.object(homelab.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "homeassistant.service"):
+                homelab.wait_ready(["homeassistant.service"], timeout=2)
 
     def test_retired_app_is_quiesced_when_it_still_runs(self):
         for name in homelab.RETIRED:
@@ -160,8 +230,9 @@ class LifecycleTests(unittest.TestCase):
                 with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", retired_active):
                     homelab.pause()
                     homelab.resume()
-                self.assertEqual(self.calls, [("systemctl", "stop", name + ".service"),
-                                             ("systemctl", "start", name + ".service")])
+                self.assertEqual([call for call in self.calls if call[:2] != ("systemctl", "show")],
+                                 [("systemctl", "stop", name + ".service"),
+                                  ("systemctl", "start", name + ".service")])
 
 
     def test_no_autoupdate_records_does_not_interrupt_apps(self):
@@ -220,7 +291,8 @@ class LifecycleTests(unittest.TestCase):
                     return subprocess.CompletedProcess(args, 0)
                 return self.active(args, **kwargs)
             self.calls.append(tuple(args))
-            return subprocess.CompletedProcess(args, 0)
+            output = b"\n\n".join([b"ActiveState=inactive\nResult=success"] * len(args[4:])) if tuple(args[:2]) == ("systemctl", "show") else b""
+            return subprocess.CompletedProcess(args, 0, stdout=output)
 
         with patch.object(homelab.subprocess, "run", run):
             homelab.migrate(old_data, old_config, old_secrets)
@@ -229,7 +301,7 @@ class LifecycleTests(unittest.TestCase):
         for name, folder in (("beszel-ui", "data"), ("beszel-agent", "data"), ("papra", "ingestion")):
             self.assertEqual((self.state / "apps" / name / folder / ".state").read_bytes(), b"preserve hidden state")
         self.assertTrue((old_data / "homeassistant/configuration.yaml").exists())
-        self.assertTrue((self.run / "paused-units.json").exists())
+        self.assertTrue((self.state / "maintenance/paused-units.json").exists())
         self.assertNotIn(("systemctl", "start", "glance.service"), self.calls)
         archive = self.state / "apps/_retired/immobot/legacy-image.tar"
         self.assertEqual(archive.read_bytes(), b"archived writable layer")
@@ -266,7 +338,7 @@ class LifecycleTests(unittest.TestCase):
         def run(*args, **kwargs):
             if args[0][0] == "systemctl":
                 self.calls.append(tuple(args[0]))
-                return self.active(args[0], **kwargs) if "is-active" in args[0] else subprocess.CompletedProcess(args[0], 0)
+                return self.active(args[0], **kwargs) if "is-active" in args[0] else subprocess.CompletedProcess(args[0], 0, stdout=b"ActiveState=inactive\nResult=success")
             return real_run(*args, **kwargs)
 
         with patch.dict(os.environ, RESTIC_REPOSITORY=repository, RESTIC_PASSWORD="test-only-password", RESTIC_CACHE_DIR=str(Path(self.directory.name) / "cache")), patch.object(homelab.subprocess, "run", run), patch.object(homelab, "capture_recovery"), patch.object(homelab, "device_sources", return_value=[]):
