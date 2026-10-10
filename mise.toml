@@ -1,3 +1,3 @@
 [tools]
-sops = "latest"
+sops = "3.13.3"
 yamllint = "latest"

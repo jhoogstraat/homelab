@@ -1,0 +1,4 @@
+[Network]
+NetworkName=podman-api
+Subnet=10.91.0.0/24
+Internal=true

@@ -1,0 +1,29 @@
+[Unit]
+Description=Restricted Podman discovery and monitoring API
+Requires=podman.socket
+After=podman.socket
+StartLimitIntervalSec=0
+
+[Container]
+ContainerName=socket-proxy
+# renovate: datasource=docker depName=docker.io/library/haproxy
+Image=docker.io/library/haproxy:3.2-alpine@sha256:5d97434a423c2533cfeb42874d45cf6d69a840b60334582dfbfd5008e94c80be
+Network=podman-api.network
+
+# This broker is the only application allowed to open the rootful API socket.
+SecurityLabelDisable=true
+DropCapability=ALL
+NoNewPrivileges=true
+ReadOnly=true
+User=root
+Volume=/var/lib/homelab/environment/%p/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+Volume=%t/podman/podman.sock:/var/run/podman.sock:ro
+
+[Service]
+Restart=on-failure
+RestartSec=30
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+[Install]
+WantedBy=homelab.target

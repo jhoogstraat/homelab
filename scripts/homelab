@@ -77,6 +77,9 @@ def prepare():
     credentials = ROOT / "credentials"
     credentials.mkdir(exist_ok=True, mode=0o700)
     credentials.chmod(0o700)
+    apps = ROOT / "apps"
+    apps.mkdir(exist_ok=True, mode=0o700)
+    apps.chmod(0o700)
     for quadlet in QUADLETS.glob("*.container"):
         app = ROOT / "apps" / quadlet.stem
         (app / "data").mkdir(parents=True, exist_ok=True)
@@ -89,7 +92,7 @@ def prepare():
         if path.is_file() and not (SOURCE / "environment" / path.relative_to(ROOT / "environment")).exists():
             path.unlink()
     key = credentials / "age.key"
-    if not key.is_file() or key.stat().st_mode & 0o077:
+    if not key.is_file() or key.stat().st_mode & 0o077 or key.stat().st_uid != os.geteuid():
         raise RuntimeError(f"Provision a root-only age key (0600) at {key}")
     encrypted = sorted((SOURCE / "secrets").glob("*.enc.env"))
     if not encrypted:
@@ -288,6 +291,7 @@ def pause():
 def capture_recovery(active):
     recovery = ROOT / "recovery"
     recovery.mkdir(parents=True, exist_ok=True, mode=0o700)
+    recovery.chmod(0o700)
     atomic_file(recovery / "active-units.json", json.dumps(active).encode())
     status = command("bootc", "status", "--json", stdout=subprocess.PIPE)
     atomic_file(recovery / "bootc.json", status.stdout)
@@ -313,15 +317,19 @@ def device_sources():
                  "/etc/ostree/auth.json", "/etc/fstab",
                  "/etc/systemd/system/homelab-prepare.service.d",
                  "/etc/systemd/system/homelab-recover.service",
+                 "/etc/systemd/system/multi-user.target.wants/chrony-wait.service",
                  "/etc/systemd/system/homelab-backup.service.d",
+                 "/etc/systemd/system/homelab-backup.timer.d",
                  "/etc/systemd/system/podman-auto-update.service.d",
-                 "/etc/systemd/system/bootc-fetch-apply-updates.service.d"):
+                 "/etc/systemd/system/podman-auto-update.timer.d",
+                 "/etc/systemd/system/bootc-fetch-apply-updates.service.d",
+                 "/etc/systemd/system/bootc-fetch-apply-updates.timer.d"):
         if Path(path).exists():
             sources.append(path)
-    # Reversible device override until the tested helper is packaged in the host image.
-    local_helper = ROOT / "maintenance/homelab"
-    if local_helper.exists():
-        sources.append(str(local_helper))
+    # Preserve local helpers, security configuration and tools needed by overrides.
+    maintenance_tree = ROOT / "maintenance"
+    if maintenance_tree.exists():
+        sources.append(str(maintenance_tree))
     sources.extend(str(p) for p in Path("/etc/ssh").glob("ssh_host_*"))
     return sources
 
@@ -339,7 +347,11 @@ def backup():
         sources = [str(ROOT / name) for name in ("apps", "credentials", "recovery")]
         # Include device identity and Bluetooth pairings needed after reinstall.
         sources.extend(device_sources())
-        command("restic", "backup", "--tag", "homelab", *sources)
+        # Recovery intent describes this running maintenance operation, not
+        # restored device state. Never restore a stale instruction to start apps.
+        exclusions = [arg for manifest in pause_manifests()
+                      for arg in ("--exclude", str(manifest))]
+        command("restic", "backup", "--tag", "homelab", *exclusions, *sources)
     finally:
         resume()
     # Retention happens with applications running and only after a full backup.
@@ -379,7 +391,7 @@ def migrate(data, config, secrets):
         pause()
         with tempfile.TemporaryDirectory(dir=ROOT, prefix=".migration-") as directory:
             staged = Path(directory) / "apps"
-            staged.mkdir()
+            staged.mkdir(mode=0o700)
             for quadlet in QUADLETS.glob("*.container"):
                 name = quadlet.stem
                 source = data / name
@@ -421,6 +433,7 @@ def migrate(data, config, secrets):
         if secrets.is_dir():
             credentials = ROOT / "credentials"
             credentials.mkdir(exist_ok=True, mode=0o700)
+            credentials.chmod(0o700)
             command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{secrets}/", f"{credentials / 'legacy-secrets'}/")
         print(f"Copied legacy state to {destination}; original directories remain intact.")
         print("Legacy apps remain stopped. Continue cutover, or run homelab resume to abort.")
@@ -464,6 +477,8 @@ def main():
     migration.add_argument("--config", type=Path, default=Path("/opt/containers/config"))
     migration.add_argument("--secrets", type=Path, default=Path("/opt/containers/secrets"))
     args = parser.parse_args()
+    if os.geteuid() != 0:
+        raise RuntimeError("Run homelab maintenance as root")
     with maintenance():
         if args.action == "resume":
             resume()

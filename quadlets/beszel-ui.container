@@ -6,14 +6,15 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=beszel-ui
-Image=docker.io/henrygd/beszel:latest
-AutoUpdate=registry
+# renovate: datasource=docker depName=docker.io/henrygd/beszel
+Image=docker.io/henrygd/beszel:latest@sha256:6b39a8b64f9b15d00a25e7683e31a93c46161182a54f62713525107064e10599
 
 Pod=beszel.pod
 
 Volume=/var/lib/homelab/apps/beszel-ui/data:/beszel_data:Z,idmap
 
 Label="traefik.enable=true"
+Label="traefik.http.routers.beszel-ui.entrypoints=https"
 Label="traefik.http.services.%p.loadbalancer.server.port=8090"
 Label="subdomain=beszel"
 
@@ -24,7 +25,6 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=30
-
 
 [Install]
 WantedBy=homelab.target

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 290" role="img" aria-labelledby="title description">
+<title id="title">Homelab deployment and recovery</title>
+<desc id="description">Git changes pass through CI and GHCR to the Fedora bootc host weekly. Reviewed image digests update Podman through Git while device-owned state persists. Restic pauses writers and uploads encrypted backups to remote S3. Both update paths require a successful backup.</desc>
+<style>
+text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.node { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1; }
+.primary { fill: #172033; font-size: 20px; font-weight: 600; }
+.secondary { fill: #526174; font-size: 14px; }
+.lane { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
+.deploy { fill: #2563eb; } .apps { fill: #047857; } .backup { fill: #a16207; }
+.host { fill: #eff6ff; stroke: #93b4ef; } .state { fill: #ecfdf5; stroke: #83c8af; } .remote { fill: #fffbeb; stroke: #d6b777; }
+.line { fill: none; stroke: #64748b; stroke-width: 1.6; marker-end: url(#arrow); }
+@media (prefers-color-scheme: dark) {
+.node { fill: #17212f; stroke: #41516a; } .primary { fill: #edf2fa; } .secondary { fill: #b5c2d4; }
+.deploy { fill: #93b4ef; } .apps { fill: #83c8af; } .backup { fill: #d6b777; }
+.host { fill: #172b47; stroke: #456999; } .state { fill: #123229; stroke: #477764; } .remote { fill: #352c1a; stroke: #8a7140; }
+.line { stroke: #a1b0c4; }
+}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 1 1 L 8 5 L 1 9" fill="none" stroke="#8494aa" stroke-width="1.5"/></marker></defs>
+<text x="16" y="18" class="lane deploy">HOST DEPLOYMENT</text>
+<g><rect x="16" y="30" width="226" height="60" rx="9" class="node "/><text x="32" y="56" class="primary">Git</text><text x="32" y="77" class="secondary">Infrastructure + ciphertext</text></g>
+<path d="M 248 60 H 291" class="line"/>
+<g><rect x="302" y="30" width="226" height="60" rx="9" class="node "/><text x="318" y="56" class="primary">CI → GHCR</text><text x="318" y="77" class="secondary">Build + validate ARM64</text></g>
+<path d="M 534 60 H 577" class="line"/>
+<g><rect x="588" y="30" width="236" height="60" rx="9" class="node host"/><text x="604" y="56" class="primary">Fedora bootc</text><text x="604" y="77" class="secondary">Weekly updates · may reboot</text></g>
+<text x="16" y="112" class="lane apps">APPLICATION LIFECYCLE</text>
+<g><rect x="16" y="124" width="226" height="60" rx="9" class="node "/><text x="32" y="150" class="primary">Pinned image digests</text><text x="32" y="171" class="secondary">Scan + review update proposals</text></g>
+<path d="M 248 154 H 291" class="line"/>
+<g><rect x="302" y="124" width="226" height="60" rx="9" class="node "/><text x="318" y="150" class="primary">Podman Quadlets</text><text x="318" y="171" class="secondary">Reviewed updates · no reboot</text></g>
+<path d="M 534 154 H 577" class="line"/>
+<g><rect x="588" y="124" width="236" height="60" rx="9" class="node state"/><text x="604" y="150" class="primary">Persistent app state</text><text x="604" y="171" class="secondary">Device-owned · UI, files, env</text></g>
+<text x="16" y="206" class="lane backup">BACKUP &amp; RECOVERY</text>
+<g><rect x="16" y="218" width="226" height="60" rx="9" class="node "/><text x="32" y="244" class="primary">State + credentials</text><text x="32" y="265" class="secondary">Applications + host identities</text></g>
+<path d="M 248 248 H 291" class="line"/>
+<g><rect x="302" y="218" width="226" height="60" rx="9" class="node "/><text x="318" y="244" class="primary">Restic cold backup</text><text x="318" y="265" class="secondary">Pause → upload → resume</text></g>
+<path d="M 534 248 H 577" class="line"/>
+<g><rect x="588" y="218" width="236" height="60" rx="9" class="node remote"/><text x="604" y="244" class="primary">Remote S3 repository</text><text x="604" y="265" class="secondary">Encrypted + deduplicated</text></g>
+</svg>

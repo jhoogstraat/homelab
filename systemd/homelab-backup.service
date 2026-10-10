@@ -1,7 +1,7 @@
 [Unit]
 Description=Consistent encrypted homelab backup to S3
 Wants=network-online.target
-After=network-online.target
+After=network-online.target homelab.target
 
 [Service]
 Type=oneshot

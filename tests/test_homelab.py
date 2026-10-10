@@ -90,6 +90,34 @@ class LifecycleTests(unittest.TestCase):
                 homelab.prepare()
         self.assertEqual((self.state / "secrets").readlink(), previous)
 
+    def test_prepare_closes_existing_state_directory_permissions(self):
+        (self.state / "apps").chmod(0o755)
+        (self.state / "credentials").chmod(0o755)
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+        for path in (self.state / "apps", self.state / "credentials", self.state / "secret-sets"):
+            self.assertEqual(path.stat().st_mode & 0o777, 0o700)
+
+    def test_incomplete_restic_snapshot_blocks_pruning_and_update(self):
+        def partial_upload(*args, **kwargs):
+            result = self.fake_command(*args, **kwargs)
+            if args[:2] == ("restic", "backup"):
+                raise subprocess.CalledProcessError(3, args)
+            return result
+        with patch.object(homelab, "command", partial_upload), patch.object(homelab.subprocess, "run", self.active):
+            with self.assertRaises(subprocess.CalledProcessError):
+                homelab.update_apps()
+        self.assertIn(("systemctl", "start", "glance.service"), self.calls)
+        self.assertNotIn(("podman", "auto-update"), self.calls)
+        self.assertFalse(any(call[:2] == ("restic", "forget") for call in self.calls))
+
+    def test_prepare_rejects_exposed_age_key_before_decryption(self):
+        (self.state / "credentials/age.key").chmod(0o644)
+        with patch.object(homelab, "command", self.fake_command):
+            with self.assertRaisesRegex(RuntimeError, "root-only age key"):
+                homelab.prepare()
+        self.assertFalse(any(call[0] == "sops" for call in self.calls))
+
     def test_unreachable_repository_never_stops_applications(self):
         with patch.object(homelab, "command", side_effect=subprocess.CalledProcessError(1, "restic")):
             with self.assertRaises(subprocess.CalledProcessError):
@@ -319,6 +347,12 @@ class LifecycleTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             homelab.migrate(old_data, old_config, old_secrets)
 
+    def test_device_backup_includes_persistent_security_override_tree(self):
+        config = self.state / "maintenance/security/socket-proxy/haproxy.cfg"
+        config.parent.mkdir(parents=True)
+        config.write_text("restricted API")
+        self.assertIn(str(self.state / "maintenance"), homelab.device_sources())
+
     @unittest.skipUnless(shutil.which("restic"), "restic required for real backup/restore")
     def test_real_restic_restore_recovers_database_attachment_and_credentials(self):
         data = self.state / "apps/glance/data"
@@ -331,6 +365,9 @@ class LifecycleTests(unittest.TestCase):
         attachment = data / "attachment.bin"
         attachment.write_bytes(bytes(range(256)) * 4)
         (self.state / "recovery").mkdir()
+        security_config = self.state / "maintenance/security/haproxy.cfg"
+        security_config.parent.mkdir(parents=True)
+        security_config.write_text("restricted API")
         repository = str(Path(self.directory.name) / "repository")
         real_run = subprocess.run
         real_command = homelab.command
@@ -341,7 +378,7 @@ class LifecycleTests(unittest.TestCase):
                 return self.active(args[0], **kwargs) if "is-active" in args[0] else subprocess.CompletedProcess(args[0], 0, stdout=b"ActiveState=inactive\nResult=success")
             return real_run(*args, **kwargs)
 
-        with patch.dict(os.environ, RESTIC_REPOSITORY=repository, RESTIC_PASSWORD="test-only-password", RESTIC_CACHE_DIR=str(Path(self.directory.name) / "cache")), patch.object(homelab.subprocess, "run", run), patch.object(homelab, "capture_recovery"), patch.object(homelab, "device_sources", return_value=[]):
+        with patch.dict(os.environ, RESTIC_REPOSITORY=repository, RESTIC_PASSWORD="test-only-password", RESTIC_CACHE_DIR=str(Path(self.directory.name) / "cache")), patch.object(homelab.subprocess, "run", run), patch.object(homelab, "capture_recovery"), patch.object(homelab, "device_sources", return_value=[str(self.state / "maintenance")]):
             real_command("restic", "init", stdout=subprocess.DEVNULL)
             homelab.backup()
             attachment.unlink()
@@ -357,6 +394,10 @@ class LifecycleTests(unittest.TestCase):
         restored_key = restored / (self.state / "credentials/age.key").relative_to(self.state.anchor)
         self.assertEqual(restored_key.read_text(), "test key")
         self.assertEqual(restored_key.stat().st_mode & 0o777, 0o600)
+        restored_config = restored / security_config.relative_to(security_config.anchor)
+        self.assertEqual(restored_config.read_text(), "restricted API")
+        for manifest in homelab.pause_manifests():
+            self.assertFalse((restored / manifest.relative_to(manifest.anchor)).exists())
         self.assertIn(("systemctl", "stop", "glance.service"), self.calls)
         self.assertIn(("systemctl", "start", "glance.service"), self.calls)
 

@@ -4,8 +4,8 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=registry
-Image=docker.io/registry:3
-AutoUpdate=registry
+# renovate: datasource=docker depName=docker.io/registry
+Image=docker.io/registry:3@sha256:ddf754342cfc8acc51a56d5d0ab6af06826461864460636d8bd5c546dab2a7b8
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.6
@@ -17,7 +17,6 @@ Volume=/var/lib/homelab/apps/%p/data:/var/lib/registry:Z,idmap
 
 Environment=REGISTRY_STORAGE_DELETE_ENABLED=true
 
-
 Timezone=local
 
 [Service]
@@ -25,7 +24,6 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=60
-
 
 [Install]
 WantedBy=homelab.target
