@@ -13,7 +13,9 @@ on:
       - scripts/**
       - systemd/**
       - secrets/*.enc.env
+      - tests/**
       - .github/workflows/build.yaml
+      - .github/workflows/image-security.yaml
   pull_request:
     paths:
       - Containerfile
@@ -26,6 +28,7 @@ on:
       - secrets/*.enc.env
       - tests/**
       - .github/workflows/build.yaml
+      - .github/workflows/image-security.yaml
 
 jobs:
   build-and-push:
@@ -36,7 +39,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
 
       - name: Install Podman
         run: sudo apt-get update && sudo apt-get install -y podman python3 restic rsync
@@ -48,11 +53,12 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: printf '%s' "$GITHUB_TOKEN" | sudo podman login --authfile /tmp/homelab-registry-auth.json ghcr.io --username '${{ github.actor }}' --password-stdin
+          REGISTRY_USER: ${{ github.actor }}
+        run: printf '%s' "$GITHUB_TOKEN" | sudo podman login --authfile /tmp/homelab-registry-auth.json ghcr.io --username "$REGISTRY_USER" --password-stdin
 
       - name: Generate image metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -71,10 +77,30 @@ jobs:
       - name: Validate packaged Quadlets and systemd dependencies
         run: sudo python3 tests/verify_image.py homelab-bootc:build
 
+      - name: Verify restricted Podman API
+        run: sudo python3 tests/verify_proxy.py homelab-bootc:build
+
+      - name: Verify public tunnel routes
+        run: sudo python3 tests/verify_routes.py homelab-bootc:build
+
+      - name: Scan application digests before publication
+        if: github.event_name != 'pull_request'
+        run: |
+          status=0
+          sudo python3 scripts/scan-images || status=$?
+          cat image-security.json
+          exit "$status"
+
       - name: Push image tags
         if: github.event_name != 'pull_request'
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           while IFS= read -r tag; do
             sudo podman tag homelab-bootc:build "$tag"
             sudo podman push --authfile /tmp/homelab-registry-auth.json "$tag"
-          done <<< '${{ steps.meta.outputs.tags }}'
+          done <<< "$IMAGE_TAGS"
+
+      - name: Remove registry credentials
+        if: always()
+        run: sudo rm -f /tmp/homelab-registry-auth.json

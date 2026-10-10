@@ -17,7 +17,7 @@ dns:
     - 0.0.0.0
   port: 53
   anonymize_client_ip: false
-  ratelimit: 0
+  ratelimit: 20
   ratelimit_subnet_len_ipv4: 24
   ratelimit_subnet_len_ipv6: 56
   ratelimit_whitelist: []
@@ -173,6 +173,9 @@ filtering:
   parental_block_host: family-block.dns.adguard.com
   safebrowsing_block_host: standard-block.dns.adguard.com
   rewrites:
+    # Public vault must bypass any later wildcard rewrite of hoogstraat.net.
+    - domain: vault.hoogstraat.net
+      answer: vault.hoogstraat.net
     - domain: '*.hoogstraat.de'
       answer: 192.168.0.3
     - domain: pi1

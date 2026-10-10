@@ -73,12 +73,22 @@ d /var/lib/iscsi/slp 0755 root root -
 d /var/lib/iscsi/static 0755 root root -
 EOT
 
-systemctl enable bluetooth.service cockpit.socket firewalld.service NetworkManager-wait-online.service podman-auto-update.timer podman.socket systemd-resolved.service homelab.target homelab-recover.service homelab-backup.timer bootc-fetch-apply-updates.timer
+systemctl enable chrony-wait.service bluetooth.service cockpit.socket firewalld.service NetworkManager-wait-online.service podman.socket systemd-resolved.service homelab.target homelab-recover.service homelab-backup.timer bootc-fetch-apply-updates.timer
 firewall-offline-cmd --zone=public --add-service=cockpit
 firewall-offline-cmd --zone=public --add-service=https
 firewall-offline-cmd --zone=public --add-service=dns
 firewall-offline-cmd --zone=public --add-port=21063-21064/tcp
-firewall-offline-cmd --zone=public --add-port=51820/udp
+# Remove the retired WireGuard listener from the image's firewall defaults.
+firewall-offline-cmd --zone=public --remove-port=51820/udp || true
 firewall-offline-cmd --zone=public --remove-port=51821/tcp || true
 rm -rf /run/cockpit /run/selinux-policy /var/lib/dnf /tmp/* /var/tmp/*
+# semanage.conf stores the image policy in /etc/selinux. RPM upgrades also
+# leave a duplicate build-time store in /var, which bootc must not deploy.
+grep -qx 'store-root=/etc/selinux' /etc/selinux/semanage.conf
+for policy in /etc/selinux/targeted/policy/policy.*; do
+    test -s "$policy"
+done
+rm -rf /var/lib/selinux /var/lib/rpm-state/kernel
+# The bootable kernel/initramfs live in /usr/lib/modules; this is RPM metadata.
+rm -f /boot/symvers-*.xz
 rm -f /usr/libexec/homelab-build-host

@@ -1,38 +1,47 @@
+![Header Image](https://raw.githubusercontent.com/Mafyuh/homelab-svg-assets/main/assets/header_.png)
+
+<div align="center">
+
 # Homelab
 
-A Raspberry Pi 4 running a Fedora bootc host and Podman Quadlets. Git describes how services run; application settings and data live on the device and are backed up together.
+</div>
 
-- **Host:** CI builds `ghcr.io/jhoogstraat/homelab:latest` for ARM64. Weekly bootc upgrades apply host changes and may reboot.
-- **Applications:** Podman follows the tags in `quadlets/` daily. Updates replace containers without a host rebuild or reboot. A successful full backup is required before either kind of update.
-- **Configuration:** use each application's supported UI, files or environment variables. `configs/environment/` is Git-owned infrastructure; `configs/defaults/` initializes device configuration once. Subsequent app UI changes or local file edits survive redeployment.
-- **Storage:** `/var/lib/homelab/apps/<app>/` holds local POSIX configuration/data. Encrypted, deduplicated restic backups go to a remote S3-compatible repository. The current SD-card backup pauses services during upload; a USB SSD is the recommended storage upgrade.
-- **Secrets:** only SOPS ciphertext is packaged in the image. The age key, S3 credentials and restic password are provisioned locally with root-only permissions.
+A Raspberry Pi 4 running Fedora bootc and Podman Quadlets. Git owns deployment; the device owns application settings and data.
 
-Read [the architecture and ownership boundaries](docs/homelab-reconciliation.md), [migration, backup and recovery instructions](docs/operations.md), and the application inventories: [stateful services](docs/application-storage.md), [infrastructure and home automation](docs/application-storage-other.md).
+![Deployment, application updates and encrypted recovery flows](docs/assets/architecture.svg)
 
-Immobot, OneDev and n8n are retired. Their existing state is archived during migration. All other apps are retained; Home Assistant, homepage, Matter and OTBR remain optional, matching the previous inventory.
+Application images are pinned to digests. Updates require a successful full backup. The current SD-card backup pauses services for the entire scan/upload, then checks readiness before permitting updates. A USB SSD is the recommended storage upgrade.
+
+`configs/environment/` is reapplied at boot. `configs/defaults/` seeds missing settings once; application UI changes and local edits survive redeployment. State lives in `/var/lib/homelab/apps/<app>/`. Only SOPS ciphertext enters the image; the age key, S3 credentials and restic password stay root-only on the device.
+
+Traefik and Beszel use a restricted API broker; only that broker mounts the rootful Podman socket. **The deployment is not security-clear:** upstream image vulnerabilities remain. See the [security audit](docs/security-audit.md) for findings and rollout requirements.
+
+Home Assistant, homepage, Matter and OTBR are optional. Immobot, OneDev, n8n, Grafana, wg-easy and CouchDB are retired; migration preserves their state in recovery archives. Ansible is removed (last version: `dafdde0`) and must not sync after cutover.
 
 ## Repository
 
-| Path | Purpose |
+| Path | Responsibility |
 | --- | --- |
-| `Containerfile` | Fedora host, packages, SSH/firewall policy and maintenance services |
-| `quadlets/` | Application images, networking, mounts, hardware and routing |
-| `configs/environment/` | Git-owned hosting settings, reapplied at boot |
-| `configs/defaults/` | Initial application settings; never overwrite device edits |
-| `secrets/*.enc.env` | Encrypted container environment files |
-| `scripts/homelab` | Initialization, cold backup, guarded updates and legacy migration |
-| `scripts/build-host` | Host setup during image build, using Bash syntax supported by the CI builder |
-| `systemd/` | Host timers and shared application lifecycle |
-| `tests/` | State preservation and failure recovery checks |
+| `Containerfile` | ARM64 host image and packages |
+| `quadlets/` | Application images, networks, routing and mounts |
+| `configs/environment/` | Git-owned infrastructure settings |
+| `configs/defaults/` | First-install application settings |
+| `secrets/*.enc.env` | SOPS-encrypted application credentials |
+| `scripts/homelab` | Preparation, backup, guarded updates and migration |
+| `scripts/build-host` | Host accounts, SSH, firewall and service enablement |
+| `systemd/` | Maintenance timers and application lifecycle |
+| `tests/` | State preservation, recovery and API-boundary checks |
 
-The old Ansible deployment is removed. Its last version remains in Git history at `dafdde0`; it must not keep syncing configuration after cutover.
+Read the [architecture](docs/homelab-reconciliation.md), [operations and recovery guide](docs/operations.md), and application inventories: [stateful services](docs/application-storage.md) · [infrastructure and home automation](docs/application-storage-other.md).
 
 ## Development
 
 ```sh
 python3 -m unittest discover -s tests -v
-podman build --arch arm64 --tag homelab-bootc:build .
+podman build --arch arm64 --format docker --tag homelab-bootc:build .
+python3 tests/verify_image.py homelab-bootc:build
+python3 tests/verify_proxy.py homelab-bootc:build
+python3 tests/verify_routes.py homelab-bootc:build
 ```
 
-CI runs these checks on pull requests and publishes only from `main` or a manual workflow run. Linux is required to build bootc. Image build/lint and Quadlet generation do not prove that the Pi boots or that its radio devices work; the migration guide includes those checks.
+Linux is required for image builds. CI validates pull requests and blocks publication when application scans fail or report critical findings. Build, lint and generator checks complement the Pi boot, radio and restore checks in the operations guide.

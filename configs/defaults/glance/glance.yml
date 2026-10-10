@@ -179,7 +179,7 @@ pages:
 
           - type: monitor
             cache: 1m
-            title: Controle Center
+            title: Control Center
             sites:
               - title: AdGuard Home
                 url: https://adguard.hoogstraat.de
@@ -193,18 +193,3 @@ pages:
                 url: https://beszel.hoogstraat.de
                 check-url: http://beszel:8090
                 icon: di:beszel
-
-# Add more pages here:
-# - name: Your page name
-#   columns:
-#     - size: small
-#       widgets:
-#         # Add widgets here
-
-#     - size: full
-#       widgets:
-#         # Add widgets herej
-
-#     - size: small
-#       widgets:
-#         # Add widgets here

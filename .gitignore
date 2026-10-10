@@ -1,7 +1,11 @@
-old/
 data/
-
-.ansible/
 .DS_Store
 __pycache__/
 *.pyc
+# Only encrypted dotenv files belong in Git.
+secrets/*
+!secrets/*.enc.env
+*.key
+configs/backup.env
+
+/image-security.json

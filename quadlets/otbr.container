@@ -4,8 +4,8 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=otbr
-Image=ghcr.io/wittdennis/homeassistant-otbr:3
-AutoUpdate=registry
+# renovate: datasource=docker depName=ghcr.io/wittdennis/homeassistant-otbr
+Image=ghcr.io/wittdennis/homeassistant-otbr:3@sha256:96140ea49b3d8af642eff40ad23764c0ab05d5716b69dd11efc5f7e0f4da9d60
 
 Network=host
 

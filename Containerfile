@@ -1,4 +1,11 @@
-FROM ghcr.io/getsops/sops:v3.13.3 AS sops
+# Rebuild the verified SOPS release with dependency security fixes.
+FROM docker.io/library/golang:1.27.2-alpine@sha256:c2b8d9b05d9386fe1b01bab829eda3a05edb526c220e638d3c7a73671a290672 AS sops
+WORKDIR /src
+RUN apk add --no-cache git \
+    && git clone --depth 1 --branch v3.13.3 https://github.com/getsops/sops.git . \
+    && test "$(git rev-parse HEAD)" = 26e2f4784ca61353082c32dbd987c25eda086dc9 \
+    && go get golang.org/x/crypto@v0.57.0 golang.org/x/net@v0.60.0 google.golang.org/grpc@v1.83.2 \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /usr/local/bin/sops ./cmd/sops
 FROM quay.io/fedora/fedora-bootc:45
 COPY --from=sops /usr/local/bin/sops /usr/bin/sops
 
@@ -8,7 +15,8 @@ STOPSIGNAL SIGRTMIN+3
 CMD ["/sbin/init"]
 SHELL ["/bin/bash", "-xeuo", "pipefail", "-c"]
 
-RUN dnf -y install \
+RUN dnf -y upgrade --refresh \
+	&& dnf -y install \
 	bind-utils bluez btop cockpit cockpit-podman fd-find git htop ncurses \
 	neovim python3 restic ripgrep rsync tcpdump which wireshark-cli zsh \
 	arm-image-installer bcm283x-firmware uboot-images-armv8 brcmfmac-firmware \

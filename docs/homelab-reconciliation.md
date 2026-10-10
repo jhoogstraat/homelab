@@ -10,6 +10,8 @@ At boot, `homelab-prepare.service` materializes Git-owned environment files into
 
 Quadlets and systemd provide startup, dependencies and process restart. Applications retain their existing process restart policies; this is not a claim that every application has a functional health check. The Beszel containers and pod have explicit boot activation.
 
+Traefik and Beszel connect to `socket-proxy` over the internal `podman-api` network. The broker permits discovery, inspection, stats and events, and denies mutation, exec, logs, archive access and native Libpod routes. It alone mounts the rootful Podman socket and disables container SELinux separation for socket access. The API is never published on a host port. Container inspection still exposes environment metadata to these trusted clients; see [security limits](security-audit.md).
+
 Timers use the host's Europe/Berlin timezone:
 
 | Time | Operation |
@@ -20,7 +22,7 @@ Timers use the host's Europe/Berlin timezone:
 
 A process lock serializes these operations. Timers do not catch up at boot. Missing/unreachable/uninitialized backup configuration prevents automatic updates. An S3 connectivity failure detected before backup never stops apps. Upload failure restarts the apps and prevents updates. A durable, root-only restart manifest and systemd `ExecStopPost` recover only previously running apps after terminated maintenance; `homelab-recover.service` also attempts recovery at boot. Recovery intent remains until services pass readiness checks. Manual maintenance must use the same helper, or stop the timers first.
 
-Application image changes follow Podman's native registry comparison and rollback behavior. Tags retain their existing policies (`latest`, `stable`, major versions and `latest-rootless`); these policies can include breaking database migrations. Recovery metadata records image digests and bootc status. Container rollback and OS rollback do not undo database changes: restoring pre-update data is required when a schema migration cannot be reversed. Host updates still need an image and possibly a reboot. Most app changes need neither.
+Application definitions pin registry digests. Renovate proposes channel/digest changes for review; security scans gate publication, and unreviewed tags do not replace running workloads. Channel/version changes can still include breaking database migrations. Recovery metadata records image digests and bootc status. Container rollback and OS rollback do not undo database changes: restoring pre-update data is required when a schema migration cannot be reversed. Host updates still need an image and possibly a reboot. Most app changes need neither.
 
 References: [bootc filesystem persistence](https://bootc.dev/bootc/bootc-filesystem.7.html), [Fedora base-image interfaces](https://gitlab.com/fedora/bootc/base-images), [Podman auto-update and rollback](https://docs.podman.io/en/latest/markdown/podman-auto-update.1.html), [SOPS release](https://github.com/getsops/sops/releases/tag/v3.13.3).
 
@@ -68,6 +70,6 @@ Use distinct prefixes/buckets and credentials if live app objects are introduced
 
 Repository tests cover config preservation, atomic secret rotation, unreachable backup targets, backup failure recovery, guarded updates, and retired app handling. The ARM64 image must build, pass bootc lint and generate every Quadlet. Real backup/restore tests verify a SQLite database and binary attachment through restic.
 
-The final ARM64 build passed 13 bootc lint checks with one warning: the Pi firmware package supplies files under `/boot/efi`. They are not automatically installed on an existing Pi by bootc; compatibility with its existing boot chain must be checked before cutover. No bootloader shim or broad container privileges are introduced.
+The migration’s ARM64 build passed 13 bootc lint checks with one warning: the Pi firmware package supplies files under `/boot/efi`. They are not automatically installed on an existing Pi by bootc; compatibility with its existing boot chain must be checked before cutover. No bootloader shim or broad container privileges are introduced.
 
-Remaining device acceptance is explicit: boot the image on the existing Pi, confirm mounted filesystem and UID/SELinux behavior, preserve UI changes through restart, check hardware/network integrations, then restore representative application data from the actual S3 endpoint. These checks require the device and future S3 service; no remote endpoint is fabricated in this repository.
+Remaining device acceptance is explicit: boot the image on the existing Pi, confirm mounted filesystem and UID/SELinux behavior, preserve UI changes through restart, check hardware/network integrations, then restore representative application data from the actual S3 endpoint. The historical cutover and S3 restore evidence is recorded in `operations.md`; each new image still needs deployment-specific checks.

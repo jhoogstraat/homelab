@@ -6,8 +6,8 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=homepage
-Image=ghcr.io/jhoogstraat/homepage:latest
-AutoUpdate=registry
+# renovate: datasource=docker depName=ghcr.io/jhoogstraat/homepage
+Image=ghcr.io/jhoogstraat/homepage:latest@sha256:a6a4aec279bf1fefa44f9b347ed9f9def3f4b50a0c899100940a7e5e260917e4
 Pull=newer
 
 UserNS=auto
@@ -21,6 +21,7 @@ EnvironmentFile=/var/lib/homelab/environment/%p/%p.env
 EnvironmentFile=/var/lib/homelab/secrets/%p.env
 
 Label="traefik.enable=true"
+Label="traefik.http.routers.homepage.entrypoints=https"
 
 Timezone=local
 

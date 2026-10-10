@@ -6,8 +6,8 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=papra
-Image=ghcr.io/papra-hq/papra:latest-rootless
-AutoUpdate=registry
+# renovate: datasource=docker depName=ghcr.io/papra-hq/papra
+Image=ghcr.io/papra-hq/papra:latest-rootless@sha256:bf4a66e776d0a40d71543747a2e17af800204b4a81d19f7951b8552c8032dbeb
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.11
@@ -22,6 +22,7 @@ EnvironmentFile=/var/lib/homelab/apps/%p/config/app.env
 EnvironmentFile=/var/lib/homelab/secrets/%p.env
 
 Label="traefik.enable=true"
+Label="traefik.http.routers.papra.entrypoints=https"
 
 Timezone=local
 
@@ -30,7 +31,6 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=30
-
 
 [Install]
 WantedBy=homelab.target

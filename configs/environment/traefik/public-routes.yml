@@ -1,0 +1,26 @@
+# Cloudflare must send vault.hoogstraat.net to http://traefik:8080.
+# This entrypoint has no published host port and exposes only Vaultwarden.
+http:
+  routers:
+    public-vault:
+      rule: Host(`vault.hoogstraat.net`)
+      entryPoints: [tunnel]
+      service: vault
+    public-vault-admin:
+      rule: Host(`vault.hoogstraat.net`) && PathPrefix(`/admin`)
+      priority: 100
+      entryPoints: [tunnel]
+      service: vault
+      middlewares: [deny-public-admin]
+  middlewares:
+    lan-only:
+      ipAllowList:
+        sourceRange: [192.168.0.0/24, 127.0.0.1/32, '::1/128', 'fe80::/10']
+    deny-public-admin:
+      ipAllowList:
+        sourceRange: [127.0.0.1/32, '::1/128']
+  services:
+    vault:
+      loadBalancer:
+        servers:
+          - url: http://vaultwarden:80

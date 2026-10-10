@@ -6,8 +6,8 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=vaultwarden
-Image=docker.io/vaultwarden/server:latest-alpine
-AutoUpdate=registry
+# renovate: datasource=docker depName=docker.io/vaultwarden/server
+Image=docker.io/vaultwarden/server:latest-alpine@sha256:19ea2b669945d842dadc3d500f2d6a795866a003330f59a47b9634658bae98bb
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.7
@@ -15,11 +15,13 @@ HostName=vaultwarden
 
 Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
 
-Environment=DOMAIN=https://vault.hoogstraat.de
+Environment=DOMAIN=https://vault.hoogstraat.net
+Environment=SIGNUPS_ALLOWED=false
 
 EnvironmentFile=/var/lib/homelab/secrets/%p.env
 
 Label="traefik.enable=true"
+Label="traefik.http.routers.vaultwarden.entrypoints=https"
 Label="subdomain=vault"
 
 Timezone=local
@@ -29,7 +31,6 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=60
-
 
 [Install]
 WantedBy=homelab.target

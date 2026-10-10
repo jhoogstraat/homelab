@@ -1,7 +1,6 @@
 ---
 creation_rules:
   - path_regex: secrets/.*\.env$
-    # encrypted_regex: ^(data|stringData)$
     key_groups:
       - age:
           - age1kqmpnwma8rlnvgkg7n0tfz7k4urpgaadm28uwuu6l9m0skg7rawq6apsup

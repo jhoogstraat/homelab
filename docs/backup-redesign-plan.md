@@ -10,14 +10,14 @@ The proposed staging sequence is: preflight → pre-copy while applications run 
 
 If staging passes the benchmark, applications run during upload and pruning. Final synchronization, Home Assistant startup and Thread/Matter reconnection still contribute to the interruption. This removes upload time from the outage; it does **not** promise uninterrupted light control or a shorter total outage until measured. Eliminating routine restarts would require verified application-native exports for the entire HA/Matter/Thread set.
 
-## Evidence from this Pi
+## Evidence before the 2026-10-10 hardening
 
 - `/var/lib/homelab` is on the SD card's ext4 filesystem; no USB SSD is currently attached.
 - Application state occupies approximately 3.7 GiB. About 167 GiB was free during the incident.
 - Today's backup stopped services at 02:00:19; HA, Matter and OTBR restarted at 02:01:18; the remote access tunnel reconnected at 02:01:54.
 - Restic scanned about 3.669 GiB in 41 seconds and uploaded about 16.7 MiB. A new local-copy design could be slower than this workload, so it must be measured rather than assumed faster.
-- HA's Podman `StopTimeout` is 10 seconds while systemd allows 100 seconds. The logs show a forced kill during backup.
-- Recovery intent currently lives in `/run/homelab/paused-units.json`, which does not survive reboot. Existing tests exercise upload failure, unreachable repositories, repeatable recovery and real restic restore, but not the proposed staging lifecycle.
+- HA's Podman `StopTimeout` was 10 seconds while systemd allows 100 seconds. The logs show a forced kill during backup.
+- Recovery intent lived in `/run/homelab/paused-units.json`, which does not survive reboot. Existing tests exercise upload failure, unreachable repositories, repeatable recovery and real restic restore, but not the proposed staging lifecycle.
 
 ## Phase 1: harden the current lifecycle
 

@@ -1,24 +1,20 @@
 [Unit]
 Description=Beszel Agent
-Requires=beszel.pod
-Wants=podman.socket
-After=beszel.pod podman.socket
+Requires=beszel.pod socket-proxy.container
+After=beszel.pod socket-proxy.container
 StartLimitIntervalSec=0
 
 [Container]
 ContainerName=beszel-agent
-Image=docker.io/henrygd/beszel-agent:latest
-AutoUpdate=registry
+# renovate: datasource=docker depName=docker.io/henrygd/beszel-agent
+Image=docker.io/henrygd/beszel-agent:latest@sha256:f27b1aa2c68404bc5b9e1a2ab36653bd9b4ee14f6299862f09cd5051a4134767
 
 Pod=beszel.pod
 
-# Podman socket connection with SELinux (https://github.com/containers/podman/discussions/9860#discussioncomment-545142)
-SecurityLabelDisable=true
-
 Volume=/var/lib/homelab/apps/beszel-agent/data:/var/lib/beszel-agent:Z,idmap
-Volume=%t/podman/podman.sock:/var/run/docker.sock:idmap
 
 Environment=HUB_URL=http://localhost:8090
+Environment=DOCKER_HOST=tcp://socket-proxy:2375
 EnvironmentFile=/var/lib/homelab/secrets/beszel.env
 
 Timezone=local
@@ -28,7 +24,6 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=60
-
 
 [Install]
 WantedBy=homelab.target

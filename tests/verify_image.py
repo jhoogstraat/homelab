@@ -36,8 +36,24 @@ assert not {"immobot.service", "onedev.service", "n8n.service", "grafana.service
 assert units.keys() == expected, units.keys() ^ expected
 assert "--stop-timeout 60 " in units["homeassistant.service"]
 assert "TimeoutStopSec=100" in units["homeassistant.service"]
+for alias in ("host.docker.internal", "host.containers.internal"):
+    assert re.search(r"--add-host(?:=| )" + re.escape(alias + ":10.90.0.1"),
+                     units["traefik.service"]), alias
+for name in ("traefik.service", "beszel-agent.service"):
+    assert "podman.sock" not in units[name], name
+    assert "label=disable" not in units[name], name
+    assert any("socket-proxy.service" in line.split("=", 1)[1].split()
+               for line in units[name].splitlines() if line.startswith("Requires=")), name
+assert "--internal" in units["podman-api-network.service"]
+assert "--publish" not in units["socket-proxy.service"]
+assert "--cap-drop all" in units["socket-proxy.service"]
+assert "--read-only" in units["socket-proxy.service"]
 print(f"Validated {len(expected)} packaged Quadlet units")
 subprocess.run(["podman", "run", "--rm", image, "/bin/bash", "-euc",
                 "mkdir -p /tmp/units; /usr/lib/systemd/system-generators/podman-system-generator /tmp/units; "
                 "SYSTEMD_UNIT_PATH=/tmp/units:/usr/lib/systemd/system systemd-analyze verify "
-                "/tmp/units/*.service /usr/lib/systemd/system/homelab*.service /usr/lib/systemd/system/homelab.target"], check=True)
+                "/tmp/units/*.service /usr/lib/systemd/system/homelab*.service "
+                "/usr/lib/systemd/system/homelab.target /usr/lib/systemd/system/homelab*.timer "
+                "/usr/lib/systemd/system/podman-auto-update.timer "
+                "/usr/lib/systemd/system/bootc-fetch-apply-updates.timer "
+                "/usr/lib/systemd/system/chrony-wait.service"], check=True)
