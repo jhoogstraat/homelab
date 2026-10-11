@@ -15,7 +15,7 @@ Volume=/var/lib/homelab/apps/beszel-agent/data:/var/lib/beszel-agent:Z,idmap
 
 Environment=HUB_URL=http://localhost:8090
 Environment=DOCKER_HOST=tcp://socket-proxy:2375
-Volume=/run/homelab/secrets/current/beszel-agent:/run/secrets:ro,Z
+Volume=/run/homelab/secrets/current/beszel-agent:/run/secrets:ro,Z,idmap
 Environment=TOKEN_FILE=/run/secrets/token
 Environment=KEY_FILE=/run/secrets/key
 
