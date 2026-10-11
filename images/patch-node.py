@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import tempfile
 
-fixed = {"tar": "7.5.19", "proxy-addr": "2.0.8", "seroval": "1.6.2", "shell-quote": "1.11.0", "esbuild": "0.28.2", "@esbuild/linux-arm64": "0.28.2"}
+fixed = {"tar": "7.5.19", "proxy-addr": "2.0.8", "seroval": "1.6.2", "shell-quote": "1.11.0"}
 roots = [Path("/app/node_modules"), Path("/usr/local/lib/node_modules")]
 packages = []
 for root in roots:

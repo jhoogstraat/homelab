@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+app=$1
+image=$2
+case "$app" in
+  homeassistant)
+    podman run --rm --network none --entrypoint python3 "$image" -c 'import homeassistant.core, homeassistant.auth, homeassistant.components.matter, homeassistant.components.go2rtc, homeassistant.components.thread; from homeassistant.const import __version__; assert __version__ == "2026.10.1"'
+    ;;
+  matter)
+    podman run --rm --network none --entrypoint node "$image" --input-type=module -e 'const {default: proxyaddr} = await import("/app/node_modules/proxy-addr/index.js"); if (!proxyaddr.compile("loopback")("127.0.0.1")) process.exit(1)'
+    podman run --rm --network none --entrypoint node "$image" --check /app/node_modules/matter-server/dist/esm/MatterServer.js
+    ;;
+  otbr)
+    podman run --rm --network none --entrypoint /bin/sh "$image" -ec 'test -x /usr/sbin/otbr-agent; printf "{{ .value }}" >/tmp/template; printf "{\"value\":\"working\"}" | tempio -template /tmp/template | grep -x working'
+    ;;
+  papra)
+    podman run --rm --network none --entrypoint /bin/sh "$image" -ec 'find /app/node_modules -type f -name esbuild -exec sh -c '\''for binary do if head -c4 "$binary" | grep -q ELF; then "$binary" --version; fi; done'\'' sh {} +; cd /app; node -e '\''const p = require("./package.json"); if (!p.scripts["start:with-migrations"]) process.exit(1)'\'''
+    ;;
+  socket-proxy)
+    podman run --rm --network none --volume "$(pwd)/configs/environment/socket-proxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro" --entrypoint haproxy "$image" -c -f /usr/local/etc/haproxy/haproxy.cfg
+    ;;
+esac
