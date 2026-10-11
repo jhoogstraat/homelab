@@ -10,7 +10,7 @@ A Raspberry Pi 4 running Fedora bootc and Podman Quadlets. Git owns deployment; 
 
 ![Deployment, application updates and encrypted recovery flows](docs/assets/architecture.svg)
 
-Application images are pinned to digests. Updates require a successful full backup. The current SD-card backup pauses services for the entire scan/upload, then checks readiness before permitting updates. A USB SSD is the recommended storage upgrade.
+Application images are pinned to digests, except homepage: it follows `ghcr.io/jhoogstraat/homepage:latest` with `AutoUpdate=registry`. The nightly 03:00 job checks that channel and restarts homepage when a new image is available. CI resolves its ARM64 digest before scanning. Updates require a successful full backup. The current SD-card backup pauses services for the entire scan/upload, then checks readiness before permitting updates. A USB SSD is the recommended storage upgrade.
 
 `configs/environment/` is reapplied at boot. `configs/defaults/` seeds missing settings once; application UI changes and local edits survive redeployment. State lives in `/var/lib/homelab/apps/<app>/`. Only SOPS ciphertext enters the image; the age key, S3 credentials and restic password stay root-only on the device.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scan the exact ARM64 Quadlet digests; fail closed on errors or critical findings."""
+"""Scan ARM64 application digests (resolve the homepage update channel); fail closed on errors or critical findings."""
 import argparse
 import json
 import os
@@ -15,7 +15,14 @@ scanner = "docker.io/aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9
 reports = []
 failed = False
 for path in sorted(Path("quadlets").glob("*.container")):
-    image = re.search(r"^Image=(.+)$", path.read_text(), re.M)[1]
+    definition = path.read_text()
+    image = re.search(r"^Image=(.+)$", definition, re.M)[1]
+    if path.name == "homepage.container" and image == "ghcr.io/jhoogstraat/homepage:latest" and "AutoUpdate=registry" in definition.splitlines():
+        subprocess.run(["podman", "pull", "--arch", "arm64", image], check=True, timeout=360)
+        resolved = subprocess.run(["podman", "image", "inspect", "--format", "json", image],
+                                  check=True, text=True, stdout=subprocess.PIPE, timeout=30)
+        image = next(digest for digest in json.loads(resolved.stdout)[0]["RepoDigests"]
+                     if digest.startswith("ghcr.io/jhoogstraat/homepage@sha256:"))
     if not re.fullmatch(r"\S+@sha256:[a-f0-9]{64}", image):
         raise RuntimeError(f"Unpinned application image: {path}")
     result = subprocess.run([
