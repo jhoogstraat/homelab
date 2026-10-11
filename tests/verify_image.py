@@ -48,6 +48,17 @@ assert "--internal" in units["podman-api-network.service"]
 assert "--publish" not in units["socket-proxy.service"]
 assert "--cap-drop all" in units["socket-proxy.service"]
 assert "--read-only" in units["socket-proxy.service"]
+for name in ("cloudflared", "vaultwarden", "beszel-agent", "glance", "papra", "homepage"):
+    unit = units[name + ".service"]
+    assert f"/run/homelab/secrets/current/{name}:/run/secrets:ro,Z" in unit, name
+    assert not re.search(r"--env-file(?:=| )[^\s]*homelab/secrets", unit), name
+assert "--token-file /run/secrets/tunnel-token" in units["cloudflared.service"]
+assert "ADMIN_TOKEN_FILE=/run/secrets/admin-token" in units["vaultwarden.service"]
+assert "TOKEN_FILE=/run/secrets/token" in units["beszel-agent.service"]
+assert "KEY_FILE=/run/secrets/key" in units["beszel-agent.service"]
+assert "NODE_OPTIONS=--import=/run/secrets/load-env.mjs" in units["papra.service"]
+assert "bun --preload /run/secrets/load-env.mjs dist/server/entry.mjs" in units["homepage.service"]
+assert "--user 1000:1000" in units["homepage.service"]
 print(f"Validated {len(expected)} packaged Quadlet units")
 subprocess.run(["podman", "run", "--rm", image, "/bin/bash", "-euc",
                 "mkdir -p /tmp/units; /usr/lib/systemd/system-generators/podman-system-generator /tmp/units; "

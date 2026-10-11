@@ -19,7 +19,8 @@ Volume=/var/lib/homelab/apps/%p/ingestion:/app/ingestion:Z,idmap=uids=@0-999-1;g
 
 EnvironmentFile=/var/lib/homelab/environment/%p/papra.env
 EnvironmentFile=/var/lib/homelab/apps/%p/config/app.env
-EnvironmentFile=/var/lib/homelab/secrets/%p.env
+Volume=/run/homelab/secrets/current/papra:/run/secrets:ro,Z,idmap=uids=@0-999-1;gids=@0-999-1
+Environment=NODE_OPTIONS=--import=/run/secrets/load-env.mjs
 
 Label="traefik.enable=true"
 Label="traefik.http.routers.papra.entrypoints=https"

@@ -117,7 +117,7 @@ sudo systemctl unmask homelab-backup.timer podman-auto-update.timer bootc-fetch-
 sudo systemctl enable --now homelab-backup.timer podman-auto-update.timer bootc-fetch-apply-updates.timer
 ```
 
-Copy `configs/backup.env.example` locally to `/var/lib/homelab/credentials/backup.env`, set actual endpoint, bucket/prefix, region and access keys, then set root:root 0600. Store a high-entropy restic password in `/var/lib/homelab/credentials/restic-password` with the same permissions. The example is a template, not a working destination. The repository password is required for restore and cannot be recovered merely from S3 credentials.
+Copy `configs/backup.env.example` locally to `/var/lib/homelab/credentials/backup.env`, set actual endpoint, bucket/prefix and region, then set root:root 0600. Provision `configs/s3-credentials.example` separately as `/var/lib/homelab/credentials/s3-credentials`, replacing its placeholders privately with the existing S3 keys. This AWS shared-credentials INI file must also be root:root 0600 under the root:root 0700 credentials directory. Remove AWS/MinIO key variables and `RESTIC_PASSWORD_FILE` from `backup.env`; systemd supplies credential file paths. Store a high-entropy restic password in `/var/lib/homelab/credentials/restic-password` with the same permissions. The example is a template, not a working destination. The repository password is required for restore and cannot be recovered merely from S3 credentials.
 
 The provisioned password is at `/var/lib/homelab/credentials/restic-password` on
 the Pi (root:root, mode 0600). Its independent operator Mac copy is at
@@ -134,6 +134,9 @@ sudo -i
 set -a
 . /var/lib/homelab/credentials/backup.env
 set +a
+unset RESTIC_PASSWORD RESTIC_PASSWORD_COMMAND AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN MINIO_ACCESS_KEY MINIO_SECRET_KEY
+export RESTIC_PASSWORD_FILE=/var/lib/homelab/credentials/restic-password
+export AWS_SHARED_CREDENTIALS_FILE=/var/lib/homelab/credentials/s3-credentials
 restic init                      # once, only for a new dedicated repository
 restic snapshots
 systemctl start homelab-backup.service
@@ -216,3 +219,15 @@ RequiresMountsFor=/var/lib/homelab
 ```
 
 Keep the corresponding mount mandatory, verify it before startup, restore labels, test application writes and perform another remote restore drill. Back up the mount configuration independently. Moving storage does not change container mount targets or require an app image rebuild. No SSD, filesystem format or Btrfs snapshot automation is assumed by this PR.
+
+## Runtime secret delivery cutover
+
+The new image decrypts SOPS to private per-app files under `/run/homelab/secrets`, rather than persistent dotenv generations. Host units use `LoadCredential=` for the age identity and backup inputs. Preparation requires memory-backed `/run` and no disk-backed swap; zram remains supported. It replaces only the two exact legacy AdGuard placeholders in native Glance YAML files, preserving other settings and rejecting symlinks for operator review.
+
+Before booting this image, stop maintenance timers, complete any pending `homelab resume`, take a verified backup, and provision the separate S3 INI file described above. Review effective `/etc` Quadlets/service drop-ins and the persistent maintenance helper override listed in [remediation status](security-remediation.md). They must use the matching new helper and mounts; a retained old helper can generate the wrong secret layout. Preserve reviewed old definitions and the prior boot deployment for rollback. This repository merge does not itself perform that device cutover.
+
+After boot, verify all six applications, including authenticated Beszel reconnection, Glance DNS statistics, homepage OAuth, Papra migrations/document decryption, and Vaultwarden admin configuration precedence. Check container metadata contains file paths rather than injected secret values, without dumping secret-bearing legacy metadata to logs. Perform a new backup and isolated restore before restoring timers. The helper's current readiness checks establish active services plus existing HA/Matter/Thread probes; they do not validate these external credentials.
+
+For later ciphertext changes, run `sudo systemctl start homelab-secrets-rotate.service` with the new ciphertext available in the helper's packaged source. It stages a complete generation before pausing the previously active services; inactive optional services stay inactive. Ordinary startup/readiness failure restores the previous selection and recreates services. Interrupted recovery retains durable service intent; inspect the journal and run `homelab resume`. Keep provider tokens valid until authenticated cutover checks pass. Runtime rollback does not survive reboot: retain the matching old boot image/ciphertext and portable recovery inputs. Database encryption-key changes require a separate application migration.
+
+Only after the cutover and rollback paths pass, remove the obsolete plaintext `/var/lib/homelab/secret-sets` generations and their `/var/lib/homelab/secrets` link deliberately. Keep recovery archives and independent keys. Flash deletion cannot guarantee erasure; revoke obsolete provider tokens. Host root and compromised consuming applications can still read their secrets, and persistent recovery inputs require separate disk protection.

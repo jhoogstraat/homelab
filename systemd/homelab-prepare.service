@@ -6,5 +6,6 @@ Before=homelab.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+LoadCredential=age.key:/var/lib/homelab/credentials/age.key
 ExecStart=/usr/libexec/homelab prepare
 UMask=0077

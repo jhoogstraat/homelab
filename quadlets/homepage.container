@@ -10,8 +10,8 @@ ContainerName=homepage
 Image=ghcr.io/jhoogstraat/homepage:latest@sha256:1656e583fc15e52841feeef16e62cd61938aa47966bc8ff730a9e9a011c6e526
 Pull=newer
 
-User=bun
 UserNS=auto
+User=1000:1000
 RunInit=true
 
 Network=homelab.network:ip=10.90.0.5
@@ -19,7 +19,8 @@ Network=homelab.network:ip=10.90.0.5
 Volume=/var/lib/homelab/apps/%p/data:/app/.spotify:Z,idmap
 
 EnvironmentFile=/var/lib/homelab/environment/%p/%p.env
-EnvironmentFile=/var/lib/homelab/secrets/%p.env
+Volume=/run/homelab/secrets/current/homepage:/run/secrets:ro,Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+Exec=bun --preload /run/secrets/load-env.mjs dist/server/entry.mjs
 
 Label="traefik.enable=true"
 Label="traefik.http.routers.homepage.entrypoints=https"

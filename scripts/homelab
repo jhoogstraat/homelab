@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -24,6 +25,15 @@ QUADLETS = Path(os.environ.get("HOMELAB_QUADLETS", "/usr/share/containers/system
 LEGACY_QUADLETS = Path(os.environ.get("HOMELAB_LEGACY_QUADLETS", "/etc/containers/systemd"))
 RUN = Path(os.environ.get("HOMELAB_RUN", "/run/homelab"))
 RETIRED = ("immobot", "onedev", "n8n", "grafana", "wg-easy", "couchdb")
+SECRET_KEYS = {
+    "adguard": ("ADGUARD_USERNAME", "ADGUARD_PASSWORD", "ADGUARD_PASSWORD_HASH"),
+    "beszel": ("TOKEN", "KEY"),
+    "cloudflared": ("TUNNEL_TOKEN",),
+    "homepage": ("SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET", "SPOTIFY_REFRESH_TOKEN",
+                 "BESZEL_PB_EMAIL", "BESZEL_PB_PASSWORD"),
+    "papra": ("AUTH_SECRET", "DATABASE_AUTH_TOKEN", "DATABASE_ENCRYPTION_KEY"),
+    "vaultwarden": ("ADMIN_TOKEN",),
+}
 
 
 def command(*args, **kwargs):
@@ -72,6 +82,149 @@ def copy_files(source, destination, seed=False):
                 atomic_file(target, path.read_bytes(), path.stat().st_mode & 0o777)
 
 
+def private_file(path):
+    """Reject links and exposed credential inputs without printing their contents."""
+    try:
+        info, parent = path.lstat(), path.parent.lstat()
+    except OSError as error:
+        raise RuntimeError(f"Provision a root-only credential at {path}") from error
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
+            or info.st_mode & 0o077 or not info.st_mode & 0o400
+            or not stat.S_ISDIR(parent.st_mode) or parent.st_uid != os.geteuid()
+            or parent.st_mode & 0o077):
+        raise RuntimeError(f"Provision a root-only credential at {path}")
+    return path
+
+
+def credential(name):
+    source = private_file(ROOT / "credentials" / name)
+    directory = os.environ.get("CREDENTIALS_DIRECTORY")
+    return private_file(Path(directory) / name) if directory is not None else source
+
+
+def backup_credentials():
+    password = credential("restic-password")
+    s3 = credential("s3-credentials")
+    private_file(ROOT / "credentials/backup.env")
+    # File providers lose to environment providers. Never inherit stale keys.
+    for name in ("RESTIC_PASSWORD", "RESTIC_PASSWORD_COMMAND", "AWS_ACCESS_KEY_ID",
+                 "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "MINIO_ACCESS_KEY",
+                 "MINIO_SECRET_KEY"):
+        os.environ.pop(name, None)
+    os.environ["RESTIC_PASSWORD_FILE"] = str(password)
+    os.environ["AWS_SHARED_CREDENTIALS_FILE"] = str(s3)
+
+
+def secret_store():
+    RUN.mkdir(parents=True, exist_ok=True, mode=0o700)
+    RUN.chmod(0o700)
+    if RUN == Path("/run/homelab"):
+        filesystem = command("findmnt", "--noheadings", "--output", "FSTYPE", "--target",
+                             str(RUN), stdout=subprocess.PIPE).stdout.strip()
+        swaps = Path("/proc/swaps").read_text().splitlines()[1:]
+        if filesystem not in (b"tmpfs", b"ramfs") or any(
+            not row.split()[0].startswith("/dev/zram") for row in swaps
+        ):
+            raise RuntimeError("Runtime secrets require memory-backed /run and no disk-backed swap")
+    store = RUN / "secrets"
+    store.mkdir(exist_ok=True, mode=0o700)
+    store.chmod(0o700)
+    (store / "generations").mkdir(exist_ok=True, mode=0o700)
+    (store / "generations").chmod(0o700)
+    return store
+
+
+def stage_secrets():
+    key = credential("age.key")
+    encrypted = sorted((SOURCE / "secrets").glob("*.enc.env"))
+    if {path.name for path in encrypted} != {f"{name}.enc.env" for name in SECRET_KEYS}:
+        raise RuntimeError("Encrypted secret inventory does not match the application allowlist")
+    loader = (SOURCE / "secret-loader.mjs").read_bytes()
+    digest = hashlib.sha256(b"homelab-secret-delivery-v1\0" + loader)
+    for path in encrypted:
+        digest.update(path.name.encode() + b"\0" + path.read_bytes() + b"\0")
+    store = secret_store()
+    generation = store / "generations" / digest.hexdigest()
+    if generation.exists():
+        for app, names in secret_outputs().items():
+            for name in names:
+                private_file(generation / app / name)
+        private_file(generation / "adguard-seed.json")
+        return generation
+    with tempfile.TemporaryDirectory(dir=store / "generations") as directory:
+        staged = Path(directory)
+        values = {}
+        env = dict(os.environ, SOPS_AGE_KEY_FILE=str(key))
+        env.pop("SOPS_AGE_KEY", None)
+        for path in encrypted:
+            name = path.name.removesuffix(".enc.env")
+            result = command("sops", "decrypt", "--input-type", "dotenv", "--output-type",
+                             "json", str(path), env=env, stdout=subprocess.PIPE)
+            try:
+                data = json.loads(result.stdout)
+            except (ValueError, UnicodeError) as error:
+                raise RuntimeError(f"Invalid decrypted JSON for {name}") from error
+            try:
+                valid = (isinstance(data, dict) and set(data) == set(SECRET_KEYS[name])
+                         and all(isinstance(value, str) and value and "\0" not in value
+                                 and len(value.encode()) <= 128 * 1024 for value in data.values()))
+            except UnicodeError:
+                valid = False
+            if not valid:
+                raise RuntimeError(f"Invalid secret entries for {name}")
+            values[name] = data
+        initial = values["adguard"]
+        if not re.fullmatch(r"\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}", initial["ADGUARD_PASSWORD_HASH"]):
+            raise RuntimeError("AdGuard's initial password must be a bcrypt hash")
+        exports = {
+            "cloudflared": {"tunnel-token": values["cloudflared"]["TUNNEL_TOKEN"]},
+            "vaultwarden": {"admin-token": values["vaultwarden"]["ADMIN_TOKEN"]},
+            "beszel-agent": {"token": values["beszel"]["TOKEN"], "key": values["beszel"]["KEY"]},
+            "glance": {"adguard-username": initial["ADGUARD_USERNAME"],
+                       "adguard-password": initial["ADGUARD_PASSWORD"]},
+        }
+        for app in ("papra", "homepage"):
+            exports[app] = {"env.json": json.dumps(values[app]), "load-env.mjs": loader.decode()}
+        for app, files in exports.items():
+            (staged / app).mkdir(mode=0o700)
+            for name, value in files.items():
+                atomic_file(staged / app / name, value.encode())
+        atomic_file(staged / "adguard-seed.json", json.dumps({
+            name: initial[name] for name in ("ADGUARD_USERNAME", "ADGUARD_PASSWORD_HASH")
+        }).encode())
+        staged.rename(generation)
+        sync_directory(generation.parent)
+    return generation
+
+
+def secret_outputs():
+    return {"cloudflared": ("tunnel-token",), "vaultwarden": ("admin-token",),
+            "beszel-agent": ("token", "key"), "glance": ("adguard-username", "adguard-password"),
+            "papra": ("env.json", "load-env.mjs"), "homepage": ("env.json", "load-env.mjs")}
+
+
+def select_secrets(generation):
+    store = generation.parent.parent
+    link = store / ".current-next"
+    link.unlink(missing_ok=True)
+    link.symlink_to(generation.relative_to(store))
+    link.replace(store / "current")
+    sync_directory(store)
+
+
+def migrate_glance_placeholders():
+    # Only native files in Glance's config tree; preserve the rest of each file.
+    for path in (ROOT / "apps/glance/config").rglob("*"):
+        if path.is_symlink():
+            raise RuntimeError(f"Review Glance configuration symlink before migration: {path}")
+        if path.is_file() and path.suffix in (".yml", ".yaml"):
+            content = path.read_bytes()
+            updated = content.replace(b"${ADGUARD_USERNAME}", b"${secret:adguard-username}").replace(
+                b"${ADGUARD_PASSWORD}", b"${secret:adguard-password}")
+            if updated != content:
+                atomic_file(path, updated, path.stat().st_mode & 0o777)
+
+
 def prepare():
     ROOT.mkdir(parents=True, exist_ok=True, mode=0o755)
     credentials = ROOT / "credentials"
@@ -91,53 +244,59 @@ def prepare():
     for path in (ROOT / "environment").rglob("*"):
         if path.is_file() and not (SOURCE / "environment" / path.relative_to(ROOT / "environment")).exists():
             path.unlink()
-    key = credentials / "age.key"
-    if not key.is_file() or key.stat().st_mode & 0o077 or key.stat().st_uid != os.geteuid():
-        raise RuntimeError(f"Provision a root-only age key (0600) at {key}")
-    encrypted = sorted((SOURCE / "secrets").glob("*.enc.env"))
-    if not encrypted:
-        raise RuntimeError("No encrypted secrets in the deployed image")
-    digest = hashlib.sha256()
-    for path in encrypted:
-        digest.update(path.name.encode())
-        digest.update(path.read_bytes())
-    generations = ROOT / "secret-sets"
-    generations.mkdir(exist_ok=True, mode=0o700)
-    generations.chmod(0o700)
-    generation = generations / digest.hexdigest()
-    if not generation.exists():
-        with tempfile.TemporaryDirectory(dir=generations) as directory:
-            staged = Path(directory)
-            env = dict(os.environ, SOPS_AGE_KEY_FILE=str(key))
-            for path in encrypted:
-                result = command("sops", "decrypt", "--input-type", "dotenv",
-                                 "--output-type", "dotenv", str(path),
-                                 env=env, stdout=subprocess.PIPE)
-                atomic_file(staged / path.name.replace(".enc.env", ".env"), result.stdout)
-            # TemporaryDirectory tolerates its directory having been renamed.
-            staged.rename(generation)
-    secrets = ROOT / "secrets"
-    if secrets.exists() and not secrets.is_symlink():
-        raise RuntimeError(f"Move the old secrets directory aside before preparing: {secrets}")
-    link = ROOT / ".secrets-next"
-    link.unlink(missing_ok=True)
-    link.symlink_to(generation.relative_to(ROOT))
-    link.replace(secrets)
+    generation = stage_secrets()
     for app in (SOURCE / "defaults").iterdir():
         if app.is_dir() and app.name != "adguard":
             copy_files(app, ROOT / "apps" / app.name / "config", seed=True)
     adguard = ROOT / "apps/adguard/config/AdGuardHome.yaml"
     if not adguard.exists():
-        result = command("sops", "decrypt", "--input-type", "dotenv", "--output-type", "json",
-                         str(SOURCE / "secrets/adguard.enc.env"),
-                         env=dict(os.environ, SOPS_AGE_KEY_FILE=str(key)), stdout=subprocess.PIPE)
-        initial = json.loads(result.stdout)
-        if not re.fullmatch(r"\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}", initial["ADGUARD_PASSWORD_HASH"]):
-            raise RuntimeError("AdGuard's initial password must be a bcrypt hash")
+        initial = json.loads((generation / "adguard-seed.json").read_bytes())
         content = (SOURCE / "defaults/adguard/AdGuardHome.yaml").read_text()
         for name in ("ADGUARD_USERNAME", "ADGUARD_PASSWORD_HASH"):
             content = content.replace("${" + name + "}", json.dumps(initial[name]))
         atomic_file(adguard, content.encode())
+    migrate_glance_placeholders()
+    select_secrets(generation)
+
+
+def prune_secrets(previous):
+    store = secret_store()
+    keep = {(store / "current").resolve(), previous.resolve()}
+    ids = command("podman", "ps", "--all", "--format", "{{.ID}}", stdout=subprocess.PIPE).stdout.decode().split()
+    if ids:
+        mounts = command("podman", "inspect", "--format", "{{json .Mounts}}", *ids,
+                         stdout=subprocess.PIPE).stdout.decode().splitlines()
+        for line in mounts:
+            for mount in json.loads(line):
+                source = Path(mount.get("Source", "")).resolve()
+                for generation in (store / "generations").iterdir():
+                    if source == generation.resolve() or generation.resolve() in source.parents:
+                        keep.add(generation.resolve())
+    for generation in (store / "generations").iterdir():
+        if generation.resolve() not in keep and re.fullmatch(r"[0-9a-f]{64}", generation.name):
+            shutil.rmtree(generation)
+
+
+def rotate_secrets():
+    if paused_units() is not None:
+        raise RuntimeError("A previous maintenance operation needs recovery: run homelab resume")
+    previous = (secret_store() / "current").resolve(strict=True)
+    candidate = stage_secrets().resolve()
+    if candidate == previous:
+        return
+    try:
+        pause()
+        select_secrets(candidate)
+        resume()
+    except (RuntimeError, OSError, subprocess.CalledProcessError):
+        select_secrets(previous)
+        names = paused_units()
+        if names:
+            # Some candidate services may already be running. Recreate them all.
+            command("systemctl", "stop", *names)
+        resume()
+        raise
+    prune_secrets(previous)
 
 
 def units():
@@ -336,6 +495,7 @@ def device_sources():
 
 def backup():
     # Reject unreachable/uninitialized repositories before interrupting apps.
+    backup_credentials()
     command("restic", "snapshots", "--json", stdout=subprocess.DEVNULL)
     if not (ROOT / "apps").is_dir():
         raise RuntimeError("Application storage is absent; refusing an empty backup")
@@ -470,7 +630,7 @@ def retire_legacy():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    for name in ("prepare", "backup", "resume", "update-apps", "update-host", "retire-legacy"):
+    for name in ("prepare", "rotate-secrets", "backup", "resume", "update-apps", "update-host", "retire-legacy"):
         sub.add_parser(name)
     migration = sub.add_parser("migrate")
     migration.add_argument("--data", type=Path, default=Path("/opt/containers/data"))
@@ -484,6 +644,8 @@ def main():
             resume()
         elif args.action == "prepare":
             prepare()
+        elif args.action == "rotate-secrets":
+            rotate_secrets()
         elif args.action == "backup":
             backup()
         elif args.action == "update-apps":

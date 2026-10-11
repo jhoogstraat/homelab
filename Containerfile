@@ -29,6 +29,7 @@ COPY --chmod=0644 users/jh.pub /usr/share/homelab/ssh/jh.keys
 COPY quadlets/ /usr/share/containers/systemd/
 COPY configs/environment/ /usr/share/homelab/environment/
 COPY configs/defaults/ /usr/share/homelab/defaults/
+COPY configs/secret-loader.mjs /usr/share/homelab/secret-loader.mjs
 COPY secrets/*.enc.env /usr/share/homelab/secrets/
 COPY --chmod=0755 scripts/homelab /usr/libexec/homelab
 COPY systemd/ /usr/lib/systemd/system/

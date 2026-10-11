@@ -12,7 +12,7 @@ A Raspberry Pi 4 running Fedora bootc and Podman Quadlets. Git owns deployment; 
 
 Application images are pinned to digests. Updates require a successful full backup. The current SD-card backup pauses services for the entire scan/upload, then checks readiness before permitting updates. A USB SSD is the recommended storage upgrade.
 
-`configs/environment/` is reapplied at boot. `configs/defaults/` seeds missing settings once; application UI changes and local edits survive redeployment. State lives in `/var/lib/homelab/apps/<app>/`. Only SOPS ciphertext enters the image; the age key, S3 credentials and restic password stay root-only on the device.
+`configs/environment/` is reapplied at boot. `configs/defaults/` seeds missing settings once; application UI changes and local edits survive redeployment. State lives in `/var/lib/homelab/apps/<app>/`. Application secrets are staged in private per-app files under `/run`; host maintenance uses systemd credentials. See the [cutover procedure](docs/operations.md#runtime-secret-delivery-cutover). Only SOPS ciphertext enters the image; the age key, S3 credentials and restic password stay root-only on the device.
 
 Traefik and Beszel use a restricted API broker; only that broker mounts the rootful Podman socket. **The deployment is not security-clear:** upstream image vulnerabilities remain. See the [security audit](docs/security-audit.md) for findings and rollout requirements.
 

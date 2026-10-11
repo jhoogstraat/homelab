@@ -31,6 +31,10 @@ class LifecycleTests(unittest.TestCase):
                                     QUADLETS=self.quadlets, RUN=self.run)
         self.patch.start()
         self.addCleanup(self.patch.stop)
+        environment = patch.dict(os.environ, {})
+        environment.start()
+        self.addCleanup(environment.stop)
+        os.environ.pop("CREDENTIALS_DIRECTORY", None)
         for directory in (self.source / "environment/traefik", self.source / "defaults/glance",
                           self.source / "defaults/adguard",
                           self.source / "secrets", self.quadlets, self.run,
@@ -39,25 +43,37 @@ class LifecycleTests(unittest.TestCase):
         (self.quadlets / "glance.container").write_text("[Container]\nImage=example:latest\n")
         (self.source / "defaults/glance/glance.yml").write_text("seed")
         (self.source / "environment/traefik/traefik.yml").write_text("first release")
-        (self.source / "secrets/glance.enc.env").write_text("ciphertext")
-        (self.source / "secrets/adguard.enc.env").write_text("ciphertext")
+        self.secret_values = {
+            name: {key: "secret" for key in keys} for name, keys in homelab.SECRET_KEYS.items()
+        }
+        self.secret_values["adguard"].update(ADGUARD_USERNAME="test-user",
+                                            ADGUARD_PASSWORD_HASH="$2a$10$" + "a" * 53)
+        for name in homelab.SECRET_KEYS:
+            (self.source / f"secrets/{name}.enc.env").write_text("ciphertext")
+        (self.source / "secret-loader.mjs").write_bytes(
+            (SCRIPT.parent.parent / "configs/secret-loader.mjs").read_bytes())
         (self.source / "defaults/adguard/AdGuardHome.yaml").write_text(
             "users:\n  - name: ${ADGUARD_USERNAME}\n    password: ${ADGUARD_PASSWORD_HASH}\n")
         key = self.state / "credentials/age.key"
         key.write_text("test key")
         key.chmod(0o600)
+        key.parent.chmod(0o700)
+        for name, value in (("backup.env", "RESTIC_REPOSITORY=test"),
+                            ("restic-password", "test-only-password"),
+                            ("s3-credentials", "[default]\naws_access_key_id = dummy\naws_secret_access_key = dummy\n")):
+            path = key.parent / name
+            path.write_text(value)
+            path.chmod(0o600)
         self.calls = []
 
     def fake_command(self, *args, **kwargs):
         self.calls.append(args)
         output = b""
         if args[0] == "sops":
-            output = b"TOKEN=secret\n"
-            if "json" in args:
-                output = json.dumps({"ADGUARD_USERNAME": "test-user",
-                                     "ADGUARD_PASSWORD_HASH": "$2a$10$" + "a" * 53}).encode()
+            name = Path(args[-1]).name.removesuffix(".enc.env")
+            output = json.dumps(self.secret_values[name]).encode()
         elif args[:2] == ("podman", "ps"):
-            output = b"[]"
+            output = b"" if "{{.ID}}" in args else b"[]"
         elif args[:3] == ("podman", "auto-update", "--dry-run"):
             output = b'[{"Updated":"pending"}]'
         elif args[:2] == ("systemctl", "show"):
@@ -77,25 +93,26 @@ class LifecycleTests(unittest.TestCase):
             homelab.prepare()
         self.assertEqual(config.read_text(), "device edits")
         self.assertEqual((self.state / "environment/traefik/traefik.yml").read_text(), "new routing")
-        self.assertEqual((self.state / "secrets/glance.env").read_text(), "TOKEN=secret\n")
-        self.assertEqual((self.state / "secrets/glance.env").stat().st_mode & 0o777, 0o600)
+        self.assertEqual((self.run / "secrets/current/glance/adguard-password").read_text(), "secret")
+        self.assertEqual((self.run / "secrets/current/glance/adguard-password").stat().st_mode & 0o777, 0o600)
+        self.assertFalse((self.state / "secrets").exists())
 
     def test_failed_secret_rotation_keeps_complete_previous_set(self):
         with patch.object(homelab, "command", self.fake_command):
             homelab.prepare()
-        previous = (self.state / "secrets").readlink()
-        (self.source / "secrets/glance.enc.env").write_text("rotated ciphertext")
+        previous = (self.run / "secrets/current").readlink()
+        (self.source / "secrets/cloudflared.enc.env").write_text("rotated ciphertext")
         with patch.object(homelab, "command", side_effect=subprocess.CalledProcessError(1, "sops")):
             with self.assertRaises(subprocess.CalledProcessError):
                 homelab.prepare()
-        self.assertEqual((self.state / "secrets").readlink(), previous)
+        self.assertEqual((self.run / "secrets/current").readlink(), previous)
 
     def test_prepare_closes_existing_state_directory_permissions(self):
         (self.state / "apps").chmod(0o755)
         (self.state / "credentials").chmod(0o755)
         with patch.object(homelab, "command", self.fake_command):
             homelab.prepare()
-        for path in (self.state / "apps", self.state / "credentials", self.state / "secret-sets"):
+        for path in (self.state / "apps", self.state / "credentials", self.run / "secrets/generations"):
             self.assertEqual(path.stat().st_mode & 0o777, 0o700)
 
     def test_incomplete_restic_snapshot_blocks_pruning_and_update(self):
@@ -114,9 +131,158 @@ class LifecycleTests(unittest.TestCase):
     def test_prepare_rejects_exposed_age_key_before_decryption(self):
         (self.state / "credentials/age.key").chmod(0o644)
         with patch.object(homelab, "command", self.fake_command):
-            with self.assertRaisesRegex(RuntimeError, "root-only age key"):
+            with self.assertRaisesRegex(RuntimeError, "root-only credential"):
                 homelab.prepare()
         self.assertFalse(any(call[0] == "sops" for call in self.calls))
+
+    def test_service_credentials_do_not_fall_back_when_missing(self):
+        directory = self.run / "credentials"
+        directory.mkdir(mode=0o700)
+        with patch.dict(os.environ, CREDENTIALS_DIRECTORY=str(directory)), patch.object(homelab, "command", self.fake_command):
+            with self.assertRaisesRegex(RuntimeError, "credential"):
+                homelab.prepare()
+        self.assertFalse(any(call[0] == "sops" for call in self.calls))
+
+    def test_symlink_age_identity_is_rejected(self):
+        key = self.state / "credentials/age.key"
+        key.rename(key.with_suffix(".backup"))
+        key.symlink_to(key.with_suffix(".backup"))
+        with self.assertRaisesRegex(RuntimeError, "credential"):
+            homelab.credential("age.key")
+
+    def test_invalid_secret_entries_do_not_publish_or_expose_values(self):
+        for bad in (None, {"TUNNEL_TOKEN": "secret", "UNKNOWN": "private-value"},
+                    {"TUNNEL_TOKEN": ""}, {"TUNNEL_TOKEN": 123},
+                    {"TUNNEL_TOKEN": "private-value\ud800"}):
+            with self.subTest(bad=bad), patch.object(homelab, "command", self.fake_command):
+                self.secret_values["cloudflared"] = bad
+                with self.assertRaisesRegex(RuntimeError, "Invalid secret entries for cloudflared") as error:
+                    homelab.prepare()
+                self.assertNotIn("private-value", str(error.exception))
+                self.assertFalse((self.run / "secrets/current").exists())
+
+    def test_bad_seed_cannot_switch_existing_secret_generation(self):
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+            previous = (self.run / "secrets/current").readlink()
+            (self.source / "secrets/adguard.enc.env").write_text("new")
+            self.secret_values["adguard"]["ADGUARD_PASSWORD_HASH"] = "not-bcrypt"
+            with self.assertRaisesRegex(RuntimeError, "bcrypt"):
+                homelab.prepare()
+        self.assertEqual((self.run / "secrets/current").readlink(), previous)
+
+    def test_loader_changes_build_a_fresh_generation_and_incomplete_sets_fail(self):
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+            previous = (self.run / "secrets/current").readlink()
+            with (self.source / "secret-loader.mjs").open("a") as output:
+                output.write("\n// changed delivery\n")
+            homelab.prepare()
+            self.assertNotEqual((self.run / "secrets/current").readlink(), previous)
+            (self.run / "secrets/current/homepage/env.json").unlink()
+            with self.assertRaisesRegex(RuntimeError, "credential"):
+                homelab.prepare()
+
+    def test_glance_placeholder_migration_preserves_includes_and_adguard_state(self):
+        glance = self.state / "apps/glance/config"
+        glance.mkdir(parents=True)
+        includes = glance / "includes"
+        includes.mkdir()
+        content = b"# preference\nusername: ${ADGUARD_USERNAME}\npassword: ${ADGUARD_PASSWORD}\ntitle: Mine\n"
+        (includes / "dns.yml").write_bytes(content)
+        adguard = self.state / "apps/adguard/config/AdGuardHome.yaml"
+        adguard.parent.mkdir(parents=True)
+        adguard.write_text("device-owned users")
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+        self.assertEqual((includes / "dns.yml").read_bytes(), content.replace(
+            b"${ADGUARD_USERNAME}", b"${secret:adguard-username}").replace(
+            b"${ADGUARD_PASSWORD}", b"${secret:adguard-password}"))
+        self.assertEqual(adguard.read_text(), "device-owned users")
+        self.assertFalse((self.run / "secrets/current/glance/adguard-password-hash").exists())
+
+    def test_rotation_restarts_only_active_units_and_retains_previous(self):
+        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
+            homelab.prepare()
+            previous = (self.run / "secrets/current").resolve()
+            (self.source / "secrets/cloudflared.enc.env").write_text("new")
+            self.calls.clear()
+            homelab.rotate_secrets()
+        self.assertNotEqual((self.run / "secrets/current").resolve(), previous)
+        self.assertTrue(previous.exists())
+        self.assertEqual([call for call in self.calls if call[:2] in (("systemctl", "stop"), ("systemctl", "start"))],
+                         [("systemctl", "stop", "glance.service"), ("systemctl", "start", "glance.service")])
+        self.assertIsNone(homelab.paused_units())
+
+    def test_failed_rotation_readiness_recreates_old_set(self):
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+        previous = (self.run / "secrets/current").resolve()
+        (self.source / "secrets/cloudflared.enc.env").write_text("new")
+        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active), patch.object(homelab, "wait_ready", side_effect=[RuntimeError("Not ready"), None]):
+            with self.assertRaisesRegex(RuntimeError, "Not ready"):
+                homelab.rotate_secrets()
+        self.assertEqual((self.run / "secrets/current").resolve(), previous)
+        self.assertEqual(self.calls.count(("systemctl", "stop", "glance.service")), 2)
+        self.assertEqual(self.calls.count(("systemctl", "start", "glance.service")), 2)
+        self.assertIsNone(homelab.paused_units())
+
+    def test_failed_rotation_recovery_keeps_durable_intent(self):
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+        previous = (self.run / "secrets/current").resolve()
+        (self.source / "secrets/cloudflared.enc.env").write_text("new")
+        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active), patch.object(homelab, "wait_ready", side_effect=RuntimeError("Not ready")):
+            with self.assertRaises(RuntimeError):
+                homelab.rotate_secrets()
+        self.assertEqual((self.run / "secrets/current").resolve(), previous)
+        self.assertEqual(homelab.paused_units(), ["glance.service"])
+
+    def test_noop_rotation_does_not_stop_apps_and_previous_intent_blocks_rotation(self):
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+            self.calls.clear()
+            homelab.rotate_secrets()
+            self.assertFalse(any(call[:2] == ("systemctl", "stop") for call in self.calls))
+            homelab.save_paused_units(["glance.service"])
+            with self.assertRaisesRegex(RuntimeError, "previous maintenance"):
+                homelab.rotate_secrets()
+
+    def test_pruning_keeps_old_generations_with_container_mounts(self):
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+        generations = self.run / "secrets/generations"
+        old, unused = generations / ("a" * 64), generations / ("b" * 64)
+        old.mkdir()
+        unused.mkdir()
+        def containers(*args, **kwargs):
+            if args[:2] == ("podman", "ps"):
+                return subprocess.CompletedProcess(args, 0, stdout=b"old-container\n")
+            return subprocess.CompletedProcess(args, 0, stdout=json.dumps([{"Source": str(old / "papra")}]).encode())
+        with patch.object(homelab, "command", containers):
+            homelab.prune_secrets((self.run / "secrets/current").resolve())
+        self.assertTrue(old.exists())
+        self.assertFalse(unused.exists())
+
+    def test_exposed_backup_inputs_fail_before_restic_or_service_stop(self):
+        for name in ("restic-password", "s3-credentials", "backup.env"):
+            with self.subTest(name=name), patch.object(homelab, "command", self.fake_command):
+                path = self.state / "credentials" / name
+                path.chmod(0o644)
+                with self.assertRaisesRegex(RuntimeError, "credential"):
+                    homelab.backup()
+                path.chmod(0o600)
+        self.assertEqual(self.calls, [])
+
+    def test_backup_uses_credential_files_instead_of_inherited_secret_values(self):
+        with patch.dict(os.environ, RESTIC_PASSWORD="obsolete", AWS_ACCESS_KEY_ID="obsolete",
+                        AWS_SECRET_ACCESS_KEY="obsolete", MINIO_SECRET_KEY="obsolete"):
+            homelab.backup_credentials()
+            self.assertNotIn("RESTIC_PASSWORD", os.environ)
+            self.assertNotIn("AWS_SECRET_ACCESS_KEY", os.environ)
+            self.assertNotIn("MINIO_SECRET_KEY", os.environ)
+            self.assertEqual(os.environ["RESTIC_PASSWORD_FILE"], str(self.state / "credentials/restic-password"))
+            self.assertEqual(os.environ["AWS_SHARED_CREDENTIALS_FILE"], str(self.state / "credentials/s3-credentials"))
 
     def test_unreachable_repository_never_stops_applications(self):
         with patch.object(homelab, "command", side_effect=subprocess.CalledProcessError(1, "restic")):
