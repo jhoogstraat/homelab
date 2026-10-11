@@ -1,0 +1,16 @@
+FROM docker.io/library/golang:1.27.2-alpine@sha256:c2b8d9b05d9386fe1b01bab829eda3a05edb526c220e638d3c7a73671a290672 AS helpers
+RUN apk add --no-cache git
+WORKDIR /go2rtc
+RUN git clone https://github.com/AlexxIT/go2rtc.git . \
+    && git checkout b5948cfb25404cc5cb37b166ecaa2dca20b11d4b \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -X main.Version=1.9.14' -o /out/go2rtc .
+WORKDIR /tempio
+RUN git clone https://github.com/home-assistant/tempio.git . \
+    && git checkout 2fcfc522502f7bba71043874a5fab4007812d28c \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/tempio .
+FROM ghcr.io/home-assistant/home-assistant:stable@sha256:1b64d38f38d922bf9d59336451fd6453e1d614f934456af4ee3d2a51061be3a4
+RUN apk upgrade --no-cache \
+    && uv pip uninstall python-jose warrant-lite \
+    && uv pip check
+COPY --from=helpers /out/go2rtc /bin/go2rtc
+COPY --from=helpers /out/tempio /usr/bin/tempio

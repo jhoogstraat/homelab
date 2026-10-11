@@ -1,0 +1,6 @@
+FROM ghcr.io/papra-hq/papra:latest-rootless@sha256:bf4a66e776d0a40d71543747a2e17af800204b4a81d19f7951b8552c8032dbeb
+USER root
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+COPY images/patch-node.py /tmp/patch-node.py
+RUN python3 /tmp/patch-node.py && rm /tmp/patch-node.py
+USER nonroot

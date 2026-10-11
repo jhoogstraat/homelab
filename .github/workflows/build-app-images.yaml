@@ -1,0 +1,38 @@
+name: Build patched application images
+on:
+  push:
+    branches: [fix/homepage-auto-update, main]
+    paths: [images/**, .github/workflows/build-app-images.yaml]
+permissions:
+  contents: read
+  packages: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [homeassistant, matter, otbr, papra, socket-proxy]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install Podman
+        run: sudo apt-get update && sudo apt-get install -y podman
+      - name: Login to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: printf '%s' "$GHCR_TOKEN" | sudo podman login --authfile /tmp/registry-auth.json ghcr.io --username "$REGISTRY_USER" --password-stdin
+      - name: Build and publish ARM64 image
+        env:
+          APP_NAME: ${{ matrix.app }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          image="ghcr.io/${REPOSITORY}-${APP_NAME}:sha-${COMMIT_SHA}"
+          sudo podman build --arch arm64 --format docker -f "images/${APP_NAME}/Containerfile" -t "$image" .
+          sudo podman push --authfile /tmp/registry-auth.json "$image"
+      - name: Remove registry credentials
+        if: always()
+        run: sudo rm -f /tmp/registry-auth.json
