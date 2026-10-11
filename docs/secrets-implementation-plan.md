@@ -87,12 +87,23 @@ Ship one `configs/secret-loader.mjs`, copied to each JS app's runtime export dir
 
 ```js
 import { readFileSync } from "node:fs";
-const values = JSON.parse(readFileSync(new URL("./env.json", import.meta.url), "utf8"));
+
+let values;
+try {
+  values = JSON.parse(readFileSync(new URL("./env.json", import.meta.url), "utf8"));
+} catch {
+  throw new Error("Cannot load secret JSON");
+}
+if (values === null || typeof values !== "object" || Array.isArray(values)) {
+  throw new Error("Invalid secret entries");
+}
 for (const [name, value] of Object.entries(values)) {
-  if (!/^[A-Z][A-Z0-9_]*$/.test(name) || typeof value !== "string")
+  if (!/^[A-Z][A-Z0-9_]*$/.test(name) || typeof value !== "string") {
     throw new Error("Invalid secret entry");
-  if (process.env[name] !== undefined && process.env[name] !== value)
+  }
+  if (process.env[name] !== undefined && process.env[name] !== value) {
     throw new Error(`Conflicting secret: ${name}`);
+  }
   process.env[name] = value;
 }
 ```
@@ -155,4 +166,4 @@ Until those gates pass, retain the old deployment and provider tokens. For rollb
 
 ## Implementation verification
 
-The implementation passed 39 Linux tests, including real rsync migration, restic backup/restore, JSON loader literal values, malformed inputs, incomplete-generation rejection, rotation rollback, optional-service preservation and mounted-generation retention. Generated Quadlets and complete image validation are additional merge checks. Live authenticated cutover, reboot and recovery gates above remain outstanding; merging is not a claim that the Pi has been migrated.
+The implementation passed 41 Linux tests, including real rsync migration, restic backup/restore, JSON loader literal values, malformed inputs, incomplete-generation rejection, rotation rollback, optional-service preservation and mounted-generation retention. Generated Quadlets and complete image validation are additional merge checks. Live authenticated cutover, reboot and recovery gates above remain outstanding; merging is not a claim that the Pi has been migrated.

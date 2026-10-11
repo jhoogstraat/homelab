@@ -164,9 +164,13 @@ def stage_secrets():
                 data = json.loads(result.stdout)
             except (ValueError, UnicodeError) as error:
                 raise RuntimeError(f"Invalid decrypted JSON for {name}") from error
-            if (not isinstance(data, dict) or set(data) != set(SECRET_KEYS[name])
-                    or any(not isinstance(value, str) or not value or "\0" in value
-                           or len(value.encode()) > 128 * 1024 for value in data.values())):
+            try:
+                valid = (isinstance(data, dict) and set(data) == set(SECRET_KEYS[name])
+                         and all(isinstance(value, str) and value and "\0" not in value
+                                 and len(value.encode()) <= 128 * 1024 for value in data.values()))
+            except UnicodeError:
+                valid = False
+            if not valid:
                 raise RuntimeError(f"Invalid secret entries for {name}")
             values[name] = data
         initial = values["adguard"]

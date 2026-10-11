@@ -152,7 +152,8 @@ class LifecycleTests(unittest.TestCase):
 
     def test_invalid_secret_entries_do_not_publish_or_expose_values(self):
         for bad in (None, {"TUNNEL_TOKEN": "secret", "UNKNOWN": "private-value"},
-                    {"TUNNEL_TOKEN": ""}, {"TUNNEL_TOKEN": 123}):
+                    {"TUNNEL_TOKEN": ""}, {"TUNNEL_TOKEN": 123},
+                    {"TUNNEL_TOKEN": "private-value\ud800"}):
             with self.subTest(bad=bad), patch.object(homelab, "command", self.fake_command):
                 self.secret_values["cloudflared"] = bad
                 with self.assertRaisesRegex(RuntimeError, "Invalid secret entries for cloudflared") as error:
