@@ -12,9 +12,9 @@ UserNS=auto
 
 Network=homelab.network:ip=10.90.0.9
 
-EnvironmentFile=/var/lib/homelab/secrets/%p.env
+Volume=/run/homelab/secrets/current/cloudflared:/run/secrets:ro,Z,idmap=uids=@0-65532-1;gids=@0-65532-1
 
-Exec=tunnel --no-autoupdate run
+Exec=tunnel --no-autoupdate run --token-file /run/secrets/tunnel-token
 
 Timezone=local
 

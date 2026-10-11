@@ -32,8 +32,8 @@ pages:
           - type: dns-stats
             service: adguard
             url: http://adguard
-            username: ${ADGUARD_USERNAME}
-            password: ${ADGUARD_PASSWORD}
+            username: ${secret:adguard-username}
+            password: ${secret:adguard-password}
             hour-format: 24h
 
       - size: full

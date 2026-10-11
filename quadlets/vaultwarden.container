@@ -18,7 +18,8 @@ Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
 Environment=DOMAIN=https://vault.hoogstraat.net
 Environment=SIGNUPS_ALLOWED=false
 
-EnvironmentFile=/var/lib/homelab/secrets/%p.env
+Volume=/run/homelab/secrets/current/vaultwarden:/run/secrets:ro,Z,idmap
+Environment=ADMIN_TOKEN_FILE=/run/secrets/admin-token
 
 Label="traefik.enable=true"
 Label="traefik.http.routers.vaultwarden.entrypoints=https"

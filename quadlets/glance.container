@@ -14,7 +14,7 @@ Network=homelab.network:ip=10.90.0.4
 
 Volume=/var/lib/homelab/apps/%p/config:/app/config:Z,idmap
 
-EnvironmentFile=/var/lib/homelab/secrets/adguard.env
+Volume=/run/homelab/secrets/current/glance:/run/secrets:ro,Z,idmap
 
 Label="traefik.enable=true"
 Label="traefik.http.routers.glance.entrypoints=https"

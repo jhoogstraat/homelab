@@ -7,6 +7,11 @@ After=network-online.target homelab.target
 Type=oneshot
 EnvironmentFile=/var/lib/homelab/credentials/backup.env
 Environment=RESTIC_CACHE_DIR=/var/cache/restic
+LoadCredential=restic-password:/var/lib/homelab/credentials/restic-password
+LoadCredential=s3-credentials:/var/lib/homelab/credentials/s3-credentials
+Environment=RESTIC_PASSWORD_FILE=%d/restic-password
+Environment=AWS_SHARED_CREDENTIALS_FILE=%d/s3-credentials
+UnsetEnvironment=RESTIC_PASSWORD RESTIC_PASSWORD_COMMAND AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN MINIO_ACCESS_KEY MINIO_SECRET_KEY
 ExecStart=/usr/libexec/homelab backup
 ExecStopPost=/usr/libexec/homelab resume
 TimeoutStartSec=2h
