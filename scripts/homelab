@@ -34,6 +34,7 @@ SECRET_KEYS = {
     "papra": ("AUTH_SECRET", "DATABASE_AUTH_TOKEN", "DATABASE_ENCRYPTION_KEY"),
     "vaultwarden": ("ADMIN_TOKEN",),
 }
+DEPANATOR_KEYS = ("TELEGRAM_BOT_TOKEN", "VNC_PASSWORD")
 
 
 def command(*args, **kwargs):
@@ -137,8 +138,17 @@ def secret_store():
 def stage_secrets():
     key = credential("age.key")
     encrypted = sorted((SOURCE / "secrets").glob("*.enc.env"))
-    if {path.name for path in encrypted} != {f"{name}.enc.env" for name in SECRET_KEYS}:
+    packaged = {path.name for path in encrypted}
+    required = {f"{name}.enc.env" for name in SECRET_KEYS}
+    if not required <= packaged or packaged - required - {"depanator.enc.env"}:
         raise RuntimeError("Encrypted secret inventory does not match the application allowlist")
+    # Optional personal setup is device-owned and survives host image updates.
+    device = ROOT / "device-secrets/depanator.enc.env"
+    if device.exists() or device.is_symlink():
+        private_file(device)
+        encrypted = [path for path in encrypted if path.name != device.name] + [device]
+    keys = dict(SECRET_KEYS, depanator=DEPANATOR_KEYS)
+    has_depanator = any(path.name == "depanator.enc.env" for path in encrypted)
     loader = (SOURCE / "secret-loader.mjs").read_bytes()
     digest = hashlib.sha256(b"homelab-secret-delivery-v1\0" + loader)
     for path in encrypted:
@@ -146,7 +156,7 @@ def stage_secrets():
     store = secret_store()
     generation = store / "generations" / digest.hexdigest()
     if generation.exists():
-        for app, names in secret_outputs().items():
+        for app, names in secret_outputs(has_depanator).items():
             for name in names:
                 private_file(generation / app / name)
         private_file(generation / "adguard-seed.json")
@@ -165,7 +175,7 @@ def stage_secrets():
             except (ValueError, UnicodeError) as error:
                 raise RuntimeError(f"Invalid decrypted JSON for {name}") from error
             try:
-                valid = (isinstance(data, dict) and set(data) == set(SECRET_KEYS[name])
+                valid = (isinstance(data, dict) and set(data) == set(keys[name])
                          and all(isinstance(value, str) and value and "\0" not in value
                                  and len(value.encode()) <= 128 * 1024 for value in data.values()))
             except UnicodeError:
@@ -173,6 +183,10 @@ def stage_secrets():
             if not valid:
                 raise RuntimeError(f"Invalid secret entries for {name}")
             values[name] = data
+        if has_depanator and (not re.fullmatch(r"[\x20-\x7e]{8}", values["depanator"]["VNC_PASSWORD"])
+                or any(re.search(r"[\r\n]", value) or len(value.encode()) > 16384
+                       for value in values["depanator"].values())):
+            raise RuntimeError("Depanator secrets must be single-line values with an eight-character viewer password")
         initial = values["adguard"]
         if not re.fullmatch(r"\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}", initial["ADGUARD_PASSWORD_HASH"]):
             raise RuntimeError("AdGuard's initial password must be a bcrypt hash")
@@ -183,6 +197,11 @@ def stage_secrets():
             "glance": {"adguard-username": initial["ADGUARD_USERNAME"],
                        "adguard-password": initial["ADGUARD_PASSWORD"]},
         }
+        if has_depanator:
+            exports["depanator"] = {
+                "telegram-bot-token": values["depanator"]["TELEGRAM_BOT_TOKEN"],
+                "vnc-password": values["depanator"]["VNC_PASSWORD"],
+            }
         for app in ("papra", "homepage"):
             exports[app] = {"env.json": json.dumps(values[app]), "load-env.mjs": loader.decode()}
         for app, files in exports.items():
@@ -197,10 +216,13 @@ def stage_secrets():
     return generation
 
 
-def secret_outputs():
-    return {"cloudflared": ("tunnel-token",), "vaultwarden": ("admin-token",),
+def secret_outputs(has_depanator=False):
+    outputs = {"cloudflared": ("tunnel-token",), "vaultwarden": ("admin-token",),
             "beszel-agent": ("token", "key"), "glance": ("adguard-username", "adguard-password"),
             "papra": ("env.json", "load-env.mjs"), "homepage": ("env.json", "load-env.mjs")}
+    if has_depanator:
+        outputs["depanator"] = ("telegram-bot-token", "vnc-password")
+    return outputs
 
 
 def select_secrets(generation):
@@ -300,10 +322,12 @@ def rotate_secrets():
 
 
 def units():
-    containers = [f"{p.stem}.service" for p in QUADLETS.glob("*.container")]
-    pods = [f"{p.stem}-pod.service" for p in QUADLETS.glob("*.pod")]
+    containers = [f"{p.stem}.service" for directory in (QUADLETS, LEGACY_QUADLETS)
+                  for p in directory.glob("*.container")]
+    pods = [f"{p.stem}-pod.service" for directory in (QUADLETS, LEGACY_QUADLETS)
+            for p in directory.glob("*.pod")]
     # Include retired apps while migrating, so their old writers are quiesced.
-    return sorted(containers + pods + [f"{name}.service" for name in RETIRED])
+    return sorted(set(containers + pods + [f"{name}.service" for name in RETIRED]))
 
 
 def pause_manifests():
@@ -390,6 +414,10 @@ def unit_ready(name):
             result = command("podman", "exec", "otbr", "ot-ctl", "state",
                              timeout=10, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             return result.stdout.splitlines()[0].strip() in (b"router", b"leader", b"child")
+        if name == "depanator.service":
+            command("podman", "exec", "depanator", "bun", "-e",
+                    "const r = await fetch('http://127.0.0.1:6080/vnc.html', {signal: AbortSignal.timeout(3000)}); if (!r.ok) process.exit(1)",
+                    timeout=5, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
     except (OSError, ValueError, IndexError, urllib.error.URLError,
             subprocess.CalledProcessError, subprocess.TimeoutExpired):
@@ -440,10 +468,10 @@ def pause():
         ):
             raise RuntimeError("Application writers did not stop; refusing backup")
         # Some third-party containers return nonzero on SIGTERM. Enforce clean
-        # shutdown for HA without changing those applications' existing policy.
-        if any(name == "homeassistant.service" and state.get("Result") != "success"
+        # shutdown for HA and Depanator without changing other applications' policy.
+        if any(name in ("homeassistant.service", "depanator.service") and state.get("Result") != "success"
                for name, state in zip(active, states)):
-            raise RuntimeError("Home Assistant did not stop cleanly; refusing backup")
+            raise RuntimeError("Application did not stop cleanly; refusing backup")
     return active
 
 
@@ -471,6 +499,8 @@ def capture_recovery(active):
 
 def device_sources():
     sources = []
+    if (ROOT / "device-secrets").exists():
+        sources.append(str(ROOT / "device-secrets"))
     for path in ("/var/lib/bluetooth", "/etc/NetworkManager/system-connections",
                  "/etc/machine-id", "/etc/containers/systemd", "/etc/containers/auth.json",
                  "/etc/ostree/auth.json", "/etc/fstab",

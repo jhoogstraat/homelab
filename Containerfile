@@ -32,6 +32,7 @@ COPY configs/defaults/ /usr/share/homelab/defaults/
 COPY configs/secret-loader.mjs /usr/share/homelab/secret-loader.mjs
 COPY secrets/*.enc.env /usr/share/homelab/secrets/
 COPY --chmod=0755 scripts/homelab /usr/libexec/homelab
+COPY --chmod=0755 scripts/depanator /usr/libexec/depanator
 COPY systemd/ /usr/lib/systemd/system/
 
 # Keep heredocs inside Bash; Ubuntu's packaged builder does not parse them.

@@ -36,6 +36,10 @@ assert not {"immobot.service", "onedev.service", "n8n.service", "grafana.service
 assert units.keys() == expected, units.keys() ^ expected
 assert "--stop-timeout 60 " in units["homeassistant.service"]
 assert "TimeoutStopSec=100" in units["homeassistant.service"]
+assert "--stop-timeout 40 " in units["depanator.service"]
+assert "TimeoutStopSec=60" in units["depanator.service"]
+assert "--user 1000:1000" in units["depanator.service"]
+assert "--publish" not in units["depanator.service"]
 for alias in ("host.docker.internal", "host.containers.internal"):
     assert re.search(r"--add-host(?:=| )" + re.escape(alias + ":10.90.0.1"),
                      units["traefik.service"]), alias
@@ -48,7 +52,7 @@ assert "--internal" in units["podman-api-network.service"]
 assert "--publish" not in units["socket-proxy.service"]
 assert "--cap-drop all" in units["socket-proxy.service"]
 assert "--read-only" in units["socket-proxy.service"]
-for name in ("cloudflared", "vaultwarden", "beszel-agent", "glance", "papra", "homepage"):
+for name in ("cloudflared", "vaultwarden", "beszel-agent", "glance", "papra", "homepage", "depanator"):
     unit = units[name + ".service"]
     assert f"/run/homelab/secrets/current/{name}:/run/secrets:ro,Z" in unit, name
     assert not re.search(r"--env-file(?:=| )[^\s]*homelab/secrets", unit), name
@@ -58,6 +62,8 @@ assert "/run/homelab/secrets/current/beszel-agent:/run/secrets:ro,Z,idmap" in un
 assert "--userns auto" in units["beszel-pod.service"]
 assert "TOKEN_FILE=/run/secrets/token" in units["beszel-agent.service"]
 assert "KEY_FILE=/run/secrets/key" in units["beszel-agent.service"]
+assert "TELEGRAM_BOT_TOKEN_FILE=/run/secrets/telegram-bot-token" in units["depanator.service"]
+assert "VNC_PASSWORD_FILE=/run/secrets/vnc-password" in units["depanator.service"]
 assert "NODE_OPTIONS=--import=/run/secrets/load-env.mjs" in units["papra.service"]
 assert "bun --preload /run/secrets/load-env.mjs dist/server/entry.mjs" in units["homepage.service"]
 assert "--user 1000:1000" in units["homepage.service"]
