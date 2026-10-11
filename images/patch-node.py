@@ -26,7 +26,7 @@ for target, name in packages:
         shutil.copytree(installed, target, symlinks=True)
         # Dependencies stay nested, so existing pnpm/npm links keep resolving.
         for dependency in modules.iterdir():
-            if dependency.name == ".bin" or dependency == installed:
+            if not dependency.is_dir() or dependency.name == ".bin" or dependency == installed:
                 continue
             if name.startswith("@") and dependency.name == name.split("/")[0]:
                 continue
