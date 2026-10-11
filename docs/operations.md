@@ -158,7 +158,7 @@ Recovery intent is root-only at `/var/lib/homelab/maintenance/paused-units.json`
 
 `homelab-recover.service` runs after preparation at boot and uses the same maintenance lock as backups and updates. It starts recorded services without restarting those already running. Neither application units nor `homelab.target` are ordered after this recovery unit: doing so could deadlock recovery while it waits for those units to start. Both manifests are removed and their directories synced only after recovery succeeds.
 
-Recovery waits up to 120 seconds for resumed services to be active, Home Assistant HTTP to respond, Matter to answer a WebSocket `get_nodes` request, and OTBR to report an attached Thread role. These are service/protocol checks, not a guarantee that every individual light is reachable. Failed readiness retains recovery intent and prevents pruning/updates. `ExecStopPost` can retry recovery after a failed maintenance command; repeated failure remains visible in systemd.
+Recovery waits up to 300 seconds for resumed services to be active, Home Assistant HTTP to respond, Matter to answer a WebSocket `get_nodes` request, and OTBR to report an attached Thread role. These are service/protocol checks, not a guarantee that every individual light is reachable. Failed readiness retains recovery intent and prevents pruning/updates. `ExecStopPost` can retry recovery after a failed maintenance command; repeated failure remains visible in systemd.
 
 The live Pi uses reversible overrides while these changes await normal host-image publication:
 

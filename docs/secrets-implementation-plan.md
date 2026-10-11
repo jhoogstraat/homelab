@@ -67,7 +67,7 @@ Volume=/run/homelab/secrets/current/cloudflared:/run/secrets:ro,Z,idmap=uids=@0-
 Exec=tunnel --no-autoupdate run --token-file /run/secrets/tunnel-token
 ```
 
-Use the same mount pattern for each app, with its own directory. Default container-root apps use `:ro,Z,idmap`; Papra uses UID/GID 999 and homepage 1000. Add `User=1000:1000` to homepage so its tested user does not depend on a persistent drop-in. Preserve the working data-volume ownership/mapping. Do not add `UserNS=auto` to Beszel's existing pod without a separate compatibility change; give its runtime export a private `:ro,Z` mount within the existing pod mapping and test it there.
+Use the same mount pattern for each app, with its own directory. Default container-root apps use `:ro,Z,idmap`; Papra uses UID/GID 999 and homepage 1000. Add `User=1000:1000` to homepage so its tested user does not depend on a persistent drop-in. Preserve the working data-volume ownership/mapping. Do not add `UserNS=auto` to Beszel's existing pod without a separate compatibility change; its shared pod already has `UserNS=auto`, so give its runtime export a private `:ro,Z,idmap` mount, mapping host root to pod root, and test it there. A plain bind mount leaves root-only files unreadable to the mapped pod user.
 
 Set these public configuration values:
 

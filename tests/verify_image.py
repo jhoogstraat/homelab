@@ -54,6 +54,8 @@ for name in ("cloudflared", "vaultwarden", "beszel-agent", "glance", "papra", "h
     assert not re.search(r"--env-file(?:=| )[^\s]*homelab/secrets", unit), name
 assert "--token-file /run/secrets/tunnel-token" in units["cloudflared.service"]
 assert "ADMIN_TOKEN_FILE=/run/secrets/admin-token" in units["vaultwarden.service"]
+assert "/run/homelab/secrets/current/beszel-agent:/run/secrets:ro,Z,idmap" in units["beszel-agent.service"]
+assert "--userns auto" in units["beszel-pod.service"]
 assert "TOKEN_FILE=/run/secrets/token" in units["beszel-agent.service"]
 assert "KEY_FILE=/run/secrets/key" in units["beszel-agent.service"]
 assert "NODE_OPTIONS=--import=/run/secrets/load-env.mjs" in units["papra.service"]
