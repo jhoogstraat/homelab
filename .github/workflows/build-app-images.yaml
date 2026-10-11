@@ -30,8 +30,8 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
-          image="ghcr.io/${REPOSITORY}-${APP_NAME}:sha-${COMMIT_SHA}"
-          sudo podman build --arch arm64 --format docker -f "images/${APP_NAME}/Containerfile" -t "$image" .
+          image="ghcr.io/${REPOSITORY}:${APP_NAME}-sha-${COMMIT_SHA}"
+          sudo podman build --arch arm64 --format docker -f "images/${APP_NAME}/Containerfile" --label "org.opencontainers.image.source=https://github.com/${REPOSITORY}" -t "$image" .
           sudo podman push --authfile /tmp/registry-auth.json "$image"
       - name: Remove registry credentials
         if: always()
