@@ -7,9 +7,10 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=homepage
 # renovate: datasource=docker depName=ghcr.io/jhoogstraat/homepage
-Image=ghcr.io/jhoogstraat/homepage:latest@sha256:a6a4aec279bf1fefa44f9b347ed9f9def3f4b50a0c899100940a7e5e260917e4
+Image=ghcr.io/jhoogstraat/homepage:latest@sha256:1656e583fc15e52841feeef16e62cd61938aa47966bc8ff730a9e9a011c6e526
 Pull=newer
 
+User=bun
 UserNS=auto
 RunInit=true
 

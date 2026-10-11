@@ -24,6 +24,7 @@ Home Assistant, homepage, Matter and OTBR are optional. Immobot, OneDev, n8n, Gr
 | --- | --- |
 | `Containerfile` | ARM64 host image and packages |
 | `quadlets/` | Application images, networks, routing and mounts |
+| `images/` | Pinned-source ARM64 dependency remediation builds |
 | `configs/environment/` | Git-owned infrastructure settings |
 | `configs/defaults/` | First-install application settings |
 | `secrets/*.enc.env` | SOPS-encrypted application credentials |
@@ -31,6 +32,8 @@ Home Assistant, homepage, Matter and OTBR are optional. Immobot, OneDev, n8n, Gr
 | `scripts/build-host` | Host accounts, SSH, firewall and service enablement |
 | `systemd/` | Maintenance timers and application lifecycle |
 | `tests/` | State preservation, recovery and API-boundary checks |
+
+See [patched application images](docs/patched-application-images.md) for build, scan and compatibility requirements, including the disabled optional Nexity login dependency.
 
 Read the [architecture](docs/homelab-reconciliation.md), [operations and recovery guide](docs/operations.md), and application inventories: [stateful services](docs/application-storage.md) · [infrastructure and home automation](docs/application-storage-other.md).
 

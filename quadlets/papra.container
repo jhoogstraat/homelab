@@ -6,8 +6,8 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=papra
-# renovate: datasource=docker depName=ghcr.io/papra-hq/papra
-Image=ghcr.io/papra-hq/papra:latest-rootless@sha256:bf4a66e776d0a40d71543747a2e17af800204b4a81d19f7951b8552c8032dbeb
+# Patched ARM64 artifact; rebuild and scan before changing this pin.
+Image=ghcr.io/jhoogstraat/homelab:papra-sha-4ed2efbd649f3c0935b7996e5f651c0346655d62@sha256:a7e3659d2d127423b116cb76280a668d8f99981a27cd9f07021fb4c72837bfe3
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.11

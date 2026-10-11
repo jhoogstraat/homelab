@@ -5,8 +5,8 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=homeassistant
 StopTimeout=60
-# renovate: datasource=docker depName=ghcr.io/home-assistant/home-assistant
-Image=ghcr.io/home-assistant/home-assistant:stable@sha256:1b64d38f38d922bf9d59336451fd6453e1d614f934456af4ee3d2a51061be3a4
+# Patched ARM64 artifact; rebuild and scan before changing this pin.
+Image=ghcr.io/jhoogstraat/homelab:homeassistant-sha-e4f211a42f79ef04f62f0ec01c5e581410383891@sha256:0402527e3c74694b96a5f7db96fd9d987366b1522d04c5a10fe7e0fad7ad6a0b
 
 Network=host
 

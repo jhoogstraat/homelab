@@ -1,0 +1,17 @@
+FROM docker.io/library/golang:1.27.2-alpine@sha256:c2b8d9b05d9386fe1b01bab829eda3a05edb526c220e638d3c7a73671a290672 AS esbuild
+RUN apk add --no-cache git
+WORKDIR /esbuild
+RUN git clone https://github.com/evanw/esbuild.git . \
+    && git checkout 22f0818cf81024b63752d815c51fe737612b43ec \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/0.18.20 ./cmd/esbuild \
+    && git checkout d6b668f96fb00d6a6d035f058e38b6bd2507beb6 \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/0.25.10 ./cmd/esbuild
+FROM ghcr.io/papra-hq/papra:latest-rootless@sha256:bf4a66e776d0a40d71543747a2e17af800204b4a81d19f7951b8552c8032dbeb
+USER root
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+COPY images/patch-node.py /tmp/patch-node.py
+RUN python3 /tmp/patch-node.py && rm /tmp/patch-node.py
+COPY --from=esbuild /out/ /tmp/esbuild/
+COPY images/patch-esbuild.py /tmp/patch-esbuild.py
+RUN python3 /tmp/patch-esbuild.py && rm -rf /tmp/esbuild /tmp/patch-esbuild.py
+USER nonroot
