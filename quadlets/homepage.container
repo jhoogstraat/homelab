@@ -10,6 +10,7 @@ Image=ghcr.io/jhoogstraat/homepage:latest
 AutoUpdate=registry
 Pull=newer
 
+User=bun
 UserNS=auto
 RunInit=true
 

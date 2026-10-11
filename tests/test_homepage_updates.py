@@ -16,6 +16,7 @@ class HomepageUpdatesTests(unittest.TestCase):
         definition = (ROOT / "quadlets/homepage.container").read_text().splitlines()
         self.assertIn("Image=" + IMAGE, definition)
         self.assertIn("AutoUpdate=registry", definition)
+        self.assertIn("User=bun", definition)
 
     def scan(self, name, definition, calls):
         with tempfile.TemporaryDirectory() as directory:
