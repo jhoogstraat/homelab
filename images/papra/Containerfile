@@ -5,7 +5,9 @@ RUN git clone https://github.com/evanw/esbuild.git . \
     && git checkout 22f0818cf81024b63752d815c51fe737612b43ec \
     && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/0.18.20 ./cmd/esbuild \
     && git checkout d6b668f96fb00d6a6d035f058e38b6bd2507beb6 \
-    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/0.25.10 ./cmd/esbuild
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/0.25.10 ./cmd/esbuild \
+    && git checkout 2025c9ff6ab15ba6b0f9d074fd732250cc46e4a3 \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/0.27.7 ./cmd/esbuild
 FROM ghcr.io/papra-hq/papra:latest-rootless@sha256:bf4a66e776d0a40d71543747a2e17af800204b4a81d19f7951b8552c8032dbeb
 USER root
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*

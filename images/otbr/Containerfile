@@ -3,7 +3,7 @@ RUN apk add --no-cache git
 WORKDIR /src
 RUN git clone https://github.com/home-assistant/tempio.git . \
     && git checkout 2fcfc522502f7bba71043874a5fab4007812d28c \
-    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /tempio .
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -X main.TempioVersion=2024.11.2' -o /tempio .
 FROM ghcr.io/wittdennis/homeassistant-otbr:3@sha256:96140ea49b3d8af642eff40ad23764c0ab05d5716b69dd11efc5f7e0f4da9d60
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 COPY --from=tempio /tempio /usr/bin/tempio
