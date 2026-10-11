@@ -4,8 +4,8 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=otbr
-# renovate: datasource=docker depName=ghcr.io/wittdennis/homeassistant-otbr
-Image=ghcr.io/wittdennis/homeassistant-otbr:3@sha256:96140ea49b3d8af642eff40ad23764c0ab05d5716b69dd11efc5f7e0f4da9d60
+# Patched ARM64 artifact; rebuild and scan before changing this pin.
+Image=ghcr.io/jhoogstraat/homelab:otbr-sha-e4f211a42f79ef04f62f0ec01c5e581410383891@sha256:0900a5dce54218e3da9f8f15809ea8dd7866bcfb82b6bc7d98ccb7c830149c92
 
 Network=host
 
