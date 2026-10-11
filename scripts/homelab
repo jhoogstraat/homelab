@@ -322,12 +322,13 @@ def rotate_secrets():
 
 
 def units():
-    containers = [f"{p.stem}.service" for directory in (QUADLETS, LEGACY_QUADLETS)
-                  for p in directory.glob("*.container")]
-    pods = [f"{p.stem}-pod.service" for directory in (QUADLETS, LEGACY_QUADLETS)
-            for p in directory.glob("*.pod")]
-    # Include retired apps while migrating, so their old writers are quiesced.
-    return sorted(set(containers + pods + [f"{name}.service" for name in RETIRED]))
+    # Preserve participation of device-local Quadlets, including TREK.
+    directories = (QUADLETS, LEGACY_QUADLETS)
+    containers = {f"{p.stem}.service" for directory in directories
+                  for p in directory.glob("*.container")}
+    pods = {f"{p.stem}-pod.service" for directory in directories
+            for p in directory.glob("*.pod")}
+    return sorted(containers | pods | {f"{name}.service" for name in RETIRED})
 
 
 def pause_manifests():
