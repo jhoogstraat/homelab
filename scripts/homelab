@@ -475,6 +475,7 @@ def device_sources():
                  "/etc/machine-id", "/etc/containers/systemd", "/etc/containers/auth.json",
                  "/etc/ostree/auth.json", "/etc/fstab",
                  "/etc/systemd/system/homelab-prepare.service.d",
+                 "/etc/systemd/system/homelab-secrets-rotate.service.d",
                  "/etc/systemd/system/homelab-recover.service",
                  "/etc/systemd/system/multi-user.target.wants/chrony-wait.service",
                  "/etc/systemd/system/homelab-backup.service.d",
