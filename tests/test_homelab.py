@@ -410,6 +410,10 @@ class LifecycleTests(unittest.TestCase):
         with patch.object(homelab, "unit_ready", side_effect=[False, True]), patch.object(homelab.time, "sleep"):
             homelab.wait_ready(["otbr.service"])
 
+    def test_cold_start_can_exceed_two_minutes(self):
+        with patch.object(homelab, "unit_ready", side_effect=[False, False, True]), patch.object(homelab.time, "monotonic", side_effect=[0, 125, 250]), patch.object(homelab.time, "sleep"):
+            homelab.wait_ready(["homeassistant.service"])
+
     def test_readiness_timeout_preserves_the_failed_service_name(self):
         with patch.object(homelab, "unit_ready", return_value=False), patch.object(homelab.time, "monotonic", side_effect=[0, 1, 3]), patch.object(homelab.time, "sleep"):
             with self.assertRaisesRegex(RuntimeError, "homeassistant.service"):

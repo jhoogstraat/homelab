@@ -396,7 +396,7 @@ def unit_ready(name):
         return False
 
 
-def wait_ready(names, timeout=120):
+def wait_ready(names, timeout=300):
     pending = set(names)
     deadline = time.monotonic() + timeout
     while pending:
