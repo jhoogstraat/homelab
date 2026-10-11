@@ -11,6 +11,8 @@ for binary in Path("/app/node_modules").rglob("esbuild"):
         if source.read(4) != b"\x7fELF":
             continue
     version = subprocess.check_output([str(binary), "--version"], text=True).strip()
+    if version not in ("0.18.20", "0.25.10"):
+        continue
     replacement = Path("/tmp/esbuild") / version
     if not replacement.is_file():
         raise RuntimeError(f"Missing rebuilt esbuild {version}: {binary}")

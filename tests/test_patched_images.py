@@ -45,23 +45,26 @@ class EsbuildImagePatchTests(unittest.TestCase):
             native = root / 'native/esbuild'
             alias = root / 'wrapper/esbuild'
             javascript = root / 'javascript/esbuild'
-            for path in (native, alias, javascript):
+            newer = root / 'newer/esbuild'
+            for path in (native, alias, javascript, newer):
                 path.parent.mkdir()
             native.write_bytes(b'\x7fELFvulnerable')
             alias.hardlink_to(native)
             javascript.write_text('#!/usr/bin/env node')
+            newer.write_bytes(b'\x7fELFsafe')
             replacement = root / '0.18.20'
             replacement.write_bytes(b'\x7fELFpatched')
             original_is_file = Path.is_file
             original_copyfile = __import__('shutil').copyfile
             def copyfile(source, target):
                 return original_copyfile(replacement, target)
-            with patch.object(Path, 'rglob', return_value=[native, alias, javascript]), \
+            with patch.object(Path, 'rglob', return_value=[native, alias, javascript, newer]), \
                  patch.object(Path, 'is_file', lambda p: True if str(p) == '/tmp/esbuild/0.18.20' else original_is_file(p)), \
-                 patch('subprocess.check_output', return_value='0.18.20\n'), \
+                 patch('subprocess.check_output', side_effect=lambda args, **kwargs: '0.28.1\n' if args[0] == str(newer) else '0.18.20\n'), \
                  patch('shutil.copyfile', copyfile):
                 runpy.run_path(str(SCRIPT.with_name('patch-esbuild.py')), run_name='__main__')
             self.assertEqual(native.read_bytes(), replacement.read_bytes())
             self.assertEqual(alias.read_bytes(), replacement.read_bytes())
             self.assertEqual(javascript.read_text(), '#!/usr/bin/env node')
+            self.assertEqual(newer.read_bytes(), b'\x7fELFsafe')
             self.assertEqual(native.stat().st_mode & 0o777, 0o755)
