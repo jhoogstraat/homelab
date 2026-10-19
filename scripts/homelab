@@ -416,8 +416,7 @@ def unit_ready(name):
                              timeout=10, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             return result.stdout.splitlines()[0].strip() in (b"router", b"leader", b"child")
         if name == "depanator.service":
-            command("podman", "exec", "depanator", "bun", "-e",
-                    "const r = await fetch('http://127.0.0.1:6080/vnc.html', {signal: AbortSignal.timeout(3000)}); if (!r.ok) process.exit(1)",
+            command("podman", "exec", "depanator", "/usr/local/bin/depanator-entrypoint", "health",
                     timeout=5, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
     except (OSError, ValueError, IndexError, urllib.error.URLError,

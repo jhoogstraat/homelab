@@ -1,35 +1,43 @@
 [Unit]
 Description=Depanator apartment agent
-Wants=adguard.container
-After=adguard.container
-ConditionPathExists=/var/lib/homelab/apps/depanator/config/config.json
-ConditionPathExists=/run/homelab/secrets/current/depanator/telegram-bot-token
+ConditionPathExists=/var/lib/homelab/apps/depanator/config/bot-token
 ConditionPathExists=!/var/lib/homelab/apps/depanator/data/reconciliation-required
+Requires=homelab-prepare.service
+After=homelab-prepare.service
+PartOf=homelab.target
 StartLimitIntervalSec=0
 
 [Container]
 ContainerName=depanator
-Image=ghcr.io/jhoogstraat/depanator@sha256:3da45c5c55b35b775eba86ea7cbf790f594769fe7a529555c7288cdf856d40f8
+Image=ghcr.io/jhoogstraat/depanator:sha-e366e6a@sha256:527902a25679de5c1243560664fbfd6498e17f6bad5eb3e7be16107fe0c6cdd8
+Pull=missing
+StopTimeout=40
 UserNS=auto
 User=1000
 Group=1000
 Network=homelab.network
-NetworkAlias=depanator
-Volume=/var/lib/homelab/apps/%p/config:/config:ro,Z,idmap=uids=@0-1000-1;gids=@0-1000-1
-Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
-Volume=/run/homelab/secrets/current/%p:/run/secrets:ro,Z,idmap=uids=@0-1000-1;gids=@0-1000-1
-Environment=TELEGRAM_BOT_TOKEN_FILE=/run/secrets/telegram-bot-token
-Environment=VNC_PASSWORD_FILE=/run/secrets/vnc-password
-ShmSize=256m
-StopTimeout=40
-Exec=start
-Label="traefik.enable=true"
-Label="traefik.http.routers.depanator.entrypoints=https"
-Label="traefik.http.services.depanator.loadbalancer.server.port=6080"
-Timezone=local
+Volume=/var/lib/homelab/apps/depanator/data:/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+Volume=/var/lib/homelab/apps/depanator/config/bot-token:/run/secrets/bot-token:ro,Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+Environment=TELEGRAM_BOT_TOKEN_FILE=/run/secrets/bot-token
+Environment=DEPANATOR_PUBLIC_URL=https://trek.hoogstraat.net/depanator
+Label=traefik.enable=true
+Label=traefik.http.routers.depanator.rule=Host(`depanator.hoogstraat.de`)
+Label=traefik.http.routers.depanator.entrypoints=https
+Label=traefik.http.routers.depanator.service=depanator
+Label="traefik.http.routers.depanator-public.rule=Host(`trek.hoogstraat.net`) && PathPrefix(`/depanator/`)"
+Label=traefik.http.routers.depanator-public.entrypoints=tunnel
+Label=traefik.http.routers.depanator-public.priority=100
+Label=traefik.http.routers.depanator-public.service=depanator
+Label=traefik.http.services.depanator.loadbalancer.server.port=8080
+HealthCmd=/usr/local/bin/depanator-entrypoint health
+HealthInterval=5m
+HealthTimeout=10s
+HealthStartPeriod=15m
+HealthOnFailure=kill
+Timezone=Europe/Berlin
 
 [Service]
-Restart=on-failure
+Restart=always
 RestartSec=30
 TimeoutStartSec=300
 TimeoutStopSec=60
