@@ -1,5 +1,0 @@
-FROM ghcr.io/matter-js/matterjs-server:stable@sha256:54232d0d3e7dff5a54759469d2753399270412b4c30c55b31750a4595e4cb236
-USER root
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
-COPY images/patch-node.py /tmp/patch-node.py
-RUN python3 /tmp/patch-node.py && rm /tmp/patch-node.py

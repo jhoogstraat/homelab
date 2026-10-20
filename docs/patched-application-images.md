@@ -5,8 +5,7 @@ The ARM64 derivatives in `images/` retain the pinned upstream application versio
 | Image | Changes |
 | --- | --- |
 | Home Assistant | Alpine updates; rebuild the existing go2rtc 1.9.14 and tempio 2024.11.2 sources using Go 1.27.2; remove unused Nexity-only `warrant-lite` and its unpatched `python-jose` dependency |
-| OTBR | Debian updates; rebuild the existing tempio source using Go 1.27.2 |
-| Matter | Debian updates; replace affected npm packages with published fixes |
+| OTBR | Upstream 4.2.5 with Debian updates only; retain upstream tempio and OTBR binaries |
 | Papra | Debian updates; replace affected npm packages with published fixes; rebuild esbuild 0.18.20 and 0.25.10 with Go 1.27.2; preserve `nonroot` |
 | API broker | Alpine updates, including patched PCRE2; preserve HAProxy 3.2 and the restricted API configuration |
 
@@ -18,4 +17,8 @@ Nexity login support is unavailable in the Home Assistant derivative until its u
 
 Retain application data backups and previous pinned images when deploying a derivative. An image rollback does not undo database migrations; these recipes do not change the application versions or migration commands.
 
-Exact Quadlet artifacts were scanned on 2026-10-11 with the repository's pinned Trivy 0.75.0 scanner: all five have zero CRITICAL findings. Remaining HIGH counts are Home Assistant 30, Matter 97, OTBR 97, Papra 156, and the API broker 0. These derivatives meet the existing gate; other applications' HIGH findings remain visible in the full scan report. ARM64 smoke checks cover Home Assistant version preservation and core/integration imports, Matter's patched proxy library and entrypoint syntax, OTBR agent paths and template rendering, Papra's native esbuild binaries and migration command, and the broker configuration. Hardware, live integrations and stateful startup still require deployment validation.
+Exact Quadlet artifacts were scanned on 2026-10-11 with the repository's pinned Trivy 0.75.0 scanner: all five have zero CRITICAL findings. Remaining HIGH counts are Home Assistant 30, OTBR 97, Papra 156, and the API broker 0. These derivatives meet the existing gate; other applications' HIGH findings remain visible in the full scan report. Matter runs the upstream `ghcr.io/matter-js/matterjs-server:1.5.0` image without a local derivative; on 2026-10-20 it scanned with zero CRITICAL and 59 HIGH findings. ARM64 smoke checks cover Home Assistant version preservation and core/integration imports, OTBR agent paths and template rendering, Papra's native esbuild binaries and migration command, and the broker configuration. Hardware, live integrations and stateful startup still require deployment validation.
+
+Live Matter validation on pi1 on 2026-10-20 confirmed server version 1.5.0, HTTP 200, a successful WebSocket `get_nodes` response retaining all 16 nodes, and zero service restarts. The Pi uses a persistent `/etc/containers/systemd/matter.container.d/95-matter-v1.5.0.conf` image override; its booted bootc image still packages the previous pin. The next bootc build packages the 1.5.0 pin from `quadlets/matter.container`. Varmblixt commissioning remains to be tested.
+
+OTBR 4.2.5 was built and deployed on pi1 on 2026-10-20 with Debian updates only, retaining upstream OTBR/tempio binaries. Its exact local image scans with zero CRITICAL and 94 HIGH findings. Explicit `FLOW_CONTROL=0` preserves the serial radio setting required by the old image. Registry publication and the repository Quadlet pin update remain pending; the Pi uses a persistent local-image override and retained recovery archive. See [the OTBR review](otbr-upstream-review.md) for checks, artifact identity, and rollback.

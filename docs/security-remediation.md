@@ -30,6 +30,7 @@ Two controlled reboots were performed. The second boot (`27f30f12-797a-436b-83c5
 - `/etc/containers/systemd/{socket-proxy.container,podman-api.network}`: local broker definitions.
 - `95-security.conf` in `traefik.container.d`, `beszel-agent.container.d`, `beszel.pod.d`, `homepage.container.d` and `vaultwarden.container.d`.
 - `/etc/containers/systemd/traefik.container.d/96-host-gateway.conf`: deterministic host-network service routing.
+- `/etc/containers/systemd/otbr.container.d/95-otbr-4.2.5-debian.conf`: scanned local OTBR 4.2.5 image ID, `Pull=never`, and explicit `FLOW_CONTROL=0`. Its image archive and scan are retained in `recovery/otbr-upstream-review-20261020/`; stopped data and prior definitions are in `recovery/otbr-4.2.5-20261020T161216/`. Registry publication and the repository image pin update are pending; see [the OTBR review](otbr-upstream-review.md).
 - `/etc/systemd/system/homelab-prepare.service.d/95-security.conf`: patched SOPS PATH.
 - `95-startup-ordering.conf` in the three maintenance service drop-in directories; `bootc-fetch-apply-updates.timer.d/95-calendar-only.conf`; enabled native `chrony-wait.service`. Timer drop-ins and the time-sync enablement link are included in subsequent backups.
 - `recovery/security-20261010/` under `/var/lib/homelab`: prior Quadlets, vault settings/helper, tested image archives and homepage source patch. These root-only files are included in backups.
