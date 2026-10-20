@@ -107,6 +107,53 @@ class LifecycleTests(unittest.TestCase):
                 homelab.prepare()
         self.assertEqual((self.run / "secrets/current").readlink(), previous)
 
+    def test_optional_device_secrets_are_validated_staged_and_backed_up(self):
+        device = self.state / "device-secrets/depanator.enc.env"
+        device.parent.mkdir(mode=0o700)
+        device.write_text("ciphertext")
+        device.chmod(0o600)
+        self.secret_values["depanator"] = {"TELEGRAM_BOT_TOKEN": "123:test", "VNC_PASSWORD": "12345678"}
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+            token = self.run / "secrets/current/depanator/telegram-bot-token"
+            self.assertEqual(token.read_text(), "123:test")
+            self.assertEqual(token.stat().st_mode & 0o777, 0o600)
+            self.assertIn(str(device.parent), homelab.device_sources())
+            previous = (self.run / "secrets/current").readlink()
+            device.write_text("changed ciphertext")
+            self.secret_values["depanator"]["VNC_PASSWORD"] = "too-short"
+            with self.assertRaisesRegex(RuntimeError, "Depanator secrets"):
+                homelab.prepare()
+            self.assertEqual((self.run / "secrets/current").readlink(), previous)
+
+    def test_absent_optional_secrets_preserve_existing_inventory_and_exposed_inputs_fail(self):
+        with patch.object(homelab, "command", self.fake_command):
+            homelab.prepare()
+            self.assertFalse((self.run / "secrets/current/depanator").exists())
+            device = self.state / "device-secrets/depanator.enc.env"
+            device.parent.mkdir(mode=0o700)
+            device.write_text("ciphertext")
+            device.chmod(0o644)
+            with self.assertRaisesRegex(RuntimeError, "credential"):
+                homelab.prepare()
+
+    def test_dangling_device_secret_symlinks_are_rejected(self):
+        device = self.state / "device-secrets/depanator.enc.env"
+        device.parent.mkdir(mode=0o700)
+        device.symlink_to(device.parent / "absent")
+        with patch.object(homelab, "command", self.fake_command):
+            with self.assertRaisesRegex(RuntimeError, "credential"):
+                homelab.prepare()
+
+    def test_device_quadlets_join_maintenance_without_duplicate_units(self):
+        legacy = Path(self.directory.name) / "device-quadlets"
+        legacy.mkdir()
+        for name in ("depanator", "glance"):
+            (legacy / f"{name}.container").write_text("[Container]\n")
+        with patch.object(homelab, "LEGACY_QUADLETS", legacy):
+            self.assertIn("depanator.service", homelab.units())
+            self.assertEqual(homelab.units().count("glance.service"), 1)
+
     def test_prepare_closes_existing_state_directory_permissions(self):
         (self.state / "apps").chmod(0o755)
         (self.state / "credentials").chmod(0o755)
