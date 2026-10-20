@@ -4,8 +4,7 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=matter
-# Patched ARM64 artifact; rebuild and scan before changing this pin.
-Image=ghcr.io/jhoogstraat/homelab:matter-sha-e4f211a42f79ef04f62f0ec01c5e581410383891@sha256:7321f9636a2438a3f2bdc1b7a026d2eda904bf370e259e7222a288e3d46e9315
+Image=ghcr.io/matter-js/matterjs-server:1.5.0@sha256:b051f3f5bcc8df0f582773055d18e68136332135587d7bfc8b6c1bb8eacb75c7
 
 Network=host
 

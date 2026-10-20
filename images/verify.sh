@@ -10,10 +10,6 @@ case "$app" in
     test "$original" = "$actual"
     podman run --rm --network none --entrypoint python3 "$image" -c 'import homeassistant.core, homeassistant.auth, homeassistant.components.matter, homeassistant.components.go2rtc, homeassistant.components.thread'
     ;;
-  matter)
-    podman run --rm --network none --entrypoint node "$image" --input-type=module -e 'const {default: proxyaddr} = await import("/app/node_modules/proxy-addr/index.js"); if (!proxyaddr.compile("loopback")("127.0.0.1")) process.exit(1)'
-    podman run --rm --network none --entrypoint node "$image" --check /app/node_modules/matter-server/dist/esm/MatterServer.js
-    ;;
   otbr)
     podman run --rm --network none --entrypoint /bin/sh "$image" -ec 'test -x /opt/otbr-stable/sbin/otbr-agent; test -x /opt/otbr-beta/sbin/otbr-agent; printf "{{ .value }}" >/tmp/template; printf "{\"value\":\"working\"}" | tempio -template /tmp/template | grep -x working'
     ;;
