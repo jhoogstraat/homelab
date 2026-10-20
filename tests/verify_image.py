@@ -5,6 +5,11 @@ import sys
 from pathlib import Path
 
 image = sys.argv[1]
+subprocess.run(["podman", "run", "--rm", "-i", image, "sha256sum", "--check", "-"],
+               input="51c45e77ddad91a19e96dc8fb75295b2087c279940df2634b23baf71b6dea42c  /usr/lib/firmware/brcm/BCM4345C0.hcd\n",
+               text=True, check=True)
+subprocess.run(["podman", "run", "--rm", image, "test", "-s",
+                "/usr/share/licenses/rpi-bluez-firmware/LICENSE.cypress"], check=True)
 for flag in ([], ["-g"]):
     ranges = subprocess.check_output(["podman", "run", "--rm", image,
                                       "getsubids", *flag, "containers"], text=True)
