@@ -24,6 +24,10 @@ RUN dnf -y upgrade --refresh \
 	&& dnf clean all \
 	&& rm -rf /var/cache/* /var/log/* /run/dnf /tmp/* /var/tmp/*
 
+# Pi 4 UART Bluetooth needs this patch in addition to brcmfmac Wi-Fi firmware.
+COPY --chmod=0644 configs/firmware/brcm/BCM4345C0.hcd /usr/lib/firmware/brcm/BCM4345C0.hcd
+COPY --chmod=0644 configs/firmware/LICENSE.cypress /usr/share/licenses/rpi-bluez-firmware/LICENSE.cypress
+
 COPY --chmod=0644 users/jh.pub /usr/share/homelab/ssh/jh.keys
 
 COPY quadlets/ /usr/share/containers/systemd/
