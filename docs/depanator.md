@@ -4,11 +4,21 @@ Depanator runs as `depanator.service`, a rootful Podman Quadlet in
 `homelab.target`. The image includes Bun and Codex; setup and review happen in
 Telegram. The previous browser/VNC setup helper is obsolete for this image.
 
-The ARM64 image is published as `ghcr.io/jhoogstraat/depanator:sha-e366e6a`,
-from source commit `e366e6ac7058750e7f590d43ef7f58f7dbda2d8a`, and pinned to
-`sha256:527902a25679de5c1243560664fbfd6498e17f6bad5eb3e7be16107fe0c6cdd8`.
-`Pull=missing` uses the local image once available. Updates require a deliberate
-digest change; registry auto-update is disabled.
+The multi-architecture image is published as `ghcr.io/jhoogstraat/depanator:latest`,
+from merged main commit `a4ddf1afc7d618be504ec4f934512be6257ff62a`, and pinned to
+`sha256:634c406254bb4657053edb59ad90f98affaaa26fba4aa01006151ed54572d06e`.
+CI published both ARM64 and AMD64 after the application checks passed. This release
+preserves the Telegram setup and scheduled searches, and deletes a listing message
+when Dismiss is tapped (including tracked split messages).
+`Pull=missing` uses the local image once available. The `latest` tag is pinned to the
+verified digest; Renovate can propose digest updates, which require review. Merely
+publishing a new `latest` does not change the running Pi image. Registry auto-update
+is disabled.
+
+On 2026-10-20 the Pi pulled this digest and restarted successfully. The running
+image revision, application heartbeat, public connect page (HTTP 200), and first
+completed search were verified. The previous unit and a stopped-state app backup
+are retained at `/var/lib/homelab/recovery/depanator-before-a4ddf1a`.
 
 Searches run on the configured interval, with a 22:00–07:00 Europe/Berlin night
 pause by default. Manual searching has been removed. The first successful
