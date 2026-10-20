@@ -83,13 +83,18 @@ stored in `/var/lib/homelab/recovery/otbr-4.2.5-20261020T161216/`.
 
 The Pi uses `/etc/containers/systemd/otbr.container.d/95-otbr-4.2.5-debian.conf`
 to select the exact local image ID with `Pull=never` and set `FLOW_CONTROL=0`.
-Keep the device enablement drop-in. Registry publishing credentials were not
-available, so the image has not been published and `quadlets/otbr.container`
-retains the previous pullable registry pin. The booted bootc image is unchanged.
-The updated recipe will build through the existing application-image workflow;
-resolve and scan the published artifact, then replace the repository pin and
-remove the local image override after a host image packages the new pin/settings.
-Do not remove the override before that cutover.
+Keep the device enablement drop-in. The initial deployment used a local build
+because host registry publishing credentials were unavailable. After PR #14
+merged, the main-branch application workflow published the 4.2.5 derivative:
+
+`ghcr.io/jhoogstraat/homelab:otbr-sha-26bf3d9c13e86ca8b9aa7a1786230679ccdc5a3f@sha256:de5c45d56ed36a9f34b5b94f3983b81991a218c19b5ec2cbb5c8cf02bda2540e`
+
+`quadlets/otbr.container` now pins this pullable ARM64 artifact. The published
+image passes the binary/template smoke checks and its exact-digest scan is
+stored as `scan-published.json` in the review directory. The Pi still runs
+the tested local image ID above, and its booted bootc image is unchanged.
+Remove the local image override only after a host image packages the new
+registry pin and explicit flow-control setting; preserve device enablement.
 
 The image archive `otbr-4.2.5-debian.tar`, build recipe/log, and
 `scan-debian-patched.json` are retained in the root-only review directory above.
