@@ -1,0 +1,58 @@
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -41,7 +41,7 @@
+   "audioop-lts==0.2.2",
+   "awesomeversion==25.8.0",
+   "bcrypt==5.0.0",
+-  "certifi>=2021.5.30",
++  "certifi>=2026.10.19",
+   "ciso8601==2.3.3",
+   "cronsim==2.7",
+   "fnv-hash-fast==2.0.3",
+@@ -58,7 +58,7 @@
+   "PyJWT==2.15.1",
+   # PyJWT has loose dependency. We want the latest one.
+   "cryptography==50.0.1",
+-  "Pillow==12.3.0",
++  "Pillow==13.0.0",
+   "propcache==0.5.4",
+   "pyopenssl==26.4.0",
+   # Do not bump orjson until the very aggressive buffer resizing introduced in
+@@ -77,7 +77,7 @@
+   "typing-extensions>=4.16.0,<5.0",
+   "ulid-transform==2.2.9",
+   "urllib3>=2.0",
+-  "uv==0.12.23",
++  "uv==0.13.4",
+   "probatio==0.13.0",
+   "yarl==1.25.1",
+   "webrtc-models==0.3.0",
+--- a/homeassistant/package_constraints.txt
++++ b/homeassistant/package_constraints.txt
+@@ -26,7 +26,7 @@
+ bluetooth-auto-recovery==1.6.4
+ bluetooth-data-tools==1.29.24
+ cached-ipaddress==1.1.2
+-certifi>=2021.5.30
++certifi>=2026.10.19
+ ciso8601==2.3.3
+ cronsim==2.7
+ cryptography==50.0.1
+@@ -51,7 +51,7 @@
+ orjson==3.11.9
+ packaging>=23.1
+ paho-mqtt==2.1.0
+-Pillow==12.3.0
++Pillow==13.0.0
+ probatio==0.13.0
+ propcache==0.5.4
+ psutil-home-assistant==0.0.1
+@@ -72,7 +72,7 @@
+ typing-extensions>=4.16.0,<5.0
+ ulid-transform==2.2.9
+ urllib3>=2.0
+-uv==0.12.23
++uv==0.13.4
+ webrtc-models==0.3.0
+ yarl==1.25.1
+ zeroconf==0.151.5

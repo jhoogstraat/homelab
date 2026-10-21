@@ -8,8 +8,30 @@ WORKDIR /tempio
 RUN git clone https://github.com/home-assistant/tempio.git . \
     && git checkout 2fcfc522502f7bba71043874a5fab4007812d28c \
     && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -X main.TempioVersion=2024.11.2' -o /out/tempio .
-FROM ghcr.io/home-assistant/home-assistant:stable@sha256:1b64d38f38d922bf9d59336451fd6453e1d614f934456af4ee3d2a51061be3a4
+FROM ghcr.io/home-assistant/home-assistant:stable@sha256:1b64d38f38d922bf9d59336451fd6453e1d614f934456af4ee3d2a51061be3a4 AS upstream
+
+# Rebuild the exact application source so installed metadata and runtime constraints
+# agree with the security updates; do not bypass Home Assistant's dependency check.
+FROM upstream AS core
+RUN apk upgrade --no-cache && apk add --no-cache git \
+    && SSL_CERT_FILE=/etc/ssl/cert.pem uv pip install --no-deps --no-cache uv==0.13.4
+WORKDIR /core
+RUN git init . \
+    && git remote add origin https://github.com/home-assistant/core.git \
+    && git fetch --depth 1 origin 6a811d3359c7b2076dc9e1cf900843a129c044af \
+    && git checkout --detach FETCH_HEAD \
+    && test "$(git rev-parse HEAD)" = 6a811d3359c7b2076dc9e1cf900843a129c044af
+COPY images/homeassistant/security-dependencies.patch /tmp/security-dependencies.patch
+RUN git apply /tmp/security-dependencies.patch \
+    && SSL_CERT_FILE=/etc/ssl/cert.pem uv build --wheel --out-dir /out
+
+FROM upstream
+COPY --from=core /out /tmp/homeassistant-wheels
 RUN apk upgrade --no-cache \
+    && SSL_CERT_FILE=/etc/ssl/cert.pem uv pip install --no-deps --no-cache \
+        uv==0.13.4 certifi==2026.10.19 Pillow==13.0.0 \
+    && uv pip install --no-deps --no-cache --reinstall /tmp/homeassistant-wheels/*.whl \
+    && rm -rf /tmp/homeassistant-wheels \
     && uv pip uninstall python-jose warrant-lite \
     && uv pip check
 COPY --from=helpers /out/go2rtc /bin/go2rtc
