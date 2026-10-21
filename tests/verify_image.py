@@ -45,6 +45,13 @@ assert not {"immobot.service", "onedev.service", "n8n.service", "grafana.service
 assert units.keys() == expected, units.keys() ^ expected
 assert "--stop-timeout 60 " in units["homeassistant.service"]
 assert "TimeoutStopSec=100" in units["homeassistant.service"]
+assert "NOBLE_BINDINGS=dbus" in units["matter.service"]
+assert "/run/dbus:/run/dbus:ro" in units["matter.service"]
+assert "label=type:spc_t" in units["matter.service"]
+for directive in ("Requires=", "After="):
+    assert any("bluetooth.service" in line.split("=", 1)[1].split()
+               for line in units["matter.service"].splitlines()
+               if line.startswith(directive))
 assert "--stop-timeout 40 " in units["depanator.service"]
 assert "TimeoutStopSec=60" in units["depanator.service"]
 assert "--user 1000:1000" in units["depanator.service"]

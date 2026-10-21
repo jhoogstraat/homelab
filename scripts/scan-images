@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scan the exact ARM64 Quadlet digests; fail closed on errors or critical findings."""
+"""Scan exact ARM64 Quadlet digests; enforce the documented publication policy."""
 import argparse
 import json
 import os
@@ -12,6 +12,9 @@ parser.add_argument("--report-only", action="store_true")
 parser.add_argument("--output", type=Path, default=Path("image-security.json"))
 args = parser.parse_args()
 scanner = "docker.io/aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa"
+# User-approved on 2026-10-21: retain the official Home Assistant image and
+# accept its findings rather than maintaining a derivative. A new pin needs review.
+accepted_homeassistant = "ghcr.io/home-assistant/home-assistant:2026.10.2@sha256:1edf9ce6c140826cdfcd6358802cf3466e38045cd7ed62ccf42c78980ff937ae"
 reports = []
 failed = False
 for path in sorted(Path("quadlets").glob("*.container")):
@@ -35,14 +38,18 @@ for path in sorted(Path("quadlets").glob("*.container")):
                 for v in target.get("Vulnerabilities", [])]
     critical = sum(v["Severity"] == "CRITICAL" for v in findings)
     high = sum(v["Severity"] == "HIGH" for v in findings)
-    reports.append({"image": image, "report": report})
-    print(f"{path.stem}: {critical} critical, {high} high", flush=True)
-    failed |= critical > 0 or (path.stem == "socket-proxy" and high > 0)
+    accepted = path.stem == "homeassistant" and image == accepted_homeassistant
+    reports.append({"image": image, "report": report,
+                    "critical_findings_accepted": accepted})
+    note = " (accepted official Home Assistant digest)" if accepted else ""
+    print(f"{path.stem}: {critical} critical, {high} high{note}", flush=True)
+    failed |= (critical > 0 and not accepted) or (path.stem == "socket-proxy" and high > 0)
 args.output.write_text(json.dumps(reports, indent=2) + "\n")
 if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
     with open(summary, "a") as stream:
         stream.write(f"ARM64 application digest scan: {'BLOCKED' if failed else 'PASSED'}. "
-                     "HIGH findings require review. Fedora RPM coverage is excluded. "
+                     "The pinned official Home Assistant digest has an explicit acceptance; "
+                     "all findings remain reported. HIGH findings require review. Fedora RPM coverage is excluded. "
                      "Full JSON is printed in the scan step log.\n")
 if failed and not args.report_only:
     raise SystemExit("Publication blocked: critical findings, vulnerable API broker, or incomplete scans")

@@ -1,5 +1,7 @@
 [Unit]
 Description=Open Home Foundation Matter(.js) Server
+Requires=bluetooth.service
+After=bluetooth.service
 StartLimitIntervalSec=0
 
 [Container]
@@ -13,9 +15,14 @@ User=root
 AddCapability=NET_ADMIN
 AddCapability=NET_RAW
 
-Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
+# Allow access to the host D-Bus socket under SELinux, as for Home Assistant.
+SecurityLabelType=spc_t
 
-# For bluetooth commissioning via HA or the Dashboard
+Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
+Volume=/run/dbus:/run/dbus:ro
+
+# Share the adapter through host BlueZ instead of opening raw HCI sockets.
+Environment=NOBLE_BINDINGS=dbus
 Environment=BLUETOOTH_ADAPTER=0
 Environment=LOG_LEVEL=info
 Environment=PRIMARY_INTERFACE=end0
