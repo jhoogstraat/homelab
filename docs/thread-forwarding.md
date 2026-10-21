@@ -27,8 +27,9 @@ end0  Out  existing Thread bulb -> LAN: echo reply
 
 Both temporary tests removed the interface assignment afterward. They did
 not change pairings, Thread credentials, the Bluetooth backend, or service
-state. This proves a forwarding defect in the iPhone commissioning path;
-the lamp still needs an actual iPhone commissioning retry after repair.
+state. This demonstrated a forwarding defect in the iPhone commissioning
+path. After the permanent repair, the actual iPhone retry succeeded, as
+recorded below.
 
 The repair is explicit public-zone membership for `wpan0`:
 
@@ -56,8 +57,13 @@ reload or service restart. Recovery metadata and the previous public-zone
 XML are stored in
 `/var/lib/homelab/recovery/thread-forwarding-20261021-uyfo6xj3/`.
 After application, the LAN-to-Thread echo check passed and all 16 saved
-Matter nodes with the same 15 online nodes were verified. Lamp commissioning
-through the iPhone remains to be tested.
+Matter nodes with the same 15 online nodes were verified. Commissioning
+through the Home Assistant iPhone app then succeeded. At 12:32 CEST the
+Matter server reported node 230, `VARMBLIXT table/wall lamp`, online on
+`ha-thread-265c`, with software 1.0.6. The server retained all 17 nodes with
+16 online, including the new lamp. The diagnostic capture was stopped at
+12:32:49 CEST. The forwarding repair preserved the existing Thread dataset
+and all prior Matter nodes.
 
 To undo this specific repair after application, remove only the new
 membership at runtime and in permanent configuration:
