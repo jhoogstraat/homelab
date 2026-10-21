@@ -77,6 +77,8 @@ systemctl enable chrony-wait.service bluetooth.service cockpit.socket firewalld.
 firewall-offline-cmd --zone=public --add-service=cockpit
 firewall-offline-cmd --zone=public --add-service=https
 firewall-offline-cmd --zone=public --add-service=dns
+# Explicit membership lets firewalld forward LAN traffic to the Thread mesh.
+firewall-offline-cmd --zone=public --add-interface=wpan0
 firewall-offline-cmd --zone=public --add-port=21063-21064/tcp
 # Remove the retired WireGuard listener from the image's firewall defaults.
 firewall-offline-cmd --zone=public --remove-port=51820/udp || true

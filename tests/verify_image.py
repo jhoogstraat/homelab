@@ -10,6 +10,10 @@ subprocess.run(["podman", "run", "--rm", "-i", image, "sha256sum", "--check", "-
                text=True, check=True)
 subprocess.run(["podman", "run", "--rm", image, "test", "-s",
                 "/usr/share/licenses/rpi-bluez-firmware/LICENSE.cypress"], check=True)
+subprocess.run(["podman", "run", "--rm", image, "firewall-offline-cmd", "--zone=public",
+                "--query-interface=wpan0"], check=True)
+subprocess.run(["podman", "run", "--rm", image, "firewall-offline-cmd", "--zone=public",
+                "--query-forward"], check=True)
 for flag in ([], ["-g"]):
     ranges = subprocess.check_output(["podman", "run", "--rm", image,
                                       "getsubids", *flag, "containers"], text=True)
