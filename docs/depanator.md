@@ -44,18 +44,15 @@ agent during backup and checks its heartbeat after resuming. Its current
 readiness probe must use `/usr/local/bin/depanator-entrypoint health`, rather
 than the retired VNC endpoint.
 
-The latest stopped Mac state was migrated on 2026-10-19; it contains 101 known
-listings (26 dismissed, 75 existing). The retired Mac data has a `reconciliation-required` marker to prevent
-accidentally running both copies. Keep the Mac agent stopped after cutover.
-The previous Pi unit and maintenance helper are archived under
-`/var/lib/homelab/recovery/depanator-before-20261019`.
+The retired Mac data has a `reconciliation-required` marker to prevent
+accidentally running both copies. Keep the Mac agent stopped.
 
 Back up the complete stopped app directory. Before starting after a historical
 restore, create `data/reconciliation-required`, reconcile IS24 contact history
 and stale approvals, and remove the marker only after that reconciliation.
 The marker blocks startup and submission. Normal image rollback does not roll
 back database state. Do not run the previous setup/VNC helper against this
-version's data.
+data.
 
 ## Secrets and state provenance
 
