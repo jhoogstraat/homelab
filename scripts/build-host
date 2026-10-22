@@ -35,6 +35,8 @@ Match User jh
 EOT
 
 echo 'pi1.local' > /etc/hostname
+echo 'LANG=C.UTF-8' > /etc/locale.conf
+echo 'KEYMAP=us' > /etc/vconsole.conf
 ln -snf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
 install -d -m 0755 /etc/containers/registries.conf.d /etc/systemd/resolved.conf.d
 
