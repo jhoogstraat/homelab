@@ -1,7 +1,12 @@
-# Cloudflare must send vault.hoogstraat.net to http://traefik:8080.
-# This entrypoint has no published host port and exposes only Vaultwarden.
+# Cloudflare must send vault.hoogstraat.net and trek.hoogstraat.net to http://traefik:8080.
+# This entrypoint has no published host port and exposes only these applications.
 http:
   routers:
+    public-trek:
+      rule: Host(`trek.hoogstraat.net`)
+      entryPoints: [tunnel]
+      service: trek
+      middlewares: [trek-https]
     public-vault:
       rule: Host(`vault.hoogstraat.net`)
       entryPoints: [tunnel]
@@ -13,6 +18,10 @@ http:
       service: vault
       middlewares: [deny-public-admin]
   middlewares:
+    trek-https:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: https
     lan-only:
       ipAllowList:
         sourceRange: [192.168.0.0/24, 127.0.0.1/32, '::1/128', 'fe80::/10']
@@ -20,6 +29,10 @@ http:
       ipAllowList:
         sourceRange: [127.0.0.1/32, '::1/128']
   services:
+    trek:
+      loadBalancer:
+        servers:
+          - url: http://trek:3000
     vault:
       loadBalancer:
         servers:

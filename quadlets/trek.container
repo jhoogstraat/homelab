@@ -1,0 +1,43 @@
+[Unit]
+Description=TREK travel planner
+Wants=adguard.container
+After=adguard.container
+StartLimitIntervalSec=0
+
+[Container]
+ContainerName=trek
+# Patched ARM64 artifact (images/trek); rebuild and scan before changing this pin.
+Image=ghcr.io/jhoogstraat/homelab:trek-sha-0a515d606a83800543aa37c2b72e641648ba7d73@sha256:4c43c10e57f86f11590cb38a2887c066b94656546f73e90678e0d0defb4538a1
+UserNS=auto
+Network=homelab.network:ip=10.90.0.15
+Volume=/var/lib/homelab/apps/%p/data:/app/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+Volume=/var/lib/homelab/apps/%p/data/uploads:/app/uploads:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=APP_URL=https://trek.hoogstraat.net
+Environment=ALLOWED_ORIGINS=https://trek.hoogstraat.net
+Environment=FORCE_HTTPS=true
+Environment=TRUST_PROXY=1
+Environment=TZ=Europe/Berlin
+# Bootstrap credentials and optional provider keys belong to device-owned config.
+EnvironmentFile=/var/lib/homelab/apps/%p/config/app.env
+ReadOnly=true
+Tmpfs=/tmp:rw,noexec,nosuid,size=128m
+DropCapability=ALL
+AddCapability=CHOWN SETUID SETGID
+NoNewPrivileges=true
+HealthCmd=wget -qO- --header="X-Forwarded-Proto: https" http://localhost:3000/api/health
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=60s
+Timezone=local
+
+[Service]
+Restart=on-failure
+RestartSec=30
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+[Install]
+WantedBy=homelab.target
