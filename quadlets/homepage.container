@@ -8,7 +8,6 @@ StartLimitIntervalSec=0
 ContainerName=homepage
 # renovate: datasource=docker depName=ghcr.io/jhoogstraat/homepage
 Image=ghcr.io/jhoogstraat/homepage:latest@sha256:1656e583fc15e52841feeef16e62cd61938aa47966bc8ff730a9e9a011c6e526
-Pull=newer
 
 UserNS=auto
 User=1000:1000
@@ -32,3 +31,6 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=60
 TimeoutStopSec=30
+
+[Install]
+WantedBy=homelab.target

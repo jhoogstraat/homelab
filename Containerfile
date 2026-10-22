@@ -6,7 +6,7 @@ RUN apk add --no-cache git \
     && test "$(git rev-parse HEAD)" = 26e2f4784ca61353082c32dbd987c25eda086dc9 \
     && go get golang.org/x/crypto@v0.57.0 golang.org/x/net@v0.60.0 google.golang.org/grpc@v1.83.2 \
     && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /usr/local/bin/sops ./cmd/sops
-FROM quay.io/fedora/fedora-bootc:45
+FROM quay.io/fedora/fedora-bootc:45@sha256:0089b3da01ae553f1fdbc9561ccde9fe3dcfba29932dd66f4f68d8b863a65b0a
 COPY --from=sops /usr/local/bin/sops /usr/bin/sops
 
 LABEL containers.bootc=1

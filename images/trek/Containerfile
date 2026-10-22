@@ -1,0 +1,18 @@
+# 4.3.4 still ships CVE-2026-90711 (proxy-addr) and CVE-2026-6653 (libxml2).
+# Drop this recipe once an upstream release scans clean.
+FROM docker.io/mauriceboe/trek:4.3.4@sha256:6b7c8f275cc0ff3ca44979084bf078f553c96a0564493a132c1631ffaf6c3e77
+USER root
+# The optional KItinerary extractor pulls in Debian's unpatched libxml2.
+# TREK handles its absence; manual planning and provider-based AI parsing remain.
+RUN apt-get purge -y libkitinerary-bin libxml2 && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -f /usr/local/bin/kitinerary-extractor
+ENV KITINERARY_EXTRACTOR_PATH=""
+# Verify the npm registry's published SHA-512 integrity before replacing the module.
+RUN wget -qO /tmp/proxy-addr.tgz https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.8.tgz && \
+    node -e "const fs=require('fs'),crypto=require('crypto'); const got=crypto.createHash('sha512').update(fs.readFileSync('/tmp/proxy-addr.tgz')).digest('base64'); if(got!=='5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==') process.exit(1)" && \
+    rm -rf /app/node_modules/proxy-addr && \
+    mkdir /app/node_modules/proxy-addr && \
+    tar -xzf /tmp/proxy-addr.tgz -C /app/node_modules/proxy-addr --strip-components=1 && \
+    rm /tmp/proxy-addr.tgz

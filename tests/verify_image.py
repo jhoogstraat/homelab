@@ -14,6 +14,9 @@ subprocess.run(["podman", "run", "--rm", image, "firewall-offline-cmd", "--zone=
                 "--query-interface=wpan0"], check=True)
 subprocess.run(["podman", "run", "--rm", image, "firewall-offline-cmd", "--zone=public",
                 "--query-forward"], check=True)
+enabled = subprocess.run(["podman", "run", "--rm", image, "systemctl", "is-enabled", "podman-auto-update.timer"],
+                         text=True, stdout=subprocess.PIPE)
+assert enabled.stdout.strip() == "disabled", enabled.stdout
 for flag in ([], ["-g"]):
     ranges = subprocess.check_output(["podman", "run", "--rm", image,
                                       "getsubids", *flag, "containers"], text=True)
@@ -68,7 +71,7 @@ assert "--internal" in units["podman-api-network.service"]
 assert "--publish" not in units["socket-proxy.service"]
 assert "--cap-drop all" in units["socket-proxy.service"]
 assert "--read-only" in units["socket-proxy.service"]
-for name in ("cloudflared", "vaultwarden", "beszel-agent", "glance", "papra", "homepage"):
+for name in ("cloudflared", "vaultwarden", "beszel-agent", "glance", "papra", "homepage", "depanator"):
     unit = units[name + ".service"]
     assert f"/run/homelab/secrets/current/{name}:/run/secrets:ro,Z" in unit, name
     assert not re.search(r"--env-file(?:=| )[^\s]*homelab/secrets", unit), name
@@ -78,11 +81,9 @@ assert "/run/homelab/secrets/current/beszel-agent:/run/secrets:ro,Z,idmap" in un
 assert "--userns auto" in units["beszel-pod.service"]
 assert "TOKEN_FILE=/run/secrets/token" in units["beszel-agent.service"]
 assert "KEY_FILE=/run/secrets/key" in units["beszel-agent.service"]
-assert "TELEGRAM_BOT_TOKEN_FILE=/run/secrets/bot-token" in units["depanator.service"]
-assert "/var/lib/homelab/apps/depanator/config/bot-token:/run/secrets/bot-token:ro,Z,idmap" in units["depanator.service"]
+assert "TELEGRAM_BOT_TOKEN_FILE=/run/secrets/telegram-bot-token" in units["depanator.service"]
 assert "/var/lib/homelab/apps/depanator/data:/data:Z,idmap" in units["depanator.service"]
 assert "--health-on-failure kill" in units["depanator.service"]
-assert "VNC_PASSWORD" not in units["depanator.service"]
 assert "NODE_OPTIONS=--import=/run/secrets/load-env.mjs" in units["papra.service"]
 assert "bun --preload /run/secrets/load-env.mjs dist/server/entry.mjs" in units["homepage.service"]
 assert "--user 1000:1000" in units["homepage.service"]
@@ -92,6 +93,5 @@ subprocess.run(["podman", "run", "--rm", image, "/bin/bash", "-euc",
                 "SYSTEMD_UNIT_PATH=/tmp/units:/usr/lib/systemd/system systemd-analyze verify "
                 "/tmp/units/*.service /usr/lib/systemd/system/homelab*.service "
                 "/usr/lib/systemd/system/homelab.target /usr/lib/systemd/system/homelab*.timer "
-                "/usr/lib/systemd/system/podman-auto-update.timer "
                 "/usr/lib/systemd/system/bootc-fetch-apply-updates.timer "
                 "/usr/lib/systemd/system/chrony-wait.service"], check=True)

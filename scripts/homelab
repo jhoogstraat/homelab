@@ -22,19 +22,22 @@ import urllib.request
 ROOT = Path(os.environ.get("HOMELAB_ROOT", "/var/lib/homelab"))
 SOURCE = Path(os.environ.get("HOMELAB_SOURCE", "/usr/share/homelab"))
 QUADLETS = Path(os.environ.get("HOMELAB_QUADLETS", "/usr/share/containers/systemd"))
-LEGACY_QUADLETS = Path(os.environ.get("HOMELAB_LEGACY_QUADLETS", "/etc/containers/systemd"))
+DEVICE_QUADLETS = Path(os.environ.get("HOMELAB_DEVICE_QUADLETS", "/etc/containers/systemd"))
 RUN = Path(os.environ.get("HOMELAB_RUN", "/run/homelab"))
-RETIRED = ("immobot", "onedev", "n8n", "grafana", "wg-easy", "couchdb")
 SECRET_KEYS = {
     "adguard": ("ADGUARD_USERNAME", "ADGUARD_PASSWORD", "ADGUARD_PASSWORD_HASH"),
     "beszel": ("TOKEN", "KEY"),
     "cloudflared": ("TUNNEL_TOKEN",),
+    "depanator": ("TELEGRAM_BOT_TOKEN",),
     "homepage": ("SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET", "SPOTIFY_REFRESH_TOKEN",
                  "BESZEL_PB_EMAIL", "BESZEL_PB_PASSWORD"),
     "papra": ("AUTH_SECRET", "DATABASE_AUTH_TOKEN", "DATABASE_ENCRYPTION_KEY"),
     "vaultwarden": ("ADMIN_TOKEN",),
 }
-DEPANATOR_KEYS = ("TELEGRAM_BOT_TOKEN", "VNC_PASSWORD")
+SECRET_OUTPUTS = {"cloudflared": ("tunnel-token",), "vaultwarden": ("admin-token",),
+                  "beszel-agent": ("token", "key"), "glance": ("adguard-username", "adguard-password"),
+                  "depanator": ("telegram-bot-token",),
+                  "papra": ("env.json", "load-env.mjs"), "homepage": ("env.json", "load-env.mjs")}
 
 
 def command(*args, **kwargs):
@@ -138,17 +141,8 @@ def secret_store():
 def stage_secrets():
     key = credential("age.key")
     encrypted = sorted((SOURCE / "secrets").glob("*.enc.env"))
-    packaged = {path.name for path in encrypted}
-    required = {f"{name}.enc.env" for name in SECRET_KEYS}
-    if not required <= packaged or packaged - required - {"depanator.enc.env"}:
+    if {path.name for path in encrypted} != {f"{name}.enc.env" for name in SECRET_KEYS}:
         raise RuntimeError("Encrypted secret inventory does not match the application allowlist")
-    # Optional personal setup is device-owned and survives host image updates.
-    device = ROOT / "device-secrets/depanator.enc.env"
-    if device.exists() or device.is_symlink():
-        private_file(device)
-        encrypted = [path for path in encrypted if path.name != device.name] + [device]
-    keys = dict(SECRET_KEYS, depanator=DEPANATOR_KEYS)
-    has_depanator = any(path.name == "depanator.enc.env" for path in encrypted)
     loader = (SOURCE / "secret-loader.mjs").read_bytes()
     digest = hashlib.sha256(b"homelab-secret-delivery-v1\0" + loader)
     for path in encrypted:
@@ -156,7 +150,7 @@ def stage_secrets():
     store = secret_store()
     generation = store / "generations" / digest.hexdigest()
     if generation.exists():
-        for app, names in secret_outputs(has_depanator).items():
+        for app, names in SECRET_OUTPUTS.items():
             for name in names:
                 private_file(generation / app / name)
         private_file(generation / "adguard-seed.json")
@@ -175,7 +169,7 @@ def stage_secrets():
             except (ValueError, UnicodeError) as error:
                 raise RuntimeError(f"Invalid decrypted JSON for {name}") from error
             try:
-                valid = (isinstance(data, dict) and set(data) == set(keys[name])
+                valid = (isinstance(data, dict) and set(data) == set(SECRET_KEYS[name])
                          and all(isinstance(value, str) and value and "\0" not in value
                                  and len(value.encode()) <= 128 * 1024 for value in data.values()))
             except UnicodeError:
@@ -183,10 +177,6 @@ def stage_secrets():
             if not valid:
                 raise RuntimeError(f"Invalid secret entries for {name}")
             values[name] = data
-        if has_depanator and (not re.fullmatch(r"[\x20-\x7e]{8}", values["depanator"]["VNC_PASSWORD"])
-                or any(re.search(r"[\r\n]", value) or len(value.encode()) > 16384
-                       for value in values["depanator"].values())):
-            raise RuntimeError("Depanator secrets must be single-line values with an eight-character viewer password")
         initial = values["adguard"]
         if not re.fullmatch(r"\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}", initial["ADGUARD_PASSWORD_HASH"]):
             raise RuntimeError("AdGuard's initial password must be a bcrypt hash")
@@ -196,12 +186,8 @@ def stage_secrets():
             "beszel-agent": {"token": values["beszel"]["TOKEN"], "key": values["beszel"]["KEY"]},
             "glance": {"adguard-username": initial["ADGUARD_USERNAME"],
                        "adguard-password": initial["ADGUARD_PASSWORD"]},
+            "depanator": {"telegram-bot-token": values["depanator"]["TELEGRAM_BOT_TOKEN"]},
         }
-        if has_depanator:
-            exports["depanator"] = {
-                "telegram-bot-token": values["depanator"]["TELEGRAM_BOT_TOKEN"],
-                "vnc-password": values["depanator"]["VNC_PASSWORD"],
-            }
         for app in ("papra", "homepage"):
             exports[app] = {"env.json": json.dumps(values[app]), "load-env.mjs": loader.decode()}
         for app, files in exports.items():
@@ -216,15 +202,6 @@ def stage_secrets():
     return generation
 
 
-def secret_outputs(has_depanator=False):
-    outputs = {"cloudflared": ("tunnel-token",), "vaultwarden": ("admin-token",),
-            "beszel-agent": ("token", "key"), "glance": ("adguard-username", "adguard-password"),
-            "papra": ("env.json", "load-env.mjs"), "homepage": ("env.json", "load-env.mjs")}
-    if has_depanator:
-        outputs["depanator"] = ("telegram-bot-token", "vnc-password")
-    return outputs
-
-
 def select_secrets(generation):
     store = generation.parent.parent
     link = store / ".current-next"
@@ -232,19 +209,6 @@ def select_secrets(generation):
     link.symlink_to(generation.relative_to(store))
     link.replace(store / "current")
     sync_directory(store)
-
-
-def migrate_glance_placeholders():
-    # Only native files in Glance's config tree; preserve the rest of each file.
-    for path in (ROOT / "apps/glance/config").rglob("*"):
-        if path.is_symlink():
-            raise RuntimeError(f"Review Glance configuration symlink before migration: {path}")
-        if path.is_file() and path.suffix in (".yml", ".yaml"):
-            content = path.read_bytes()
-            updated = content.replace(b"${ADGUARD_USERNAME}", b"${secret:adguard-username}").replace(
-                b"${ADGUARD_PASSWORD}", b"${secret:adguard-password}")
-            if updated != content:
-                atomic_file(path, updated, path.stat().st_mode & 0o777)
 
 
 def prepare():
@@ -277,7 +241,6 @@ def prepare():
         for name in ("ADGUARD_USERNAME", "ADGUARD_PASSWORD_HASH"):
             content = content.replace("${" + name + "}", json.dumps(initial[name]))
         atomic_file(adguard, content.encode())
-    migrate_glance_placeholders()
     select_secrets(generation)
 
 
@@ -322,41 +285,38 @@ def rotate_secrets():
 
 
 def units():
-    # Preserve participation of device-local Quadlets, including TREK.
-    directories = (QUADLETS, LEGACY_QUADLETS)
+    # Device-local Quadlets join maintenance like packaged ones.
+    directories = (QUADLETS, DEVICE_QUADLETS)
     containers = {f"{p.stem}.service" for directory in directories
                   for p in directory.glob("*.container")}
     pods = {f"{p.stem}-pod.service" for directory in directories
             for p in directory.glob("*.pod")}
-    return sorted(containers | pods | {f"{name}.service" for name in RETIRED})
+    return sorted(containers | pods)
 
 
-def pause_manifests():
-    # Keep compatibility with interrupted maintenance from the old helper.
-    return (ROOT / "maintenance/paused-units.json", RUN / "paused-units.json")
+def pause_manifest():
+    # Persistent, so recovery survives SIGKILL and reboot; backups exclude it.
+    return ROOT / "maintenance/paused-units.json"
 
 
 def paused_units():
-    names = []
-    found = False
-    for manifest in pause_manifests():
-        if manifest.exists():
-            found = True
-            try:
-                entries = json.loads(manifest.read_text())
-            except ValueError as error:
-                raise RuntimeError(f"Invalid recovery manifest: {manifest}") from error
-            if not isinstance(entries, list) or any(
-                not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.@:-]*\.service", name)
-                for name in entries
-            ):
-                raise RuntimeError(f"Invalid recovery units: {manifest}")
-            names.extend(entries)
-    return list(dict.fromkeys(names)) if found else None
+    manifest = pause_manifest()
+    if not manifest.exists():
+        return None
+    try:
+        entries = json.loads(manifest.read_text())
+    except ValueError as error:
+        raise RuntimeError(f"Invalid recovery manifest: {manifest}") from error
+    if not isinstance(entries, list) or any(
+        not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.@:-]*\.service", name)
+        for name in entries
+    ):
+        raise RuntimeError(f"Invalid recovery units: {manifest}")
+    return list(dict.fromkeys(entries))
 
 
 def save_paused_units(names):
-    manifest = pause_manifests()[0]
+    manifest = pause_manifest()
     manifest.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     manifest.parent.chmod(0o700)
     sync_directory(ROOT)
@@ -364,10 +324,10 @@ def save_paused_units(names):
 
 
 def clear_paused_units():
-    for manifest in pause_manifests():
-        if manifest.exists():
-            manifest.unlink()
-            sync_directory(manifest.parent)
+    manifest = pause_manifest()
+    if manifest.exists():
+        manifest.unlink()
+        sync_directory(manifest.parent)
 
 
 MATTER_PROBE = """
@@ -439,11 +399,6 @@ def wait_ready(names, timeout=300):
 def resume():
     names = paused_units()
     if names is not None:
-        # Promote old /run intent before restarting, so even failed recovery is durable.
-        if pause_manifests()[1].exists():
-            save_paused_units(names)
-            pause_manifests()[1].unlink()
-            sync_directory(RUN)
         if names:
             command("systemctl", "start", *names)
             wait_ready(names)
@@ -498,28 +453,13 @@ def capture_recovery(active):
 
 
 def device_sources():
-    sources = []
-    if (ROOT / "device-secrets").exists():
-        sources.append(str(ROOT / "device-secrets"))
-    for path in ("/var/lib/bluetooth", "/etc/NetworkManager/system-connections",
-                 "/etc/machine-id", "/etc/containers/systemd", "/etc/containers/auth.json",
-                 "/etc/ostree/auth.json", "/etc/fstab",
-                 "/etc/systemd/system/homelab-prepare.service.d",
-                 "/etc/systemd/system/homelab-secrets-rotate.service.d",
-                 "/etc/systemd/system/homelab-recover.service",
-                 "/etc/systemd/system/multi-user.target.wants/chrony-wait.service",
-                 "/etc/systemd/system/homelab-backup.service.d",
-                 "/etc/systemd/system/homelab-backup.timer.d",
-                 "/etc/systemd/system/podman-auto-update.service.d",
-                 "/etc/systemd/system/podman-auto-update.timer.d",
-                 "/etc/systemd/system/bootc-fetch-apply-updates.service.d",
-                 "/etc/systemd/system/bootc-fetch-apply-updates.timer.d"):
-        if Path(path).exists():
-            sources.append(path)
-    # Preserve local helpers, security configuration and tools needed by overrides.
-    maintenance_tree = ROOT / "maintenance"
-    if maintenance_tree.exists():
-        sources.append(str(maintenance_tree))
+    # Device identity, pairings and local overrides that Git cannot recreate.
+    sources = [path for path in ("/var/lib/bluetooth", "/etc/NetworkManager/system-connections",
+                                 "/etc/machine-id", "/etc/containers/systemd", "/etc/containers/auth.json",
+                                 "/etc/ostree/auth.json", "/etc/fstab")
+               if Path(path).exists()]
+    if (ROOT / "maintenance").exists():
+        sources.append(str(ROOT / "maintenance"))
     sources.extend(str(p) for p in Path("/etc/ssh").glob("ssh_host_*"))
     return sources
 
@@ -540,9 +480,7 @@ def backup():
         sources.extend(device_sources())
         # Recovery intent describes this running maintenance operation, not
         # restored device state. Never restore a stale instruction to start apps.
-        exclusions = [arg for manifest in pause_manifests()
-                      for arg in ("--exclude", str(manifest))]
-        command("restic", "backup", "--tag", "homelab", *exclusions, *sources)
+        command("restic", "backup", "--tag", "homelab", "--exclude", str(pause_manifest()), *sources)
     finally:
         resume()
     # Retention happens with applications running and only after a full backup.
@@ -550,123 +488,35 @@ def backup():
             "--keep-daily", "7", "--keep-weekly", "4", "--keep-monthly", "12", "--prune")
 
 
-def update_apps():
-    pending = command("podman", "auto-update", "--dry-run", "--format", "json",
-                      stdout=subprocess.PIPE)
-    if not any(item.get("Updated") == "pending" for item in json.loads(pending.stdout.strip() or b"[]")):
-        return
-    # A full backup must succeed before potentially irreversible DB migrations.
+def staged_images():
+    status = json.loads(command("bootc", "status", "--json", stdout=subprocess.PIPE).stdout)["status"]
+    staged = status.get("staged")
+    if not staged:
+        return None
+    ostree = staged["ostree"]
+    root = Path("/ostree/deploy", ostree["stateroot"], "deploy",
+                f"{ostree['checksum']}.{ostree['deploySerial']}")
+    return sorted({line.removeprefix("Image=") for path in (root / "usr/share/containers/systemd").glob("*.container")
+                   for line in path.read_text().splitlines() if line.startswith("Image=")})
+
+
+def update_host():
     backup()
-    command("podman", "auto-update")
-
-
-def migrate(data, config, secrets):
-    destination = ROOT / "apps"
-    if destination.exists() and any(destination.iterdir()):
-        raise RuntimeError("Destination apps directory is not empty; do not overwrite existing state")
-    data = data.resolve(strict=True)
-    config = config.resolve(strict=True)
-    ROOT.mkdir(parents=True, exist_ok=True)
-    RUN.mkdir(parents=True, exist_ok=True, mode=0o700)
-    completed = False
-    try:
-        # Quadlet's --rm deletes the legacy writable layer on stop. Capture it
-        # first with Podman's native paused commit, then archive that image.
-        retired_image = ROOT / "recovery/immobot-image.tar"
-        if subprocess.run(["podman", "container", "exists", "immobot"], check=False).returncode == 0:
-            retired_image.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-            image = command("podman", "commit", "--pause=true", "--quiet", "immobot",
-                            stdout=subprocess.PIPE).stdout.decode().strip()
-            command("podman", "save", "--output", str(retired_image), image)
-            retired_image.chmod(0o600)
-        pause()
-        with tempfile.TemporaryDirectory(dir=ROOT, prefix=".migration-") as directory:
-            staged = Path(directory) / "apps"
-            staged.mkdir(mode=0o700)
-            for quadlet in QUADLETS.glob("*.container"):
-                name = quadlet.stem
-                source = data / name
-                target = staged / name
-                target.mkdir()
-                old_target = target / "data"
-                if name == "homeassistant":
-                    old_target = target / "config"
-                elif name == "beszel-ui":
-                    source = data / "beszel/data"
-                elif name == "beszel-agent":
-                    source = data / "beszel/agent"
-                elif name == "papra":
-                    source = data / "papra/data"
-                if source.is_dir():
-                    command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{source}/", f"{old_target}/")
-                old_config = config / name
-                if old_config.is_dir() and name in ("adguard", "glance"):
-                    command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{old_config}/", f"{target / 'config'}/")
-                if name == "papra" and (data / "papra/ingestion").exists():
-                    command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{data / 'papra/ingestion'}/", f"{target / 'ingestion'}/")
-                if name == "papra" and (old_config / "papra.env").exists():
-                    content = (old_config / "papra.env").read_text()
-                    content = "\n".join(line for line in content.splitlines() if line.startswith(
-                        ("DOCUMENTS_OCR_LANGUAGES=", "DOCUMENT_STORAGE_MAX_UPLOAD_SIZE=",
-                         "INGESTION_FOLDER_IS_ENABLED="))) + "\n"
-                    atomic_file(target / "config/app.env", content.encode())
-            for app in RETIRED:
-                retired = staged / "_retired" / app
-                retired.mkdir(parents=True, mode=0o700)
-                for source, name in ((data / app, "data"), (config / app, "config")):
-                    if source.is_dir():
-                        command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{source}/", f"{retired / name}/")
-            if retired_image.exists():
-                retired_image.replace(staged / "_retired/immobot/legacy-image.tar")
-            if destination.exists():
-                destination.rmdir()
-            staged.rename(destination)
-        if secrets.is_dir():
-            credentials = ROOT / "credentials"
-            credentials.mkdir(exist_ok=True, mode=0o700)
-            credentials.chmod(0o700)
-            command("rsync", "-aHAX", "--numeric-ids", "--filter=-x security.selinux", f"{secrets}/", f"{credentials / 'legacy-secrets'}/")
-        print(f"Copied legacy state to {destination}; original directories remain intact.")
-        print("Legacy apps remain stopped. Continue cutover, or run homelab resume to abort.")
-        completed = True
-    finally:
-        if not completed:
-            resume()
-
-
-def retire_legacy():
-    """Archive only repository-owned legacy overrides before switching images."""
-    if not (ROOT / "apps").is_dir() or not any((ROOT / "apps").iterdir()):
-        raise RuntimeError("Migrate application state before retiring legacy units")
-    known = [p.name for p in QUADLETS.iterdir() if p.is_file()]
-    known.extend(f"{name}.container" for name in RETIRED)
-    existing = [LEGACY_QUADLETS / name for name in known if (LEGACY_QUADLETS / name).exists()]
-    archive = ROOT / "recovery/legacy-quadlets"
-    if archive.exists():
-        raise RuntimeError("Legacy Quadlet archive already exists; inspect it before retrying")
-    archive.mkdir(parents=True, mode=0o700)
-    active = paused_units()
-    if active is None:
-        active = pause()
-    atomic_file(ROOT / "recovery/cutover-active-units.json", json.dumps(active).encode())
-    for path in existing:
-        shutil.copy2(path, archive / path.name)
-    for path in existing:
-        path.unlink()
-    command("systemctl", "daemon-reload")
-    # These are deliberately left stopped until the new image is booted.
-    clear_paused_units()
+    command("bootc", "upgrade")
+    images = staged_images()
+    if images is None:
+        return
+    # Pull before rebooting: first-boot pulls can outlast unit start timeouts.
+    for image in images:
+        command("podman", "pull", "--quiet", image, stdout=subprocess.DEVNULL)
+    command("systemctl", "reboot")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    for name in ("prepare", "rotate-secrets", "backup", "resume", "update-apps", "update-host", "retire-legacy"):
+    for name in ("prepare", "rotate-secrets", "backup", "resume", "update-host"):
         sub.add_parser(name)
-    migration = sub.add_parser("migrate")
-    migration.add_argument("--data", type=Path, default=Path("/opt/containers/data"))
-    migration.add_argument("--config", type=Path, default=Path("/opt/containers/config"))
-    migration.add_argument("--secrets", type=Path, default=Path("/opt/containers/secrets"))
     args = parser.parse_args()
     if os.geteuid() != 0:
         raise RuntimeError("Run homelab maintenance as root")
@@ -679,15 +529,8 @@ def main():
             rotate_secrets()
         elif args.action == "backup":
             backup()
-        elif args.action == "update-apps":
-            update_apps()
         elif args.action == "update-host":
-            backup()
-            command("bootc", "upgrade", "--apply")
-        elif args.action == "migrate":
-            migrate(args.data, args.config, args.secrets)
-        elif args.action == "retire-legacy":
-            retire_legacy()
+            update_host()
 
 
 if __name__ == "__main__":

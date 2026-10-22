@@ -1,15 +1,12 @@
 #!/usr/bin/python3
-"""Private Depanator setup and maintenance using the production mount mapping."""
+"""Depanator maintenance using the production mount mapping."""
 
 import argparse
 import importlib.machinery
 import importlib.util
-import json
 import os
 from pathlib import Path
-import re
 import subprocess
-import tempfile
 
 
 loader = importlib.machinery.SourceFileLoader("homelab", str(Path(__file__).with_name("homelab")))
@@ -17,69 +14,24 @@ spec = importlib.util.spec_from_loader(loader.name, loader)
 homelab = importlib.util.module_from_spec(spec)
 loader.exec_module(homelab)
 APP = homelab.ROOT / "apps/depanator"
-RECIPIENT = "age1kqmpnwma8rlnvgkg7n0tfz7k4urpgaadm28uwuu6l9m0skg7rawq6apsup"
 
 
 def image():
-    for directory in (homelab.LEGACY_QUADLETS, homelab.QUADLETS):
-        path = directory / "depanator.container"
-        if path.exists():
-            return next(line.removeprefix("Image=") for line in path.read_text().splitlines()
-                        if line.startswith("Image="))
-    raise RuntimeError("Install the Depanator Quadlet first")
+    path = homelab.QUADLETS / "depanator.container"
+    return next(line.removeprefix("Image=") for line in path.read_text().splitlines()
+                if line.startswith("Image="))
 
 
-def container(mode, config=None):
-    arguments = ["podman", "run", "--rm", "--pull=never", "--userns=auto", "--user=1000:1000",
-                 "--stop-timeout=40", "--shm-size=256m"]
-    if mode in ("setup", "llm-login"):
-        arguments.append("-it")
+def status():
     mapping = "Z,idmap=uids=@0-1000-1;gids=@0-1000-1"
-    arguments += ["-v", f"{config or APP / 'config'}:/config:{'' if mode == 'setup' else 'ro,'}{mapping}",
-                  "-v", f"{APP / 'data'}:/data:{mapping}", image(), mode]
-    if mode == "setup":
-        arguments += ["--output-dir", "/config"]
-    return arguments
-
-
-def provision(directory):
-    """Validate the wizard output and encrypt before publishing device files."""
-    values = {}
-    for line in (directory / "secrets.env").read_text().splitlines():
-        name, separator, value = line.partition("=")
-        if not separator or name in values:
-            raise RuntimeError("Invalid setup secret file")
-        values[name] = value
-    if set(values) != {"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "VNC_PASSWORD"}:
-        raise RuntimeError("Choose the codex backend; this deployment uses ChatGPT authentication")
-    if not values["TELEGRAM_CHAT_ID"].isdigit() or int(values["TELEGRAM_CHAT_ID"]) <= 0:
-        raise RuntimeError("Invalid private Telegram chat ID")
-    if (not re.fullmatch(r"[\x20-\x7e]{8}", values["VNC_PASSWORD"]) or any(not value or any(c in value for c in "\r\n\0")
-                                               for value in values.values())):
-        raise RuntimeError("Invalid setup secret values")
-    config = json.loads((directory / "config.json").read_text())
-    config["notification"] = {"chatId": values["TELEGRAM_CHAT_ID"]}
-    config["viewerUrl"] = config.get("viewerUrl") or "https://depanator.hoogstraat.de/vnc.html"
-    config["dataDir"] = "/data"
-    config["autoLogin"] = True
-    if config.get("llm", {}).get("backend") != "codex":
-        raise RuntimeError("Choose the codex backend")
-    contents = "".join(f"{name}={values[name]}\n" for name in homelab.DEPANATOR_KEYS).encode()
-    encrypted = homelab.command("sops", "encrypt", "--age", RECIPIENT,
-                               "--input-type", "dotenv", "--output-type", "dotenv", "/dev/stdin",
-                               input=contents, stdout=subprocess.PIPE).stdout
-    secrets = homelab.ROOT / "device-secrets"
-    secrets.mkdir(mode=0o700, exist_ok=True)
-    secrets.chmod(0o700)
-    homelab.atomic_file(secrets / "depanator.enc.env", encrypted)
-    homelab.atomic_file(APP / "config/config.json", (json.dumps(config, indent=2) + "\n").encode())
-    # Existing app containers keep their immutable generations until restarted.
-    homelab.select_secrets(homelab.stage_secrets())
+    homelab.command("podman", "run", "--rm", "--pull=never", "--userns=auto", "--user=1000:1000",
+                    "-v", f"{APP / 'config'}:/config:ro,{mapping}", "-v", f"{APP / 'data'}:/data:{mapping}",
+                    image(), "status")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("setup", "llm-login", "status", "restore-gate", "stage-secrets"))
+    parser.add_argument("action", choices=("status", "restore-gate"))
     args = parser.parse_args()
     if os.geteuid() != 0:
         raise RuntimeError("Run with sudo")
@@ -92,19 +44,8 @@ def main():
             path.chmod(0o700)
         if args.action == "restore-gate":
             homelab.atomic_file(APP / "data/reconciliation-required", b"Reconcile IS24 history before resuming.\n")
-        elif args.action == "stage-secrets":
-            homelab.select_secrets(homelab.stage_secrets())
-        elif args.action == "setup":
-            if (APP / "config/config.json").exists():
-                raise RuntimeError("Configuration already exists; setup never overwrites it")
-            # Plaintext wizard output stays in memory-backed /run and is removed.
-            with tempfile.TemporaryDirectory(dir=homelab.RUN, prefix="depanator-setup-") as temporary:
-                directory = Path(temporary)
-                homelab.command(*container("setup", directory))
-                provision(directory)
-            print("Private setup saved. Next run depanator llm-login, then start depanator.service.")
         else:
-            homelab.command(*container(args.action))
+            status()
 
 
 if __name__ == "__main__":

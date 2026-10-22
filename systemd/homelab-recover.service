@@ -2,7 +2,7 @@
 Description=Recover homelab applications after interrupted maintenance
 Requires=homelab-prepare.service
 After=homelab-prepare.service
-Before=homelab-backup.service podman-auto-update.service bootc-fetch-apply-updates.service
+Before=homelab-backup.service bootc-fetch-apply-updates.service
 
 [Service]
 Type=oneshot

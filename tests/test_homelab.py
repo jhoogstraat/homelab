@@ -74,8 +74,6 @@ class LifecycleTests(unittest.TestCase):
             output = json.dumps(self.secret_values[name]).encode()
         elif args[:2] == ("podman", "ps"):
             output = b"" if "{{.ID}}" in args else b"[]"
-        elif args[:3] == ("podman", "auto-update", "--dry-run"):
-            output = b'[{"Updated":"pending"}]'
         elif args[:2] == ("systemctl", "show"):
             output = b"\n\n".join([b"ActiveState=inactive\nResult=success"] * len(args[4:]))
         return subprocess.CompletedProcess(args, 0, stdout=output)
@@ -95,6 +93,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual((self.state / "environment/traefik/traefik.yml").read_text(), "new routing")
         self.assertEqual((self.run / "secrets/current/glance/adguard-password").read_text(), "secret")
         self.assertEqual((self.run / "secrets/current/glance/adguard-password").stat().st_mode & 0o777, 0o600)
+        self.assertEqual((self.run / "secrets/current/depanator/telegram-bot-token").read_text(), "secret")
         self.assertFalse((self.state / "secrets").exists())
 
     def test_failed_secret_rotation_keeps_complete_previous_set(self):
@@ -107,50 +106,12 @@ class LifecycleTests(unittest.TestCase):
                 homelab.prepare()
         self.assertEqual((self.run / "secrets/current").readlink(), previous)
 
-    def test_optional_device_secrets_are_validated_staged_and_backed_up(self):
-        device = self.state / "device-secrets/depanator.enc.env"
-        device.parent.mkdir(mode=0o700)
-        device.write_text("ciphertext")
-        device.chmod(0o600)
-        self.secret_values["depanator"] = {"TELEGRAM_BOT_TOKEN": "123:test", "VNC_PASSWORD": "12345678"}
-        with patch.object(homelab, "command", self.fake_command):
-            homelab.prepare()
-            token = self.run / "secrets/current/depanator/telegram-bot-token"
-            self.assertEqual(token.read_text(), "123:test")
-            self.assertEqual(token.stat().st_mode & 0o777, 0o600)
-            self.assertIn(str(device.parent), homelab.device_sources())
-            previous = (self.run / "secrets/current").readlink()
-            device.write_text("changed ciphertext")
-            self.secret_values["depanator"]["VNC_PASSWORD"] = "too-short"
-            with self.assertRaisesRegex(RuntimeError, "Depanator secrets"):
-                homelab.prepare()
-            self.assertEqual((self.run / "secrets/current").readlink(), previous)
-
-    def test_absent_optional_secrets_preserve_existing_inventory_and_exposed_inputs_fail(self):
-        with patch.object(homelab, "command", self.fake_command):
-            homelab.prepare()
-            self.assertFalse((self.run / "secrets/current/depanator").exists())
-            device = self.state / "device-secrets/depanator.enc.env"
-            device.parent.mkdir(mode=0o700)
-            device.write_text("ciphertext")
-            device.chmod(0o644)
-            with self.assertRaisesRegex(RuntimeError, "credential"):
-                homelab.prepare()
-
-    def test_dangling_device_secret_symlinks_are_rejected(self):
-        device = self.state / "device-secrets/depanator.enc.env"
-        device.parent.mkdir(mode=0o700)
-        device.symlink_to(device.parent / "absent")
-        with patch.object(homelab, "command", self.fake_command):
-            with self.assertRaisesRegex(RuntimeError, "credential"):
-                homelab.prepare()
-
     def test_device_quadlets_join_maintenance_without_duplicate_units(self):
         legacy = Path(self.directory.name) / "device-quadlets"
         legacy.mkdir()
         for name in ("depanator", "glance"):
             (legacy / f"{name}.container").write_text("[Container]\n")
-        with patch.object(homelab, "LEGACY_QUADLETS", legacy):
+        with patch.object(homelab, "DEVICE_QUADLETS", legacy):
             self.assertIn("depanator.service", homelab.units())
             self.assertEqual(homelab.units().count("glance.service"), 1)
 
@@ -162,7 +123,7 @@ class LifecycleTests(unittest.TestCase):
         for path in (self.state / "apps", self.state / "credentials", self.run / "secrets/generations"):
             self.assertEqual(path.stat().st_mode & 0o777, 0o700)
 
-    def test_incomplete_restic_snapshot_blocks_pruning_and_update(self):
+    def test_incomplete_restic_snapshot_blocks_pruning(self):
         def partial_upload(*args, **kwargs):
             result = self.fake_command(*args, **kwargs)
             if args[:2] == ("restic", "backup"):
@@ -170,9 +131,8 @@ class LifecycleTests(unittest.TestCase):
             return result
         with patch.object(homelab, "command", partial_upload), patch.object(homelab.subprocess, "run", self.active):
             with self.assertRaises(subprocess.CalledProcessError):
-                homelab.update_apps()
+                homelab.backup()
         self.assertIn(("systemctl", "start", "glance.service"), self.calls)
-        self.assertNotIn(("podman", "auto-update"), self.calls)
         self.assertFalse(any(call[:2] == ("restic", "forget") for call in self.calls))
 
     def test_prepare_rejects_exposed_age_key_before_decryption(self):
@@ -229,24 +189,6 @@ class LifecycleTests(unittest.TestCase):
             (self.run / "secrets/current/homepage/env.json").unlink()
             with self.assertRaisesRegex(RuntimeError, "credential"):
                 homelab.prepare()
-
-    def test_glance_placeholder_migration_preserves_includes_and_adguard_state(self):
-        glance = self.state / "apps/glance/config"
-        glance.mkdir(parents=True)
-        includes = glance / "includes"
-        includes.mkdir()
-        content = b"# preference\nusername: ${ADGUARD_USERNAME}\npassword: ${ADGUARD_PASSWORD}\ntitle: Mine\n"
-        (includes / "dns.yml").write_bytes(content)
-        adguard = self.state / "apps/adguard/config/AdGuardHome.yaml"
-        adguard.parent.mkdir(parents=True)
-        adguard.write_text("device-owned users")
-        with patch.object(homelab, "command", self.fake_command):
-            homelab.prepare()
-        self.assertEqual((includes / "dns.yml").read_bytes(), content.replace(
-            b"${ADGUARD_USERNAME}", b"${secret:adguard-username}").replace(
-            b"${ADGUARD_PASSWORD}", b"${secret:adguard-password}"))
-        self.assertEqual(adguard.read_text(), "device-owned users")
-        self.assertFalse((self.run / "secrets/current/glance/adguard-password-hash").exists())
 
     def test_rotation_restarts_only_active_units_and_retains_previous(self):
         with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
@@ -335,7 +277,7 @@ class LifecycleTests(unittest.TestCase):
         with patch.object(homelab, "command", side_effect=subprocess.CalledProcessError(1, "restic")):
             with self.assertRaises(subprocess.CalledProcessError):
                 homelab.backup()
-        self.assertFalse((self.run / "paused-units.json").exists())
+        self.assertFalse(homelab.pause_manifest().exists())
 
     def test_recovery_inventory_ignores_image_less_pod_infrastructure(self):
         def inventory(*args, **kwargs):
@@ -364,31 +306,54 @@ class LifecycleTests(unittest.TestCase):
             return result
         with patch.object(homelab, "command", fail_upload), patch.object(homelab.subprocess, "run", self.active):
             with self.assertRaises(subprocess.CalledProcessError):
-                homelab.update_apps()
+                homelab.backup()
         self.assertIn(("systemctl", "stop", "glance.service"), self.calls)
         self.assertIn(("systemctl", "start", "glance.service"), self.calls)
-        self.assertNotIn(("podman", "auto-update"), self.calls)
         self.assertFalse(any(call[:2] == ("restic", "forget") for call in self.calls))
-        self.assertFalse((self.run / "paused-units.json").exists())
+        self.assertFalse(homelab.pause_manifest().exists())
 
-    def test_update_without_new_images_does_not_interrupt_apps(self):
-        with patch.object(homelab, "command", return_value=subprocess.CompletedProcess([], 0, stdout=b"[]")):
-            homelab.update_apps()
-        self.assertFalse((self.run / "paused-units.json").exists())
-
-    def test_backup_happens_between_stop_and_start_and_before_update(self):
+    def test_backup_happens_between_stop_and_start(self):
         with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
-            homelab.update_apps()
+            homelab.backup()
         stop = self.calls.index(("systemctl", "stop", "glance.service"))
         backup = next(i for i, call in enumerate(self.calls) if call[:2] == ("restic", "backup"))
         start = self.calls.index(("systemctl", "start", "glance.service"))
-        update = self.calls.index(("podman", "auto-update"))
         self.assertLess(stop, backup)
         self.assertLess(backup, start)
-        self.assertLess(start, update)
+
+    def test_host_update_pulls_staged_images_before_reboot(self):
+        root = Path(self.directory.name) / "ostree/deploy/default/deploy/abc.0/usr/share/containers/systemd"
+        root.mkdir(parents=True)
+        (root / "app.container").write_text("[Container]\nImage=example@sha256:new\n")
+        status = {"status": {"staged": {"ostree": {"stateroot": "default", "checksum": "abc", "deploySerial": 0}}}}
+        def update(*args, **kwargs):
+            result = self.fake_command(*args, **kwargs)
+            if args[:2] == ("bootc", "status"):
+                result.stdout = json.dumps(status).encode()
+            return result
+        real_path = homelab.Path
+        def path(*parts):
+            if parts and parts[0] == "/ostree/deploy":
+                return real_path(self.directory.name, "ostree/deploy", *parts[1:])
+            return real_path(*parts)
+        with patch.object(homelab, "command", update), patch.object(homelab.subprocess, "run", self.active), patch.object(homelab, "Path", path):
+            homelab.update_host()
+        pull = self.calls.index(("podman", "pull", "--quiet", "example@sha256:new"))
+        self.assertLess(self.calls.index(("bootc", "upgrade")), pull)
+        self.assertEqual(self.calls[-1], ("systemctl", "reboot"))
+
+    def test_host_update_without_staged_image_does_not_reboot(self):
+        def update(*args, **kwargs):
+            result = self.fake_command(*args, **kwargs)
+            if args[:2] == ("bootc", "status"):
+                result.stdout = b'{"status": {"staged": null}}'
+            return result
+        with patch.object(homelab, "command", update), patch.object(homelab.subprocess, "run", self.active):
+            homelab.update_host()
+        self.assertNotIn(("systemctl", "reboot"), self.calls)
 
     def test_recovery_after_killed_backup_is_repeatable(self):
-        (self.run / "paused-units.json").write_text(json.dumps(["glance.service"]))
+        homelab.save_paused_units(["glance.service"])
         with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
             homelab.resume()
             homelab.resume()
@@ -406,24 +371,12 @@ class LifecycleTests(unittest.TestCase):
         self.assertFalse(manifest.exists())
         self.assertIn(("systemctl", "start", "glance.service"), self.calls)
 
-    def test_failed_readiness_keeps_recovery_intent_and_blocks_updates(self):
+    def test_failed_readiness_keeps_recovery_intent_and_blocks_pruning(self):
         with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active), patch.object(homelab, "wait_ready", side_effect=RuntimeError("Not ready")):
             with self.assertRaisesRegex(RuntimeError, "Not ready"):
-                homelab.update_apps()
+                homelab.backup()
         self.assertTrue((self.state / "maintenance/paused-units.json").exists())
-        self.assertNotIn(("podman", "auto-update"), self.calls)
         self.assertFalse(any(call[:2] == ("restic", "forget") for call in self.calls))
-
-    def test_legacy_runtime_intent_is_promoted_before_failed_restart(self):
-        (self.run / "paused-units.json").write_text(json.dumps(["glance.service"]))
-        with patch.object(homelab, "command", side_effect=subprocess.CalledProcessError(1, "systemctl")):
-            with self.assertRaises(subprocess.CalledProcessError):
-                homelab.resume()
-        shutil.rmtree(self.run)
-        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
-            homelab.resume()
-        self.assertFalse((self.state / "maintenance/paused-units.json").exists())
-        self.assertIn(("systemctl", "start", "glance.service"), self.calls)
 
     def test_unclean_stop_prevents_upload_and_recovers_services(self):
         (self.quadlets / "homeassistant.container").write_text("[Container]\n")
@@ -465,110 +418,6 @@ class LifecycleTests(unittest.TestCase):
         with patch.object(homelab, "unit_ready", return_value=False), patch.object(homelab.time, "monotonic", side_effect=[0, 1, 3]), patch.object(homelab.time, "sleep"):
             with self.assertRaisesRegex(RuntimeError, "homeassistant.service"):
                 homelab.wait_ready(["homeassistant.service"], timeout=2)
-
-    def test_retired_app_is_quiesced_when_it_still_runs(self):
-        for name in homelab.RETIRED:
-            with self.subTest(app=name):
-                self.calls.clear()
-                def retired_active(args, **kwargs):
-                    return subprocess.CompletedProcess(args, 0 if args[-1] == name + ".service" else 3)
-                with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", retired_active):
-                    homelab.pause()
-                    homelab.resume()
-                self.assertEqual([call for call in self.calls if call[:2] != ("systemctl", "show")],
-                                 [("systemctl", "stop", name + ".service"),
-                                  ("systemctl", "start", name + ".service")])
-
-
-    def test_no_autoupdate_records_does_not_interrupt_apps(self):
-        with patch.object(homelab, "command", return_value=subprocess.CompletedProcess([], 0, stdout=b"")):
-            homelab.update_apps()
-        self.assertFalse((self.run / "paused-units.json").exists())
-
-    def test_retirement_preserves_unrelated_override_and_archives_known_units(self):
-        legacy = Path(self.directory.name) / "legacy"
-        legacy.mkdir()
-        (legacy / "glance.container").write_text("old deployment")
-        for name in homelab.RETIRED:
-            (legacy / (name + ".container")).write_text("old " + name)
-        (legacy / "other.container").write_text("unrelated")
-        (self.state / "apps/glance").mkdir()
-        with patch.object(homelab, "LEGACY_QUADLETS", legacy), patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
-            homelab.retire_legacy()
-        self.assertEqual((legacy / "other.container").read_text(), "unrelated")
-        self.assertFalse((legacy / "glance.container").exists())
-        for name in homelab.RETIRED:
-            self.assertFalse((legacy / (name + ".container")).exists())
-            self.assertEqual((self.state / "recovery/legacy-quadlets" / (name + ".container")).read_text(), "old " + name)
-        self.assertNotIn(("systemctl", "start", "glance.service"), self.calls)
-
-    @unittest.skipUnless(sys.platform == "linux" and shutil.which("rsync"), "Linux rsync required for migration")
-    def test_migration_preserves_old_state_and_leaves_writers_stopped(self):
-        legacy = Path(self.directory.name) / "legacy"
-        old_data, old_config, old_secrets = [legacy / name for name in ("data", "config", "secrets")]
-        for directory in (old_data / "homeassistant", old_data / "beszel/data", old_data / "beszel/agent",
-                          old_data / "papra/data", old_data / "papra/ingestion", old_config / "glance", old_secrets,
-                          old_data / "onedev/site", old_data / "n8n", old_config / "onedev", old_config / "n8n",
-                          old_data / "grafana", old_config / "grafana",
-                          old_data / "wg-easy", old_config / "wg-easy",
-                          old_data / "couchdb", old_config / "couchdb"):
-            directory.mkdir(parents=True)
-            (directory / ".state").write_bytes(b"preserve hidden state")
-        (old_config / "glance/glance.yml").write_text("device preference")
-        (old_data / "homeassistant/configuration.yaml").write_text("existing HA config")
-        (old_data / "n8n/config").write_text('{"encryptionKey":"test-key"}')
-        for name in ("homeassistant", "beszel-ui", "beszel-agent", "papra"):
-            (self.quadlets / (name + ".container")).write_text("[Container]\n")
-        real_run = subprocess.run
-
-        def run(args, **kwargs):
-            if args[0] == "rsync":
-                return real_run(args, **kwargs)
-            if args[:3] == ["podman", "container", "exists"]:
-                return subprocess.CompletedProcess(args, 0)
-            if tuple(args[:2]) == ("podman", "commit"):
-                self.calls.append(tuple(args))
-                return subprocess.CompletedProcess(args, 0, stdout=b"sha256:test-image\n")
-            if tuple(args[:2]) == ("podman", "save"):
-                Path(args[args.index("--output") + 1]).write_bytes(b"archived writable layer")
-            if args[0] == "systemctl" and "is-active" in args:
-                if args[-1] in ("n8n.service", "onedev.service", "grafana.service", "wg-easy.service", "couchdb.service"):
-                    return subprocess.CompletedProcess(args, 0)
-                return self.active(args, **kwargs)
-            self.calls.append(tuple(args))
-            output = b"\n\n".join([b"ActiveState=inactive\nResult=success"] * len(args[4:])) if tuple(args[:2]) == ("systemctl", "show") else b""
-            return subprocess.CompletedProcess(args, 0, stdout=output)
-
-        with patch.object(homelab.subprocess, "run", run):
-            homelab.migrate(old_data, old_config, old_secrets)
-        self.assertEqual((self.state / "apps/homeassistant/config/configuration.yaml").read_text(), "existing HA config")
-        self.assertEqual((self.state / "apps/glance/config/glance.yml").read_text(), "device preference")
-        for name, folder in (("beszel-ui", "data"), ("beszel-agent", "data"), ("papra", "ingestion")):
-            self.assertEqual((self.state / "apps" / name / folder / ".state").read_bytes(), b"preserve hidden state")
-        self.assertTrue((old_data / "homeassistant/configuration.yaml").exists())
-        self.assertTrue((self.state / "maintenance/paused-units.json").exists())
-        self.assertNotIn(("systemctl", "start", "glance.service"), self.calls)
-        archive = self.state / "apps/_retired/immobot/legacy-image.tar"
-        self.assertEqual(archive.read_bytes(), b"archived writable layer")
-        self.assertEqual(archive.stat().st_mode & 0o777, 0o600)
-        self.assertLess(self.calls.index(("podman", "commit", "--pause=true", "--quiet", "immobot")), self.calls.index(("systemctl", "stop", "couchdb.service", "glance.service", "grafana.service", "n8n.service", "onedev.service", "wg-easy.service")))
-        for app in ("onedev", "n8n", "grafana", "wg-easy", "couchdb"):
-            retired = self.state / "apps/_retired" / app
-            self.assertEqual((retired / "config/.state").read_bytes(), b"preserve hidden state")
-            self.assertEqual(retired.stat().st_mode & 0o777, 0o700)
-            self.assertFalse((self.state / "apps" / app).exists())
-        self.assertEqual((self.state / "apps/_retired/onedev/data/site/.state").read_bytes(), b"preserve hidden state")
-        self.assertEqual((self.state / "apps/_retired/n8n/data/config").read_text(), '{"encryptionKey":"test-key"}')
-        self.assertTrue((old_data / "onedev/site/.state").exists())
-        self.assertTrue((old_data / "n8n/config").exists())
-        with self.assertRaises(RuntimeError):
-            homelab.migrate(old_data, old_config, old_secrets)
-
-    def test_device_backup_includes_persistent_security_override_tree(self):
-        config = self.state / "maintenance/security/socket-proxy/haproxy.cfg"
-        config.parent.mkdir(parents=True)
-        config.write_text("restricted API")
-        self.assertIn(str(self.state / "maintenance"), homelab.device_sources())
 
     @unittest.skipUnless(shutil.which("restic"), "restic required for real backup/restore")
     def test_real_restic_restore_recovers_database_attachment_and_credentials(self):
@@ -613,8 +462,8 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(restored_key.stat().st_mode & 0o777, 0o600)
         restored_config = restored / security_config.relative_to(security_config.anchor)
         self.assertEqual(restored_config.read_text(), "restricted API")
-        for manifest in homelab.pause_manifests():
-            self.assertFalse((restored / manifest.relative_to(manifest.anchor)).exists())
+        manifest = homelab.pause_manifest()
+        self.assertFalse((restored / manifest.relative_to(manifest.anchor)).exists())
         self.assertIn(("systemctl", "stop", "glance.service"), self.calls)
         self.assertIn(("systemctl", "start", "glance.service"), self.calls)
 
