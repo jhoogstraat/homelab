@@ -2,78 +2,45 @@
 
 Depanator runs as `depanator.service`, a rootful Podman Quadlet in
 `homelab.target`. The image includes Bun and Codex; setup and review happen in
-Telegram. The previous browser/VNC setup helper is obsolete for this image.
-
-The deployed image is pinned in [the Quadlet](../quadlets/depanator.container).
-Updates require changing that digest and restarting the service.
+Telegram. The image is pinned in [the Quadlet](../quadlets/depanator.container);
+updates change that digest.
 
 Searches run on the configured interval, with a 22:00–07:00 Europe/Berlin night
-pause by default. Manual searching has been removed. The first successful
-search after startup, resume or changing the search only records a baseline;
-only later arrivals become review candidates. Pending typed criteria prompts
-survive restarts. Explicit swap-only offers are dismissed when excluded by the
-criteria; ordinary rentals do not need a no-swap declaration.
+pause by default. The first successful search after startup, resume or a search
+change only records a baseline; later arrivals become review candidates.
 
 ## State and access
 
-- `/var/lib/homelab/apps/depanator/data` mounts at `/data`: SQLite history and
-  settings, IS24 renewable login, Telegram offset and Codex login.
-- `config/bot-token` mounts read-only at `/run/secrets/bot-token` and is consumed
-  through `TELEGRAM_BOT_TOKEN_FILE`. Keep it root-owned with mode 0600.
-- Idmapped mounts map host UID/GID 0 to the image UID/GID 1000. Preserve private
-  ownership and permissions; do not apply blanket ownership changes to apps.
-- Public Mini App: `https://trek.hoogstraat.net/depanator/connect`. A dedicated
-  Traefik router matches only `/depanator/` on the existing tunnel entrypoint.
-  Other TREK paths keep their existing router. No new host port is published.
-- Private LAN endpoint: `https://depanator.hoogstraat.de/connect`.
+- `/var/lib/homelab/apps/depanator/data` mounts at `/data`:
+  - `agent.db`: settings, Telegram pairing, listing history and outcomes.
+  - `telegram-offset.json`: consumed Telegram updates.
+  - `is24-session.json`: renewable IS24 login (password and code are not kept).
+  - `codex/auth.json`: ChatGPT OAuth tokens, renewed by Codex; no API key.
+- The Telegram bot token is SOPS-encrypted in `secrets/depanator.enc.env` and
+  delivered like other app secrets at
+  `/run/homelab/secrets/current/depanator/telegram-bot-token`, read through
+  `TELEGRAM_BOT_TOKEN_FILE`.
+- Idmapped mounts map host UID/GID 0 to the image UID/GID 1000. Keep the app
+  tree root-owned and private.
+- Public Mini App: `https://trek.hoogstraat.net/depanator/connect`, a dedicated
+  Traefik router for `/depanator/` on the tunnel entrypoint. Private LAN
+  endpoint: `https://depanator.hoogstraat.de/connect`. No host port.
 
-The static connect page is public; connection actions require fresh
-Telegram-signed data from the paired owner. Credentials are forwarded once to
-IS24 and are not stored. Other changes and reconnects use the Telegram bot.
+The connect page is static; connection actions require fresh Telegram-signed
+data from the paired owner. IS24 credentials are forwarded once and not stored.
 
-## Operations and recovery
+## Operations
 
-Use `systemctl status depanator` and `journalctl -u depanator` for diagnostics.
-The native health command checks the poll heartbeat. Health failures kill the
-container so systemd restarts it. Stop timeout is 40 seconds; application
-shutdown drains work for up to 30 seconds. Startup is automatic through
-`homelab.target`.
+Use `systemctl status depanator` and `journalctl -u depanator`. The health
+command checks the poll heartbeat; failures kill the container and systemd
+restarts it. Stop timeout is 40 seconds; shutdown drains work for up to 30.
+`sudo /usr/libexec/depanator status` runs the image's status command against
+the stopped service's data.
 
-The hardened homelab maintenance helper includes local Quadlets, stops the
-agent during backup and checks its heartbeat after resuming. Its current
-readiness probe must use `/usr/local/bin/depanator-entrypoint health`, rather
-than the retired VNC endpoint.
+## Backup and restore
 
-The retired Mac data has a `reconciliation-required` marker to prevent
-accidentally running both copies. Keep the Mac agent stopped.
-
-Back up the complete stopped app directory. Before starting after a historical
-restore, create `data/reconciliation-required`, reconcile IS24 contact history
-and stale approvals, and remove the marker only after that reconciliation.
-The marker blocks startup and submission. Normal image rollback does not roll
-back database state. Do not run the previous setup/VNC helper against this
-data.
-
-## Secrets and state provenance
-
-The current Pi state was copied from the latest stopped Mac agent at
-`.depanator/live`, using a consistent SQLite backup. The Pi is now the live
-source of state; it does not synchronize with Git or the retired Mac copy.
-
-- BotFather issued the Telegram bot token, previously held at
-  `~/.config/depanator/bot-token` on the Mac. The Pi stores it at
-  `/var/lib/homelab/apps/depanator/config/bot-token` and mounts it read-only.
-- ChatGPT device login created `data/codex/auth.json`, holding OAuth login and
-  renewal tokens. Codex renews these on the Pi; no API billing key is used.
-- Connecting IS24 created `data/is24-session.json`, holding a renewable login.
-  The IS24 password and security code are not retained.
-- `data/agent.db` contains personal settings, Telegram pairing, listing history
-  and application outcomes. `data/telegram-offset.json` tracks consumed updates.
-
-Those paths are relative to `/var/lib/homelab/apps/depanator` unless absolute.
-Credential files and the database are root-owned, mode 0600, inside private
-app directories. The host copies are ordinary files, not SOPS ciphertext.
-The existing homelab encrypted restic backup is configured to include this app tree; its
-repository credentials are provisioned independently under
-`/var/lib/homelab/credentials`. No credential values or runtime state are
-committed to either repository.
+Backups stop the agent and capture the whole app directory. After any restore, run
+`sudo /usr/libexec/depanator restore-gate` before starting the service. It
+writes `data/reconciliation-required`, which blocks startup and submission.
+Reconcile IS24 contact history and stale approvals, then remove the marker.
+Image rollback does not roll back database state.

@@ -27,7 +27,7 @@ text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 <text x="16" y="112" class="lane apps">APPLICATION LIFECYCLE</text>
 <g><rect x="16" y="124" width="226" height="60" rx="9" class="node "/><text x="32" y="150" class="primary">Pinned image digests</text><text x="32" y="171" class="secondary">Scan + review update proposals</text></g>
 <path d="M 248 154 H 291" class="line"/>
-<g><rect x="302" y="124" width="226" height="60" rx="9" class="node "/><text x="318" y="150" class="primary">Podman Quadlets</text><text x="318" y="171" class="secondary">Reviewed updates · no reboot</text></g>
+<g><rect x="302" y="124" width="226" height="60" rx="9" class="node "/><text x="318" y="150" class="primary">Podman Quadlets</text><text x="318" y="171" class="secondary">Digest pins · ship with host image</text></g>
 <path d="M 534 154 H 577" class="line"/>
 <g><rect x="588" y="124" width="236" height="60" rx="9" class="node state"/><text x="604" y="150" class="primary">Persistent app state</text><text x="604" y="171" class="secondary">Device-owned · UI, files, env</text></g>
 <text x="16" y="206" class="lane backup">BACKUP &amp; RECOVERY</text>

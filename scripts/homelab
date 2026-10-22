@@ -456,7 +456,8 @@ def device_sources():
     # Device identity, pairings and local overrides that Git cannot recreate.
     sources = [path for path in ("/var/lib/bluetooth", "/etc/NetworkManager/system-connections",
                                  "/etc/machine-id", "/etc/containers/systemd", "/etc/containers/auth.json",
-                                 "/etc/ostree/auth.json", "/etc/fstab")
+                                 "/etc/ostree/auth.json", "/etc/fstab",
+                                 "/etc/systemd/system/homelab-prepare.service.d")
                if Path(path).exists()]
     if (ROOT / "maintenance").exists():
         sources.append(str(ROOT / "maintenance"))
