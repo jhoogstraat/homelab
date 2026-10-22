@@ -2,7 +2,7 @@
 
 ## Applied to the Pi
 
-A successful cold backup preceded these changes. The full bootc image has **not** been published or switched; these are inventoried persistent device overrides.
+A successful cold backup preceded these changes. They were applied as inventoried persistent device overrides. pi1 has booted the published image since 2026-10-22 ([host image cutover](operations.md#host-image-cutover-2026-10-22)); the overrides are still in place.
 
 Cold snapshot `488287fc` completed successfully. An isolated restore of its maintenance tree recovered 45.623 MiB; the helper, patched SOPS, broker configuration and both Traefik files match deployed SHA-256 hashes, and the temporary recovery instruction is absent. Final snapshot `a86153fe` also completed successfully and includes the subsequent startup fixes; a separate isolated restore verified all three ordering drop-ins, the corrected weekly timer and time-sync enablement. An earlier retry correctly refused backup when HA exited on SIGTERM during initialization; the successful retry recorded HA exit code 0. Older interim snapshots can contain the temporary manifest: exclude it when restoring, as described in the operations guide.
 
