@@ -25,7 +25,6 @@ accepted BLE connection commands afterward, but the VARMBLIXT lamp still
 failed link establishment with status `0x3e`, including a direct BlueZ test.
 This firmware fixes host initialization; it does not yet fix lamp commissioning.
 
-After deploying and booting the new image, verify the kernel reports the
-patch and build 0382, and check `sudo btmgmt info` for a real controller
-address. The live `/run/matter-bluetooth-firmware` workaround is volatile;
-the image uses the standard firmware search path without that override.
+Since the 2026-10-22 host cutover, pi1 loads this file from the image at boot:
+the kernel reports the patch and build 0382, and `sudo btmgmt info` shows the
+real controller address. The earlier `/run` workaround is gone.

@@ -48,6 +48,14 @@ Verified DNS, application HTTPS with certificate validation, registry access, Co
 
 The one-time age-encrypted recovery archive is at `~/Backups/homelab/2026-10-04-cutover/fedora-iot-recovery.tar.age` on the operator Mac. Validation authenticated the complete archive and restored the Vaultwarden SQLite files for a successful integrity check. This is not a scheduled Mac backup. Immobot, OneDev, n8n and the unused Valkey service are persistently masked, with recovery data retained. The three maintenance timers are also persistently masked until S3 backup and restore verification. Existing unmanaged Dockhand, HarborScale, TimescaleDB and ZeroClaw units had startup failures before cutover and remain outside this repository's managed app set.
 
+## Host image cutover: 2026-10-22
+
+pi1 now boots `45.20261021.1` (`sha256:149ce1029856…`); `45.20261011.0` remains the bootc rollback. Cold snapshot `bf2f07fb` preceded the switch, and `/var/lib/homelab/recovery/host-cutover-20261022/` holds the pre-switch `/etc`, the HA config and the running-container list. The kernel now loads the packaged Bluetooth patch at boot (build 0382, real address); all 17 containers, LAN/public routes, Matter and the Thread router recovered.
+
+Depanator previously joined `homelab` without a fixed address. On the first boot it started before Traefik, took `10.90.0.3`, and Traefik failed on IPAM. Every `homelab` member now pins its address (depanator `10.90.0.16`); `tests/test_quadlets.py` enforces this. The device-owned `/etc/containers/systemd/depanator.container` received the same pin.
+
+The inventoried maintenance overrides still run `/var/lib/homelab/maintenance/homelab`, which matches the packaged helper byte for byte. Remove them in a separate step so later image fixes to the helper take effect.
+
 ## Retirement after cutover
 
 Grafana and wg-easy are removed from the managed application set at the owner's

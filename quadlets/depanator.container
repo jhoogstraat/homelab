@@ -16,7 +16,7 @@ StopTimeout=40
 UserNS=auto
 User=1000
 Group=1000
-Network=homelab.network
+Network=homelab.network:ip=10.90.0.16
 Volume=/var/lib/homelab/apps/depanator/data:/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
 Volume=/var/lib/homelab/apps/depanator/config/bot-token:/run/secrets/bot-token:ro,Z,idmap=uids=@0-1000-1;gids=@0-1000-1
 Environment=TELEGRAM_BOT_TOKEN_FILE=/run/secrets/bot-token
