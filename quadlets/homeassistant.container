@@ -6,6 +6,7 @@ StartLimitIntervalSec=0
 ContainerName=homeassistant
 StopTimeout=60
 # Official ARM64 image. Accepted security findings: docs/patched-application-images.md.
+# renovate: datasource=docker depName=ghcr.io/home-assistant/home-assistant
 Image=ghcr.io/home-assistant/home-assistant:2026.10.2@sha256:1edf9ce6c140826cdfcd6358802cf3466e38045cd7ed62ccf42c78980ff937ae
 
 Network=host
@@ -33,3 +34,6 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
+
+[Install]
+WantedBy=homelab.target

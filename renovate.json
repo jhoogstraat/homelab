@@ -4,9 +4,10 @@
     "config:recommended"
   ],
   "enabledManagers": [
+    "custom.regex",
     "dockerfile",
     "github-actions",
-    "custom.regex"
+    "mise"
   ],
   "customManagers": [
     {

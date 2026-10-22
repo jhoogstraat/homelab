@@ -50,6 +50,15 @@ DNS=1.1.1.1 8.8.8.8
 DNSStubListener=no
 EOT
 
+# OpenThread border router on host networking (ot-br-posix setup-host).
+cat > /usr/lib/sysctl.d/60-homelab-network.conf <<-'EOT'
+net.ipv6.conf.all.disable_ipv6 = 0
+net.ipv4.conf.all.forwarding = 1
+net.ipv6.conf.all.forwarding = 1
+net.ipv6.conf.all.accept_ra_rt_info_max_plen = 64
+net.ipv6.conf.all.accept_ra = 2
+EOT
+
 # https://github.com/matter-js/matterjs-server/main/docs/os_requirements.md
 cat > /etc/sysctl.d/99-matter.conf <<-'EOT'
 net.ipv6.conf.end0.forwarding=0
@@ -80,9 +89,8 @@ firewall-offline-cmd --zone=public --add-service=dns
 # Explicit membership lets firewalld forward LAN traffic to the Thread mesh.
 firewall-offline-cmd --zone=public --add-interface=wpan0
 firewall-offline-cmd --zone=public --add-port=21063-21064/tcp
-# Remove the retired WireGuard listener from the image's firewall defaults.
-firewall-offline-cmd --zone=public --remove-port=51820/udp || true
-firewall-offline-cmd --zone=public --remove-port=51821/tcp || true
+# Application updates arrive as reviewed digest pins in the host image.
+systemctl disable podman-auto-update.timer
 rm -rf /run/cockpit /run/selinux-policy /var/lib/dnf /tmp/* /var/tmp/*
 # semanage.conf stores the image policy in /etc/selinux. RPM upgrades also
 # leave a duplicate build-time store in /var, which bootc must not deploy.

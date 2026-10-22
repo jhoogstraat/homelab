@@ -1,10 +1,6 @@
 [Unit]
 Description=Depanator apartment agent
-ConditionPathExists=/var/lib/homelab/apps/depanator/config/bot-token
 ConditionPathExists=!/var/lib/homelab/apps/depanator/data/reconciliation-required
-Requires=homelab-prepare.service
-After=homelab-prepare.service
-PartOf=homelab.target
 StartLimitIntervalSec=0
 
 [Container]
@@ -18,8 +14,8 @@ User=1000
 Group=1000
 Network=homelab.network:ip=10.90.0.16
 Volume=/var/lib/homelab/apps/depanator/data:/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
-Volume=/var/lib/homelab/apps/depanator/config/bot-token:/run/secrets/bot-token:ro,Z,idmap=uids=@0-1000-1;gids=@0-1000-1
-Environment=TELEGRAM_BOT_TOKEN_FILE=/run/secrets/bot-token
+Volume=/run/homelab/secrets/current/depanator:/run/secrets:ro,Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+Environment=TELEGRAM_BOT_TOKEN_FILE=/run/secrets/telegram-bot-token
 Environment=DEPANATOR_PUBLIC_URL=https://trek.hoogstraat.net/depanator
 Label=traefik.enable=true
 Label=traefik.http.routers.depanator.rule=Host(`depanator.hoogstraat.de`)
@@ -35,7 +31,7 @@ HealthInterval=5m
 HealthTimeout=10s
 HealthStartPeriod=15m
 HealthOnFailure=kill
-Timezone=Europe/Berlin
+Timezone=local
 
 [Service]
 Restart=always

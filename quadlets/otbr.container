@@ -19,12 +19,7 @@ Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
 
 EnvironmentFile=/var/lib/homelab/environment/%p/%p.env
 
-# When network=host, these cannot be set by the quadlet. See setup-host script:
-# https://raw.githubusercontent.com/openthread/ot-br-posix/refs/heads/main/etc/docker/border-router/setup-host
-# Sysctl=net.ipv6.conf.end0.accept_ra=2
-# Sysctl=net.ipv6.conf.end0.accept_ra_rt_info_max_plen=64
-# Sysctl=net.ipv6.conf.all.forwarding=1
-# Sysctl=net.ipv4.ip_forward=1
+# Host networking: border-router sysctls live in /usr/lib/sysctl.d/60-homelab-network.conf.
 
 Label=traefik.enable=true
 Label=traefik.http.services.%p.loadbalancer.server.port=7070
@@ -36,3 +31,6 @@ Restart=on-failure
 RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
+
+[Install]
+WantedBy=homelab.target

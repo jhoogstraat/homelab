@@ -9,6 +9,9 @@ case "$app" in
   papra)
     podman run --rm --network none --entrypoint /bin/sh "$image" -ec 'find /app/node_modules -type f -name esbuild -exec sh -c '\''for binary do if head -c4 "$binary" | grep -q ELF; then "$binary" --version; fi; done'\'' sh {} +; cd /app; node -e '\''const p = require("./package.json"); if (!p.scripts["start:with-migrations"]) process.exit(1)'\'''
     ;;
+  trek)
+    podman run --rm --network none --entrypoint /bin/sh "$image" -ec 'test ! -e /usr/local/bin/kitinerary-extractor; ! dpkg -s libxml2 >/dev/null 2>&1; cd /app; node -e '\''if (require("proxy-addr/package.json").version !== "2.0.8") process.exit(1)'\'''
+    ;;
   socket-proxy)
     podman run --rm --network none --volume "$(pwd)/configs/environment/socket-proxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro" --entrypoint haproxy "$image" -c -f /usr/local/etc/haproxy/haproxy.cfg
     ;;
