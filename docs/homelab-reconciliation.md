@@ -51,7 +51,7 @@ Choose the configuration method per application and setting: an existing UI wher
 
 App environment preferences live in `/var/lib/homelab/apps/<app>/config/app.env` where supported; restart that service after editing.
 
-The host uses persistent `/etc`. bootc's merge preserves device identities, storage/network configuration and credentials, so local `/etc` overrides need deliberate management: files in `/etc/containers/systemd` override image Quadlets.
+The host uses persistent `/etc`. bootc's merge keeps any locally changed file and never re-applies the image's version, so a changed `/etc` file silently overrides Git: files in `/etc/containers/systemd` override image Quadlets. Only these are device-owned: machine ID, hostname, SSH host keys, NetworkManager connections, `fstab`/`default/grub`, Cockpit certificates and the account database (`passwd`, `group`, `shadow`). Everything else should match the image; check with `sudo ostree admin config-diff`. bootc never re-creates the account database, so compare its entries with `/usr/etc` after reinstalls or upgrades.
 
 ## Storage
 
