@@ -1,0 +1,38 @@
+[Unit]
+Description=Second brain MCP server
+Wants=adguard.container
+After=adguard.container
+StartLimitIntervalSec=0
+
+[Container]
+ContainerName=second-brain
+# renovate: datasource=docker depName=ghcr.io/jhoogstraat/second-brain
+Image=ghcr.io/jhoogstraat/second-brain:sha-20757d8@sha256:75d824790ae5e715c5a45b4aff5dec192f73c6dc3cb6eac4b7436fab008dce75
+UserNS=auto
+Network=homelab.network:ip=10.90.0.17
+# The image runs as `brain` (1000); /data holds the brain git repo and OAuth state.
+Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+Environment=PUBLIC_URL=https://brain.hoogstraat.net
+Environment=GITHUB_ALLOWED_USERS=jhoogstraat
+Volume=/run/homelab/secrets/current/second-brain:/run/secrets:ro,Z,idmap=uids=@0-1000-1;gids=@0-1000-1
+Environment=GITHUB_CLIENT_ID_FILE=/run/secrets/github-client-id
+Environment=GITHUB_CLIENT_SECRET_FILE=/run/secrets/github-client-secret
+Environment=JWT_SIGNING_KEY_FILE=/run/secrets/jwt-signing-key
+Environment=BRAIN_TOKEN_FILE=/run/secrets/brain-token
+ReadOnly=true
+Tmpfs=/tmp:rw,noexec,nosuid,size=64m
+DropCapability=ALL
+NoNewPrivileges=true
+HealthCmd=python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+HealthInterval=30s
+HealthStartPeriod=30s
+Timezone=local
+
+[Service]
+Restart=on-failure
+RestartSec=30
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+[Install]
+WantedBy=homelab.target
