@@ -1,27 +1,43 @@
 #!/usr/bin/env python3
 """Scan every image pinned in quadlets/ with one policy for all.
 
-Blocks on unpinned images, scanner errors and CRITICAL findings that have a fix.
-HIGH and unfixed findings are reported, not blocking. Full reports: image-security.json.
+Blocks on unpinned images, scanner errors and CRITICAL findings a change introduces:
+those the published baseline's pin for the same Quadlet did not already have. Findings
+in images that are already deployed are reported, not blocking, so an update never
+waits on what is already running. Full reports: image-security.json.
+
+The baseline is the commit of the last successful host image build on main
+(SCAN_BASELINE overrides it). Without one, every CRITICAL finding counts as new.
+
+--fail-on-fixable (the weekly run) also fails on any CRITICAL finding that has a fix,
+deployed or not: a to-do to repin, never a gate on publication.
 """
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 
 SCANNER = "docker.io/aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa"
 PLATFORM = "linux/arm64"  # the host's architecture; Trivy pulls it remotely from any runner
+PINNED = r"\S+@sha256:[a-f0-9]{64}"
+FAIL_ON_FIXABLE = "--fail-on-fixable" in sys.argv[1:]
+GIT = ("git", "-c", "safe.directory=*")  # CI runs this under sudo in the runner's checkout
 
-images = sorted({image for path in Path("quadlets").rglob("*") if path.is_file()
-                 for image in re.findall(r"^Image=(.+)$", path.read_text(), re.M)})
-reports, rows, failed = [], [], False
-for image in images:
-    if not re.fullmatch(r"\S+@sha256:[a-f0-9]{64}", image):
-        reports.append({"image": image, "error": "not pinned by digest"})
-        rows.append(f"| `{image}` | unpinned | | |")
-        failed = True
-        continue
+
+def output(*args):
+    result = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def pins(read):
+    """Map each Quadlet path to its pinned image, using read(path) for file contents."""
+    return {path: match[1] for path in quadlets if (text := read(path))
+            and (match := re.search(r"^Image=(.+)$", text, re.M))}
+
+
+def scan(image):
     result = subprocess.run([
         "podman", "run", "--rm", "--env", "GODEBUG=http2client=0",
         "--volume", "homelab-trivy-cache:/root/.cache/trivy", SCANNER,
@@ -30,30 +46,76 @@ for image in images:
         "--timeout", "5m", "--quiet", "--format", "json", image,
     ], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=360)
     if result.returncode:
-        reports.append({"image": image, "error": result.stderr})
-        rows.append(f"| `{image}` | scan failed | | |")
+        return None, result.stderr
+    return json.loads(result.stdout), None
+
+
+def critical(report, fixable=False):
+    return {v["VulnerabilityID"] for target in report.get("Results", [])
+            for v in target.get("Vulnerabilities") or []
+            if v["Severity"] == "CRITICAL" and (v.get("FixedVersion") or not fixable)}
+
+
+quadlets = sorted(str(path) for path in Path("quadlets").rglob("*") if path.is_file())
+current = pins(lambda path: Path(path).read_text())
+baseline_commit = os.environ.get("SCAN_BASELINE") or output(
+    "gh", "run", "list", "--workflow", "build.yaml", "--branch", "main", "--status", "success",
+    "--limit", "1", "--json", "headSha", "--jq", ".[0].headSha")
+baseline = {}
+if baseline_commit:
+    output(*GIT, "fetch", "--quiet", "--depth", "1", "origin", baseline_commit)
+    if output(*GIT, "cat-file", "-e", f"{baseline_commit}^{{commit}}") is None:
+        raise SystemExit(f"Baseline {baseline_commit} is unreadable; fetch it or unset SCAN_BASELINE")
+    baseline = pins(lambda path: output(*GIT, "show", f"{baseline_commit}:{path}"))
+print(f"Baseline: {baseline_commit or 'none (every CRITICAL finding counts as new)'}", flush=True)
+
+reports, rows, failed = [], [], False
+for path, image in current.items():
+    name = image.split("@")[0]
+    if not re.fullmatch(PINNED, image):
+        reports.append({"image": image, "error": "not pinned by digest"})
+        rows.append(f"| `{image}` | unpinned | | |")
         failed = True
         continue
-    report = json.loads(result.stdout)
-    findings = [v for target in report.get("Results", [])
-                for v in target.get("Vulnerabilities") or []]
-    blocking = sorted({v["VulnerabilityID"] for v in findings
-                       if v["Severity"] == "CRITICAL" and v.get("FixedVersion")})
-    critical = sum(v["Severity"] == "CRITICAL" for v in findings)
+    report, error = scan(image)
+    if error:
+        reports.append({"image": image, "error": error})
+        rows.append(f"| `{name}` | scan failed | | |")
+        failed = True
+        continue
+    known = set()
+    previous = baseline.get(path)
+    if previous == image:
+        known = critical(report)  # already deployed: nothing here makes the host worse
+    elif previous and re.fullmatch(PINNED, previous):
+        previous_report, error = scan(previous)
+        if error:
+            reports.append({"image": previous, "error": error})
+            rows.append(f"| `{previous.split('@')[0]}` (baseline) | scan failed | | |")
+            failed = True
+            continue
+        known = critical(previous_report)
+    blocking = sorted(critical(report) - known)
+    fixable = sorted(critical(report, fixable=True))
+    findings = [v for target in report.get("Results", []) for v in target.get("Vulnerabilities") or []]
     high = sum(v["Severity"] == "HIGH" for v in findings)
-    reports.append({"image": image, "blocking": blocking, "report": report})
-    rows.append(f"| `{image.split('@')[0]}` | {'BLOCKED' if blocking else 'ok'} "
-                f"| {critical} | {high} |")
-    failed |= bool(blocking)
-    print(f"{image.split('@')[0]}: {critical} critical ({len(blocking)} fixable), {high} high",
-          flush=True)
+    reports.append({"image": image, "baseline": previous, "blocking": blocking,
+                    "fixable": fixable, "report": report})
+    status = ("BLOCKED" if blocking else "repin: fix available" if fixable and FAIL_ON_FIXABLE
+              else "ok" if previous == image else "changed, ok")
+    rows.append(f"| `{name}` | {status} | {len(critical(report))} ({len(blocking)} new, "
+                f"{len(fixable)} fixable) | {high} |")
+    failed |= bool(blocking) or (FAIL_ON_FIXABLE and bool(fixable))
+    print(f"{name}: {len(critical(report))} critical ({len(blocking)} new), {high} high", flush=True)
 
 Path("image-security.json").write_text(json.dumps(reports, indent=2) + "\n")
 if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
     with open(summary, "a") as stream:
         stream.write(f"## Image scan ({PLATFORM}): {'BLOCKED' if failed else 'PASSED'}\n\n"
-                     "Blocks on fixable CRITICAL findings, unpinned images and scan errors.\n\n"
+                     f"Baseline: `{baseline_commit or 'none'}`. Blocks on CRITICAL findings a change "
+                     "introduces, unpinned images and scan errors.\n\n"
                      "| Image | Status | Critical | High |\n| --- | --- | --- | --- |\n"
                      + "\n".join(rows) + "\n")
 if failed:
-    raise SystemExit("Blocked: fixable CRITICAL findings, unpinned images or failed scans")
+    raise SystemExit("Failed: new CRITICAL findings, unpinned images, failed scans"
+                     + (" or CRITICAL findings with a fix" if FAIL_ON_FIXABLE else ""))
