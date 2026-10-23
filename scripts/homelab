@@ -32,11 +32,13 @@ SECRET_KEYS = {
     "homepage": ("SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET", "SPOTIFY_REFRESH_TOKEN",
                  "BESZEL_PB_EMAIL", "BESZEL_PB_PASSWORD"),
     "papra": ("AUTH_SECRET", "DATABASE_AUTH_TOKEN", "DATABASE_ENCRYPTION_KEY"),
+    "second-brain": ("GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "JWT_SIGNING_KEY", "BRAIN_TOKEN"),
     "vaultwarden": ("ADMIN_TOKEN",),
 }
 SECRET_OUTPUTS = {"cloudflared": ("tunnel-token",), "vaultwarden": ("admin-token",),
                   "beszel-agent": ("token", "key"), "glance": ("adguard-username", "adguard-password"),
                   "depanator": ("telegram-bot-token",),
+                  "second-brain": ("github-client-id", "github-client-secret", "jwt-signing-key", "brain-token"),
                   "papra": ("env.json", "load-env.mjs"), "homepage": ("env.json", "load-env.mjs")}
 
 
@@ -187,6 +189,8 @@ def stage_secrets():
             "glance": {"adguard-username": initial["ADGUARD_USERNAME"],
                        "adguard-password": initial["ADGUARD_PASSWORD"]},
             "depanator": {"telegram-bot-token": values["depanator"]["TELEGRAM_BOT_TOKEN"]},
+            "second-brain": {name.lower().replace("_", "-"): value
+                             for name, value in values["second-brain"].items()},
         }
         for app in ("papra", "homepage"):
             exports[app] = {"env.json": json.dumps(values[app]), "load-env.mjs": loader.decode()}

@@ -71,7 +71,7 @@ assert "--internal" in units["podman-api-network.service"]
 assert "--publish" not in units["socket-proxy.service"]
 assert "--cap-drop all" in units["socket-proxy.service"]
 assert "--read-only" in units["socket-proxy.service"]
-for name in ("cloudflared", "vaultwarden", "beszel-agent", "glance", "papra", "homepage", "depanator"):
+for name in ("cloudflared", "vaultwarden", "beszel-agent", "glance", "papra", "homepage", "depanator", "second-brain"):
     unit = units[name + ".service"]
     assert f"/run/homelab/secrets/current/{name}:/run/secrets:ro,Z" in unit, name
     assert not re.search(r"--env-file(?:=| )[^\s]*homelab/secrets", unit), name
@@ -84,6 +84,7 @@ assert "KEY_FILE=/run/secrets/key" in units["beszel-agent.service"]
 assert "TELEGRAM_BOT_TOKEN_FILE=/run/secrets/telegram-bot-token" in units["depanator.service"]
 assert "/var/lib/homelab/apps/depanator/data:/data:Z,idmap" in units["depanator.service"]
 assert "--health-on-failure kill" in units["depanator.service"]
+assert "JWT_SIGNING_KEY_FILE=/run/secrets/jwt-signing-key" in units["second-brain.service"]
 assert "NODE_OPTIONS=--import=/run/secrets/load-env.mjs" in units["papra.service"]
 assert "bun --preload /run/secrets/load-env.mjs dist/server/entry.mjs" in units["homepage.service"]
 assert "--user 1000:1000" in units["homepage.service"]
