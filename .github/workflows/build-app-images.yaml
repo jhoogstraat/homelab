@@ -7,12 +7,24 @@ permissions:
   contents: read
   packages: write
 jobs:
+  apps:
+    runs-on: ubuntu-24.04
+    outputs:
+      apps: ${{ steps.list.outputs.apps }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - id: list
+        run: echo "apps=$(ls images/*/Containerfile | cut -d/ -f2 | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
   build:
+    needs: apps
+    # Native ARM64 builds; emulating ARM64 on x64 runners is many times slower.
     runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
-        app: [otbr, papra, socket-proxy, trek]
+        app: ${{ fromJSON(needs.apps.outputs.apps) }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:

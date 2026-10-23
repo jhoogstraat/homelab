@@ -24,7 +24,7 @@ Every app in `quadlets/`, including Home Assistant, homepage, Matter and OTBR, s
 | --- | --- |
 | `Containerfile` | ARM64 host image and packages |
 | `quadlets/` | Application images, networks, routing and mounts |
-| `images/` | Patched ARM64 application images (OTBR, Papra, API broker, TREK) |
+| `images/` | Patched ARM64 application images (Home Assistant, OTBR, Papra, API broker, TREK) |
 | `configs/environment/` | Git-owned infrastructure settings |
 | `configs/defaults/` | First-install application settings |
 | `secrets/*.enc.env` | SOPS-encrypted application credentials |
