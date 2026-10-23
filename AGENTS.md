@@ -15,7 +15,7 @@ Adding a secret:
 
 - One Quadlet per app in `quadlets/`, image pinned as `tag@sha256:…`, static IP on `homelab.network`, state in `/var/lib/homelab/apps/<app>/`.
 - Public hostnames go through Traefik's `tunnel` entrypoint (`configs/environment/traefik/public-routes.yml`) and a Cloudflare tunnel public hostname pointing at `http://traefik:8080`.
-- Every pinned image must scan with 0 critical findings (`scripts/scan-images`, CI `image-security`).
+- Every pinned image must scan with 0 fixable critical findings (`scripts/scan-images`, CI `image-security`). No per-image exceptions: patch vulnerable upstream images in `images/<app>/`.
 
 ## Checks
 
