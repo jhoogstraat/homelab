@@ -7,7 +7,7 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=second-brain
 # renovate: datasource=docker depName=ghcr.io/jhoogstraat/second-brain
-Image=ghcr.io/jhoogstraat/second-brain:sha-0a2aa04@sha256:56f14ebb4f9a1575dc5ef052c8a2cd1745716397de5c9d779cc1b4c2d24392a3
+Image=ghcr.io/jhoogstraat/second-brain:sha-20757d8@sha256:75d824790ae5e715c5a45b4aff5dec192f73c6dc3cb6eac4b7436fab008dce75
 UserNS=auto
 Network=homelab.network:ip=10.90.0.17
 # The image runs as `brain` (1000); /data holds the brain git repo and OAuth state.
