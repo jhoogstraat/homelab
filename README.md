@@ -24,7 +24,7 @@ Every app in `quadlets/`, including Home Assistant, homepage, Matter and OTBR, s
 | --- | --- |
 | `Containerfile` | ARM64 host image and packages |
 | `quadlets/` | Application images, networks, routing and mounts |
-| `images/` | Patched ARM64 application images (OTBR, Papra, API broker, TREK) |
+| `images/` | Patched ARM64 application images (Home Assistant, OTBR, Papra, API broker, TREK) |
 | `configs/environment/` | Git-owned infrastructure settings |
 | `configs/defaults/` | First-install application settings |
 | `secrets/*.enc.env` | SOPS-encrypted application credentials |
@@ -33,7 +33,7 @@ Every app in `quadlets/`, including Home Assistant, homepage, Matter and OTBR, s
 | `systemd/` | Maintenance timers and application lifecycle |
 | `tests/` | State preservation, recovery and API-boundary checks |
 
-See [patched application images](docs/patched-application-images.md) for build, scan and compatibility requirements, and the accepted Home Assistant findings.
+See [patched application images](docs/patched-application-images.md) for build, scan and compatibility requirements.
 
 Read the [architecture](docs/homelab-reconciliation.md), [operations and recovery guide](docs/operations.md), and application inventories: [stateful services](docs/application-storage.md) · [infrastructure and home automation](docs/application-storage-other.md).
 

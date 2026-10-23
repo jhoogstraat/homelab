@@ -85,11 +85,7 @@ jobs:
 
       - name: Scan application digests before publication
         if: github.event_name != 'pull_request'
-        run: |
-          status=0
-          sudo python3 scripts/scan-images || status=$?
-          cat image-security.json
-          exit "$status"
+        run: sudo --preserve-env=GITHUB_STEP_SUMMARY python3 scripts/scan-images
 
       - name: Push image tags
         if: github.event_name != 'pull_request'

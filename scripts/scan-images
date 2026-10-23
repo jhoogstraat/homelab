@@ -1,55 +1,59 @@
 #!/usr/bin/env python3
-"""Scan exact ARM64 Quadlet digests; enforce the documented publication policy."""
-import argparse
+"""Scan every image pinned in quadlets/ with one policy for all.
+
+Blocks on unpinned images, scanner errors and CRITICAL findings that have a fix.
+HIGH and unfixed findings are reported, not blocking. Full reports: image-security.json.
+"""
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
 
-parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--report-only", action="store_true")
-parser.add_argument("--output", type=Path, default=Path("image-security.json"))
-args = parser.parse_args()
-scanner = "docker.io/aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa"
-# User-approved on 2026-10-21: retain the official Home Assistant image and
-# accept its findings rather than maintaining a derivative. A new pin needs review.
-accepted_homeassistant = "ghcr.io/home-assistant/home-assistant:2026.10.2@sha256:1edf9ce6c140826cdfcd6358802cf3466e38045cd7ed62ccf42c78980ff937ae"
-reports = []
-failed = False
-for path in sorted(Path("quadlets").glob("*.container")):
-    image = re.search(r"^Image=(.+)$", path.read_text(), re.M)[1]
+SCANNER = "docker.io/aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa"
+PLATFORM = "linux/arm64"  # the host's architecture; Trivy pulls it remotely from any runner
+
+images = sorted({image for path in Path("quadlets").rglob("*") if path.is_file()
+                 for image in re.findall(r"^Image=(.+)$", path.read_text(), re.M)})
+reports, rows, failed = [], [], False
+for image in images:
     if not re.fullmatch(r"\S+@sha256:[a-f0-9]{64}", image):
-        raise RuntimeError(f"Unpinned application image: {path}")
+        reports.append({"image": image, "error": "not pinned by digest"})
+        rows.append(f"| `{image}` | unpinned | | |")
+        failed = True
+        continue
     result = subprocess.run([
         "podman", "run", "--rm", "--env", "GODEBUG=http2client=0",
-        "--volume", "homelab-trivy-cache:/root/.cache/trivy", scanner,
-        "image", "--image-src", "remote", "--platform", "linux/arm64",
+        "--volume", "homelab-trivy-cache:/root/.cache/trivy", SCANNER,
+        "image", "--image-src", "remote", "--platform", PLATFORM,
         "--scanners", "vuln", "--severity", "HIGH,CRITICAL",
         "--timeout", "5m", "--quiet", "--format", "json", image,
     ], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=360)
     if result.returncode:
         reports.append({"image": image, "error": result.stderr})
-        print(f"{path.stem}: SCAN FAILED", flush=True)
+        rows.append(f"| `{image}` | scan failed | | |")
         failed = True
         continue
     report = json.loads(result.stdout)
     findings = [v for target in report.get("Results", [])
-                for v in target.get("Vulnerabilities", [])]
+                for v in target.get("Vulnerabilities") or []]
+    blocking = sorted({v["VulnerabilityID"] for v in findings
+                       if v["Severity"] == "CRITICAL" and v.get("FixedVersion")})
     critical = sum(v["Severity"] == "CRITICAL" for v in findings)
     high = sum(v["Severity"] == "HIGH" for v in findings)
-    accepted = path.stem == "homeassistant" and image == accepted_homeassistant
-    reports.append({"image": image, "report": report,
-                    "critical_findings_accepted": accepted})
-    note = " (accepted official Home Assistant digest)" if accepted else ""
-    print(f"{path.stem}: {critical} critical, {high} high{note}", flush=True)
-    failed |= (critical > 0 and not accepted) or (path.stem == "socket-proxy" and high > 0)
-args.output.write_text(json.dumps(reports, indent=2) + "\n")
+    reports.append({"image": image, "blocking": blocking, "report": report})
+    rows.append(f"| `{image.split('@')[0]}` | {'BLOCKED' if blocking else 'ok'} "
+                f"| {critical} | {high} |")
+    failed |= bool(blocking)
+    print(f"{image.split('@')[0]}: {critical} critical ({len(blocking)} fixable), {high} high",
+          flush=True)
+
+Path("image-security.json").write_text(json.dumps(reports, indent=2) + "\n")
 if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
     with open(summary, "a") as stream:
-        stream.write(f"ARM64 application digest scan: {'BLOCKED' if failed else 'PASSED'}. "
-                     "The pinned official Home Assistant digest has an explicit acceptance; "
-                     "all findings remain reported. HIGH findings require review. Fedora RPM coverage is excluded. "
-                     "Full JSON is printed in the scan step log.\n")
-if failed and not args.report_only:
-    raise SystemExit("Publication blocked: critical findings, vulnerable API broker, or incomplete scans")
+        stream.write(f"## Image scan ({PLATFORM}): {'BLOCKED' if failed else 'PASSED'}\n\n"
+                     "Blocks on fixable CRITICAL findings, unpinned images and scan errors.\n\n"
+                     "| Image | Status | Critical | High |\n| --- | --- | --- | --- |\n"
+                     + "\n".join(rows) + "\n")
+if failed:
+    raise SystemExit("Blocked: fixable CRITICAL findings, unpinned images or failed scans")

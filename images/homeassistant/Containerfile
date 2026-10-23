@@ -1,0 +1,26 @@
+# 2026.10.2 still ships CVE-2026-60002 (openssh), certifi, pillow and uv advisories,
+# and go2rtc/tempio built with a vulnerable Go stdlib (CVE-2025-68121).
+# Drop this recipe once an upstream release scans clean.
+FROM docker.io/library/golang:1.27.2-alpine@sha256:c2b8d9b05d9386fe1b01bab829eda3a05edb526c220e638d3c7a73671a290672 AS go
+RUN apk add --no-cache git
+RUN git clone https://github.com/AlexxIT/go2rtc.git /go2rtc \
+    && cd /go2rtc && git checkout b5948cfb25404cc5cb37b166ecaa2dca20b11d4b \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/go2rtc . \
+    && git clone https://github.com/home-assistant/tempio.git /tempio \
+    && cd /tempio && git checkout 2fcfc522502f7bba71043874a5fab4007812d28c \
+    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/tempio .
+FROM ghcr.io/home-assistant/home-assistant:2026.10.2@sha256:1edf9ce6c140826cdfcd6358802cf3466e38045cd7ed62ccf42c78980ff937ae
+RUN apk upgrade --no-cache
+COPY images/homeassistant/requirements.txt /tmp/requirements.txt
+# PyPI only, so the pinned hashes match. Constraints and integration manifests pin the old
+# versions; bump them too, otherwise Home Assistant downgrades the packages at startup.
+RUN PIP_EXTRA_INDEX_URL= pip install --no-cache-dir --no-deps --require-hashes \
+      --index-url https://pypi.org/simple -r /tmp/requirements.txt \
+    && cd /usr/src/homeassistant/homeassistant \
+    && sed -i -e 's/Pillow==12\.3\.0/Pillow==13.0.0/' -e 's/uv==0\.12\.23/uv==0.13.4/' \
+      package_constraints.txt components/*/manifest.json \
+      /usr/local/lib/python3.*/site-packages/homeassistant-*.dist-info/METADATA \
+    && ! grep -rqE 'Pillow==12\.3\.0|uv==0\.12\.23' . \
+    && rm /tmp/requirements.txt
+COPY --from=go /out/go2rtc /bin/go2rtc
+COPY --from=go /out/tempio /usr/bin/tempio
