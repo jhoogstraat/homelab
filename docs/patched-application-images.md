@@ -1,6 +1,6 @@
 # Patched application images
 
-The ARM64 derivatives in `images/` keep the pinned upstream application versions, startup commands, ports, data mounts and runtime users. They replace vulnerable OS packages or runtime dependencies so the application security gate passes without exceptions.
+The ARM64 derivatives in `images/` keep the pinned upstream application versions, startup commands, ports, data mounts and runtime users. They replace vulnerable OS packages or runtime dependencies so they pass the same security gate as every other image (`scripts/scan-images`).
 
 | Image | Changes |
 | --- | --- |
@@ -17,12 +17,6 @@ Image rollback does not undo database migrations; keep data backups and previous
 
 ## Upstream images without a derivative
 
-Home Assistant runs the official image, pinned in `quadlets/homeassistant.container`:
+Home Assistant runs the official image pinned in `quadlets/homeassistant.container`.
 
-```text
-ghcr.io/home-assistant/home-assistant:2026.10.2@sha256:1edf9ce6c140826cdfcd6358802cf3466e38045cd7ed62ccf42c78980ff937ae
-```
-
-Its CRITICAL findings are accepted for this exact pin only (`scripts/scan-images`); a new pin needs a new review. At acceptance it scanned 6 CRITICAL / 172 HIGH: CVE-2026-60002 (three OpenSSH packages), CVE-2026-85394 (python-jose) and CVE-2025-68121 (go2rtc and tempio Go runtimes). Accepted does not mean fixed. Official integrations, including Nexity, are unchanged.
-
-Matter runs upstream `ghcr.io/matter-js/matterjs-server:1.5.0` (0 CRITICAL at pin time). It uses BlueZ over a read-only `/run/dbus` mount (`NOBLE_BINDINGS=dbus`, `spc_t`). Direct BLE commissioning from the Pi has not worked (HCI `0x3e`); commission through the Home Assistant iPhone app over Thread.
+Matter runs upstream `ghcr.io/matter-js/matterjs-server:1.5.0`. It uses BlueZ over a read-only `/run/dbus` mount (`NOBLE_BINDINGS=dbus`, `spc_t`). Direct BLE commissioning from the Pi has not worked (HCI `0x3e`); commission through the Home Assistant iPhone app over Thread.
