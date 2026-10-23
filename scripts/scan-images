@@ -8,16 +8,21 @@ waits on what is already running. Full reports: image-security.json.
 
 The baseline is the commit of the last successful host image build on main
 (SCAN_BASELINE overrides it). Without one, every CRITICAL finding counts as new.
+
+--fail-on-fixable (the weekly run) also fails on any CRITICAL finding that has a fix,
+deployed or not: a to-do to repin, never a gate on publication.
 """
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 
 SCANNER = "docker.io/aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa"
 PLATFORM = "linux/arm64"  # the host's architecture; Trivy pulls it remotely from any runner
 PINNED = r"\S+@sha256:[a-f0-9]{64}"
+FAIL_ON_FIXABLE = "--fail-on-fixable" in sys.argv[1:]
 GIT = ("git", "-c", "safe.directory=*")  # CI runs this under sudo in the runner's checkout
 
 
@@ -45,9 +50,10 @@ def scan(image):
     return json.loads(result.stdout), None
 
 
-def critical(report):
+def critical(report, fixable=False):
     return {v["VulnerabilityID"] for target in report.get("Results", [])
-            for v in target.get("Vulnerabilities") or [] if v["Severity"] == "CRITICAL"}
+            for v in target.get("Vulnerabilities") or []
+            if v["Severity"] == "CRITICAL" and (v.get("FixedVersion") or not fixable)}
 
 
 quadlets = sorted(str(path) for path in Path("quadlets").rglob("*") if path.is_file())
@@ -90,12 +96,16 @@ for path, image in current.items():
             continue
         known = critical(previous_report)
     blocking = sorted(critical(report) - known)
+    fixable = sorted(critical(report, fixable=True))
     findings = [v for target in report.get("Results", []) for v in target.get("Vulnerabilities") or []]
     high = sum(v["Severity"] == "HIGH" for v in findings)
-    reports.append({"image": image, "baseline": previous, "blocking": blocking, "report": report})
-    status = "BLOCKED" if blocking else ("ok" if previous == image else "changed, ok")
-    rows.append(f"| `{name}` | {status} | {len(critical(report))} ({len(blocking)} new) | {high} |")
-    failed |= bool(blocking)
+    reports.append({"image": image, "baseline": previous, "blocking": blocking,
+                    "fixable": fixable, "report": report})
+    status = ("BLOCKED" if blocking else "repin: fix available" if fixable and FAIL_ON_FIXABLE
+              else "ok" if previous == image else "changed, ok")
+    rows.append(f"| `{name}` | {status} | {len(critical(report))} ({len(blocking)} new, "
+                f"{len(fixable)} fixable) | {high} |")
+    failed |= bool(blocking) or (FAIL_ON_FIXABLE and bool(fixable))
     print(f"{name}: {len(critical(report))} critical ({len(blocking)} new), {high} high", flush=True)
 
 Path("image-security.json").write_text(json.dumps(reports, indent=2) + "\n")
@@ -107,4 +117,5 @@ if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
                      "| Image | Status | Critical | High |\n| --- | --- | --- | --- |\n"
                      + "\n".join(rows) + "\n")
 if failed:
-    raise SystemExit("Blocked: new CRITICAL findings, unpinned images or failed scans")
+    raise SystemExit("Failed: new CRITICAL findings, unpinned images, failed scans"
+                     + (" or CRITICAL findings with a fix" if FAIL_ON_FIXABLE else ""))

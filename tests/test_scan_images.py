@@ -18,7 +18,7 @@ CVE2 = {"VulnerabilityID": "CVE-2", "Severity": "CRITICAL", "FixedVersion": "2"}
 
 
 class ImageSecurityPolicyTests(unittest.TestCase):
-    def scan(self, image, baseline=None, findings=None, error=False):
+    def scan(self, image, baseline=None, findings=None, error=False, args=()):
         """Run the scanner on one Quadlet; baseline is the published pin (None: new app).
         findings maps an image to the vulnerabilities Trivy reports for it."""
         findings = findings or {}
@@ -40,7 +40,8 @@ class ImageSecurityPolicyTests(unittest.TestCase):
                 Path("quadlets/nested").mkdir(parents=True)
                 Path("quadlets/nested/app.container").write_text(f"[Container]\nImage={image}\n")
                 with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": "", "SCAN_BASELINE": "abc"}), \
-                     patch("subprocess.run", side_effect=run), redirect_stdout(StringIO()):
+                     patch("subprocess.run", side_effect=run), redirect_stdout(StringIO()), \
+                     patch("sys.argv", ["scan-images", *args]):
                     try:
                         runpy.run_path(str(SCRIPT), run_name="__main__")
                         blocked = False
@@ -65,6 +66,11 @@ class ImageSecurityPolicyTests(unittest.TestCase):
         self.assertTrue(self.scan(NEW, findings={NEW: [CVE1]})[0])
         high = {"VulnerabilityID": "CVE-3", "Severity": "HIGH", "FixedVersion": "2"}
         self.assertFalse(self.scan(NEW, findings={NEW: [high]})[0])
+
+    def test_weekly_run_fails_on_fixable_deployed_criticals(self):
+        weekly = ("--fail-on-fixable",)
+        self.assertTrue(self.scan(OLD, baseline=OLD, findings={OLD: [CVE2]}, args=weekly)[0])
+        self.assertFalse(self.scan(OLD, baseline=OLD, findings={OLD: [CVE1]}, args=weekly)[0])
 
     def test_scan_errors_and_unpinned_images_block(self):
         self.assertTrue(self.scan(OLD, baseline=OLD, error=True)[0])
