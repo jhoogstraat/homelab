@@ -9,7 +9,7 @@ This is not a penetration test, and the deployment is not security-clear. Curren
 - **Public exposure:** Cloudflare publishes `hoogstraat.net`, `vault.hoogstraat.net`, `trek.hoogstraat.net` (TREK plus Depanator's `/depanator/` path) and `brain.hoogstraat.net` (second-brain MCP, GitHub OAuth or bearer token); everything else hits a 404 catch-all. Vaultwarden and Depanator use Traefik's unpublished `tunnel` entrypoint. Public Vaultwarden `/admin` (including encoded variants) returns 403; registration is closed.
 - **Secrets:** only SOPS ciphertext enters the image. Runtime secrets are private per-app files in memory-backed `/run`; preparation refuses disk-backed swap. Host maintenance uses systemd credentials. Application, credential and secret parents are root-only 0700.
 - **Defaults:** Vaultwarden and Papra disable open registration; AdGuard seeds a 20 queries/s rate limit; Papra seeds a 25 MiB upload limit. Existing device config can override seeds.
-- **CI:** actions pinned to commit IDs; every Quadlet image gets the same scan (`scripts/scan-images`), no per-image exceptions; publication blocks on scanner errors, unpinned images and CRITICAL findings that have a fix.
+- **CI:** actions pinned to commit IDs; every Quadlet image gets the same scan (`scripts/scan-images`), no per-image exceptions; publication blocks on scanner errors, unpinned images and CRITICAL findings a change introduces relative to the last published host image. Findings in already-deployed images are reported but never hold back an update.
 
 ## Remaining risks
 

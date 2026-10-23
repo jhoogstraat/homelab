@@ -36,6 +36,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read  # scan baseline: the last published host image build
 
     steps:
       - name: Checkout repository
@@ -85,7 +86,10 @@ jobs:
 
       - name: Scan application digests before publication
         if: github.event_name != 'pull_request'
-        run: sudo --preserve-env=GITHUB_STEP_SUMMARY python3 scripts/scan-images
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: sudo --preserve-env=GITHUB_STEP_SUMMARY,GH_TOKEN,GH_REPO python3 scripts/scan-images
 
       - name: Push image tags
         if: github.event_name != 'pull_request'
