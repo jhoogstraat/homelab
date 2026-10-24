@@ -21,5 +21,17 @@
       "datasourceTemplate": "docker"
     }
   ],
-  "automerge": false
+  "automerge": false,
+  "packageRules": [
+    {
+      "description": "Depanator publishes only sha-* and latest tags; follow latest's digest and merge once CI passes.",
+      "matchDepNames": [
+        "ghcr.io/jhoogstraat/depanator"
+      ],
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "automerge": true
+    }
+  ]
 }
