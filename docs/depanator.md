@@ -3,7 +3,7 @@
 Depanator runs as `depanator.service`, a rootful Podman Quadlet in
 `homelab.target`. The image includes Bun and Codex; setup and review happen in
 Telegram. The image is pinned in [the Quadlet](../quadlets/depanator.container);
-updates change that digest.
+Renovate follows the `latest` digest and automerges once CI passes.
 
 Searches run on the configured interval, with a 22:00–07:00 Europe/Berlin night
 pause by default. The first successful search after startup, resume or a search
