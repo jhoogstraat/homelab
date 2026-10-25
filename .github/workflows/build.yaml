@@ -1,6 +1,9 @@
 name: Build bootc Image
 on:
   workflow_dispatch:
+  schedule:
+    # Saturday rebuild picks up Fedora updates (dnf upgrade) for Sunday's update-host.
+    - cron: '17 4 * * 6'
   push:
     branches:
       - main

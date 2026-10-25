@@ -10,7 +10,7 @@ A Raspberry Pi 4 running Fedora bootc and Podman Quadlets. Git owns deployment; 
 
 ![Deployment, application updates and encrypted recovery flows](docs/assets/architecture.svg)
 
-Application images are pinned to digests in Git; Renovate proposes updates for review and they reach the Pi with the weekly host image. Host updates require a successful full backup. The SD-card backup pauses services for the entire scan/upload, then checks readiness. A USB SSD is the recommended storage upgrade.
+Application images are pinned to digests in Git; Renovate merges digest and patch updates once CI passes (minor and major need review), the host image rebuilds weekly with Fedora updates, and both reach the Pi with Sunday's host update ([operations](docs/operations.md)). Host updates require a successful full backup. The SD-card backup pauses services for the entire scan/upload, then checks readiness. A USB SSD is the recommended storage upgrade.
 
 `configs/environment/` is reapplied at boot. `configs/defaults/` seeds missing settings once; application UI changes and local edits survive redeployment. State lives in `/var/lib/homelab/apps/<app>/`. Application secrets are staged in private per-app files under `/run`; host maintenance uses systemd credentials. Only SOPS ciphertext enters the image; the age key, S3 credentials and restic password stay root-only on the device.
 
