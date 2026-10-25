@@ -33,6 +33,11 @@ on:
       - .github/workflows/build.yaml
       - .github/workflows/image-security.yaml
 
+# One build per ref: an older run finishing last would publish a stale `latest`.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   changes:
     # Scheduled runs rebuild only if main has no published image yet or Fedora has package updates for it.
