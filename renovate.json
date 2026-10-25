@@ -24,12 +24,14 @@
   "automerge": false,
   "packageRules": [
     {
-      "description": "Depanator publishes only sha-* and latest tags; follow latest's digest and merge once CI passes.",
-      "matchDepNames": [
-        "ghcr.io/jhoogstraat/depanator"
+      "description": "Image pins (Quadlets, Containerfiles) take digest and patch updates on their own once CI passes; minor and major updates wait for review.",
+      "matchManagers": [
+        "custom.regex",
+        "dockerfile"
       ],
       "matchUpdateTypes": [
-        "digest"
+        "digest",
+        "patch"
       ],
       "automerge": true
     }

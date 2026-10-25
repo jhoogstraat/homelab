@@ -23,7 +23,7 @@ Timers use the host's Europe/Berlin timezone:
 
 A process lock serializes these operations. Timers do not catch up at boot. Missing or unreachable backup configuration blocks host updates; an S3 failure detected before backup never stops apps. Upload failure restarts the apps and blocks updates. A durable restart manifest, `ExecStopPost` and `homelab-recover.service` recover only previously running apps.
 
-Application definitions pin registry digests. Renovate proposes digest/version changes for review; security scans gate publication. Pins reach the Pi through the host image. Recovery metadata records image digests and bootc status. Container and OS rollback do not undo database migrations; restore pre-update data when a migration cannot be reversed.
+Application definitions pin registry digests. Renovate merges digest and patch changes once CI passes and proposes minor/major changes for review; security scans gate publication. Pins reach the Pi through the host image. Recovery metadata records image digests and bootc status. Container and OS rollback do not undo database migrations; restore pre-update data when a migration cannot be reversed.
 
 References: [bootc filesystem persistence](https://bootc.dev/bootc/bootc-filesystem.7.html), [Fedora base-image interfaces](https://gitlab.com/fedora/bootc/base-images).
 
