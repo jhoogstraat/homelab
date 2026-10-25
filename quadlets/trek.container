@@ -7,7 +7,7 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=trek
 # Patched ARM64 artifact (images/trek); rebuild and scan before changing this pin.
-Image=ghcr.io/jhoogstraat/homelab:trek-sha-44f28dcd089da1ae48b01f4421117638401eb4c1@sha256:796497f5969ccd6fcb8a124183eeaec64185212b803593b80d521e7c560f6c6c
+Image=ghcr.io/jhoogstraat/homelab:trek-sha-021b0925b49dd722ead8416687a23f9f7411d069@sha256:94de090dcdfe8aa3d8b1dfab0cabeea6914c29bfb02e513ed63c2ccdfa142de2
 UserNS=auto
 Network=homelab.network:ip=10.90.0.15
 Volume=/var/lib/homelab/apps/%p/data:/app/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
