@@ -8,11 +8,11 @@ permissions:
   packages: write
 jobs:
   apps:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       apps: ${{ steps.list.outputs.apps }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - id: list
@@ -20,13 +20,13 @@ jobs:
   build:
     needs: apps
     # Native ARM64 builds; emulating ARM64 on x64 runners is many times slower.
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     strategy:
       fail-fast: false
       matrix:
         app: ${{ fromJSON(needs.apps.outputs.apps) }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Podman
