@@ -2,13 +2,13 @@ name: Renovate
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 3 * * *'
+    - cron: '17 3 * * *'  # UTC: 04:17 Berlin in winter, 05:17 in summer
 permissions:
   contents: read
 concurrency: renovate
 jobs:
   renovate:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: renovatebot/github-action@a63d9a7bc606f7336fd20b47f2f32259a35e6213 # v46.3.9
