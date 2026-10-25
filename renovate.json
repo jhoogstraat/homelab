@@ -35,6 +35,16 @@
         "patch"
       ],
       "automerge": true
+    },
+    {
+      "description": "Fedora publishes the next release's tag while it is still in development; open its PR only when approved on the Dependency Dashboard.",
+      "matchDepNames": [
+        "quay.io/fedora/fedora-bootc"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "dependencyDashboardApproval": true
     }
   ]
 }
