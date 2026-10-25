@@ -49,3 +49,37 @@ jobs:
       - name: Remove registry credentials
         if: always()
         run: sudo rm -f /tmp/registry-auth.json
+  pin:
+    # Point the Quadlets at the images just published and merge once the host build and image scan pass.
+    # RENOVATE_TOKEN, because pushes and PRs made with GITHUB_TOKEN don't trigger CI.
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency: pin-patched-images
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          token: ${{ secrets.RENOVATE_TOKEN }}
+      - name: Open and merge the pin PR
+        env:
+          GH_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          for app in $(ls images/*/Containerfile | cut -d/ -f2); do
+            image="ghcr.io/${REPOSITORY}:${app}-sha-${COMMIT_SHA}"
+            digest=$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')
+            sed -i -E "s#ghcr\.io/${REPOSITORY}:${app}-sha-[0-9a-f]+@sha256:[0-9a-f]+#${image}@${digest}#" quadlets/*.container
+          done
+          git diff --quiet && exit 0
+          branch="pin-patched-images-${COMMIT_SHA::7}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -qam "chore: pin patched application images from ${COMMIT_SHA::7}"
+          git push -f origin "$branch"
+          gh pr create --base main --head "$branch" --title "chore: pin patched application images from ${COMMIT_SHA::7}" \
+            --body "Pins the images published by ${GITHUB_SERVER_URL}/${REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. Merged automatically once CI passes."
+          sleep 60  # let the PR's checks register
+          gh pr checks "$branch" --watch --fail-fast
+          gh pr merge "$branch" --squash --delete-branch
