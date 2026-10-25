@@ -505,7 +505,16 @@ def staged_images():
                    for line in path.read_text().splitlines() if line.startswith("Image=")})
 
 
+def update_available():
+    # Metadata only; a staged deployment means an earlier run stopped before its reboot.
+    check = command("bootc", "upgrade", "--check", stdout=subprocess.PIPE)
+    return b"Update available" in check.stdout or staged_images() is not None
+
+
 def update_host():
+    # Runs nightly: without a new host image there is no backup, pause or reboot.
+    if not update_available():
+        return
     backup()
     command("bootc", "upgrade")
     images = staged_images()

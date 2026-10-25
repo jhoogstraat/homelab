@@ -2,7 +2,8 @@ name: Renovate
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 3 * * *'  # UTC: 04:17 Berlin in winter, 05:17 in summer
+    # UTC; merges and their builds finish before the Pi's 04:00 Berlin update (02:00 UTC in summer).
+    - cron: '17 0 * * *'
 permissions:
   contents: read
 concurrency: renovate
