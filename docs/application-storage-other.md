@@ -19,7 +19,7 @@ The paths below are **container mount targets**. Use one persistent host storage
 
 ## Image update policy
 
-Application digests are pinned in Git; Renovate merges digest and patch updates once CI passes, proposes minor/major updates for review, and scans gate publication. Pins reach the Pi with the host image (Sunday `update-host`, after a full backup). `stable`, `latest` and major channels have different upgrade boundaries; image rollback cannot undo database/schema changes. Home Assistant and Matter pin exact releases; OTBR is a derivative of `ghcr.io/wittdennis/homeassistant-otbr:4.2.5` (see [patched application images](patched-application-images.md)).
+Application digests are pinned in Git; Renovate merges digest and patch updates once CI passes, proposes minor/major updates for review, and scans gate publication. Pins reach the Pi with the host image (nightly `update-host` when a new one exists, after a full backup). `stable`, `latest` and major channels have different upgrade boundaries; image rollback cannot undo database/schema changes. Home Assistant and Matter pin exact releases; OTBR is a derivative of `ghcr.io/wittdennis/homeassistant-otbr:4.2.5` (see [patched application images](patched-application-images.md)).
 
 ## Storage recommendation
 

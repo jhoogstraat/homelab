@@ -2,8 +2,8 @@ name: Build bootc Image
 on:
   workflow_dispatch:
   schedule:
-    # Nightly rebuild picks up Fedora updates (dnf upgrade); skipped when nothing changed.
-    - cron: '17 4 * * *'
+    # Nightly rebuild picks up Fedora updates (dnf upgrade); skipped when nothing changed. Before the Pi's 04:00 Berlin update.
+    - cron: '17 1 * * *'
   push:
     branches:
       - main

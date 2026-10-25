@@ -19,7 +19,7 @@ Timers use the host's Europe/Berlin timezone:
 | Time | Operation |
 | --- | --- |
 | Daily 02:00 | Consistent encrypted application backup |
-| Sunday 04:00 | Back up, stage `bootc upgrade`, pre-pull the staged deployment's pinned app images, reboot |
+| Daily 04:00 | If `bootc upgrade --check` finds a new host image: back up, stage `bootc upgrade`, pre-pull the staged deployment's pinned app images, reboot |
 
 A process lock serializes these operations. Timers do not catch up at boot. Missing or unreachable backup configuration blocks host updates; an S3 failure detected before backup never stops apps. Upload failure restarts the apps and blocks updates. A durable restart manifest, `ExecStopPost` and `homelab-recover.service` recover only previously running apps.
 

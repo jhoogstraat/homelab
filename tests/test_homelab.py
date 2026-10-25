@@ -330,6 +330,8 @@ class LifecycleTests(unittest.TestCase):
             result = self.fake_command(*args, **kwargs)
             if args[:2] == ("bootc", "status"):
                 result.stdout = json.dumps(status).encode()
+            elif args == ("bootc", "upgrade", "--check"):
+                result.stdout = b"Update available for: ghcr.io/example:latest\n"
             return result
         real_path = homelab.Path
         def path(*parts):
@@ -347,10 +349,24 @@ class LifecycleTests(unittest.TestCase):
             result = self.fake_command(*args, **kwargs)
             if args[:2] == ("bootc", "status"):
                 result.stdout = b'{"status": {"staged": null}}'
+            elif args == ("bootc", "upgrade", "--check"):
+                result.stdout = b"Update available for: ghcr.io/example:latest\n"
             return result
         with patch.object(homelab, "command", update), patch.object(homelab.subprocess, "run", self.active):
             homelab.update_host()
         self.assertNotIn(("systemctl", "reboot"), self.calls)
+
+    def test_host_update_without_new_image_does_not_interrupt_apps(self):
+        def update(*args, **kwargs):
+            result = self.fake_command(*args, **kwargs)
+            if args[:2] == ("bootc", "status"):
+                result.stdout = b'{"status": {"staged": null}}'
+            elif args == ("bootc", "upgrade", "--check"):
+                result.stdout = b"No changes in: ghcr.io/example:latest\n"
+            return result
+        with patch.object(homelab, "command", update), patch.object(homelab.subprocess, "run", self.active):
+            homelab.update_host()
+        self.assertEqual(self.calls, [("bootc", "upgrade", "--check"), ("bootc", "status", "--json")])
 
     def test_recovery_after_killed_backup_is_repeatable(self):
         homelab.save_paused_units(["glance.service"])
