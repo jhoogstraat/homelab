@@ -19,6 +19,8 @@ Environment=ALLOWED_ORIGINS=https://trek.hoogstraat.net
 Environment=FORCE_HTTPS=true
 Environment=TRUST_PROXY=1
 Environment=TZ=Europe/Berlin
+# Document sync reaches Papra at http://papra:1221; TREK's SSRF guard blocks private IPs otherwise.
+Environment=ALLOW_INTERNAL_NETWORK=true
 # Bootstrap credentials and optional provider keys belong to device-owned config.
 EnvironmentFile=/var/lib/homelab/apps/%p/config/app.env
 ReadOnly=true
