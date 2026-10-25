@@ -1,5 +1,9 @@
 name: Build patched application images
 on:
+  workflow_dispatch:
+  schedule:
+    # After Renovate (00:17), so the pins land before the Pi's 04:00 Berlin update.
+    - cron: '37 0 * * *'
   push:
     branches: [main]
     paths: [images/**, .github/workflows/build-app-images.yaml]
@@ -8,7 +12,9 @@ permissions:
   packages: write
 jobs:
   apps:
-    runs-on: ubuntu-latest
+    # Scheduled runs rebuild only apps whose deployed image has OS package updates pending
+    # (or can't be checked); push and manual runs rebuild every app.
+    runs-on: ubuntu-26.04-arm
     outputs:
       apps: ${{ steps.list.outputs.apps }}
     steps:
@@ -16,9 +22,23 @@ jobs:
         with:
           persist-credentials: false
       - id: list
-        run: echo "apps=$(ls images/*/Containerfile | cut -d/ -f2 | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
+        env:
+          CHECK: 'if command -v apk >/dev/null; then test -z "$(apk -U -q list -u)"; else apt-get update -qq && ! apt list --upgradable 2>/dev/null | grep -q upgradable; fi'
+        run: |
+          apps=$(ls images/*/Containerfile | cut -d/ -f2)
+          if [ "$GITHUB_EVENT_NAME" = schedule ]; then
+            sudo apt-get update && sudo apt-get install -y podman
+            apps=$(for app in $apps; do
+              pinned=$(grep -ho "ghcr.io/${GITHUB_REPOSITORY}:${app}-sha-[0-9a-f]*@sha256:[0-9a-f]*" quadlets/*.container | head -1)
+              if [ -z "$pinned" ] || ! sudo podman run --rm --user 0 --entrypoint /bin/sh "$pinned" -c "$CHECK" >&2; then
+                echo "$app"
+              fi
+            done)
+          fi
+          echo "apps=$(printf '%s\n' $apps | jq -Rnc '[inputs | select(length > 0)]')" >> "$GITHUB_OUTPUT"
   build:
     needs: apps
+    if: needs.apps.outputs.apps != '[]'
     # Native ARM64 builds; emulating ARM64 on x64 runners is many times slower.
     runs-on: ubuntu-26.04-arm
     strategy:
@@ -52,7 +72,7 @@ jobs:
   pin:
     # Point the Quadlets at the images just published and merge once the host build and image scan pass.
     # RENOVATE_TOKEN, because pushes and PRs made with GITHUB_TOKEN don't trigger CI.
-    needs: build
+    needs: [apps, build]
     runs-on: ubuntu-latest
     concurrency: pin-patched-images
     steps:
@@ -65,14 +85,15 @@ jobs:
           GH_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
           REPOSITORY: ${{ github.repository }}
           COMMIT_SHA: ${{ github.sha }}
+          APPS: ${{ needs.apps.outputs.apps }}
         run: |
-          for app in $(ls images/*/Containerfile | cut -d/ -f2); do
+          for app in $(jq -r '.[]' <<< "$APPS"); do
             image="ghcr.io/${REPOSITORY}:${app}-sha-${COMMIT_SHA}"
             digest=$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')
             sed -i -E "s#ghcr\.io/${REPOSITORY}:${app}-sha-[0-9a-f]+@sha256:[0-9a-f]+#${image}@${digest}#" quadlets/*.container
           done
           git diff --quiet && exit 0
-          branch="pin-patched-images-${COMMIT_SHA::7}"
+          branch="pin-patched-images-${GITHUB_RUN_ID}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
