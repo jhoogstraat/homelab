@@ -24,9 +24,10 @@
   "automerge": false,
   "packageRules": [
     {
-      "description": "Depanator publishes only sha-* and latest tags; follow latest's digest and merge once CI passes.",
+      "description": "Depanator and second-brain publish only sha-* and latest tags; follow latest's digest and merge once CI passes.",
       "matchDepNames": [
-        "ghcr.io/jhoogstraat/depanator"
+        "ghcr.io/jhoogstraat/depanator",
+        "ghcr.io/jhoogstraat/second-brain"
       ],
       "matchUpdateTypes": [
         "digest"
