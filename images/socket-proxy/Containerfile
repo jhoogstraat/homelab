@@ -1,3 +1,3 @@
-FROM docker.io/library/haproxy:3.2-alpine@sha256:5d97434a423c2533cfeb42874d45cf6d69a840b60334582dfbfd5008e94c80be
+FROM docker.io/library/haproxy:3.4-alpine@sha256:2caaf8b1a1ef67f3f1ea9b721f2821675d3ba4500fb518e23884fecb93e8dbaa
 USER root
 RUN apk upgrade --no-cache
