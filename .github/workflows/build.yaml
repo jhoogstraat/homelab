@@ -2,8 +2,8 @@ name: Build bootc Image
 on:
   workflow_dispatch:
   schedule:
-    # Saturday rebuild picks up Fedora updates (dnf upgrade) for Sunday's update-host.
-    - cron: '17 4 * * 6'
+    # Nightly rebuild picks up Fedora updates (dnf upgrade); skipped when nothing changed.
+    - cron: '17 4 * * *'
   push:
     branches:
       - main
@@ -34,7 +34,30 @@ on:
       - .github/workflows/image-security.yaml
 
 jobs:
+  changes:
+    # Scheduled runs rebuild only if main has no published image yet or Fedora has package updates for it.
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+    outputs:
+      rebuild: ${{ steps.check.outputs.rebuild }}
+    steps:
+      - id: check
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = schedule ]; then
+            image="ghcr.io/$GITHUB_REPOSITORY:sha-${GITHUB_SHA::7}"
+            sudo apt-get update && sudo apt-get install -y podman
+            # dnf check-update exits 0 when nothing is pending, 100 when updates exist.
+            if sudo podman pull --quiet "$image" && sudo podman run --rm "$image" dnf -q check-update --refresh; then
+              echo "rebuild=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "rebuild=true" >> "$GITHUB_OUTPUT"
+
   build-and-push:
+    needs: changes
+    if: needs.changes.outputs.rebuild == 'true'
     runs-on: ubuntu-26.04-arm
     permissions:
       contents: read
