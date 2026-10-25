@@ -1,0 +1,20 @@
+name: Renovate
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+permissions:
+  contents: read
+concurrency: renovate
+jobs:
+  renovate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: renovatebot/github-action@a63d9a7bc606f7336fd20b47f2f32259a35e6213 # v46.3.9
+        with:
+          # A PAT, not github.token: PRs opened with github.token don't trigger CI, so nothing could automerge.
+          token: ${{ secrets.RENOVATE_TOKEN }}
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ONBOARDING: 'false'

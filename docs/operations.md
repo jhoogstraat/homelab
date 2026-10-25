@@ -37,7 +37,7 @@ Run `restic init` only for a new, empty repository. A new device keeps its timer
 | `homelab-backup.timer` | Daily 02:00 | Cold backup, then retention: 7 daily, 4 weekly, 12 monthly (by host and tag) |
 | `bootc-fetch-apply-updates.timer` | Sunday 04:00 | `update-host`: full backup, `bootc upgrade` (stage), pull every pinned app image of the staged deployment, reboot |
 
-App updates are reviewed digest pins in Git (Renovate PRs) and reach the Pi with the host image. `podman-auto-update.timer` is disabled.
+App updates are reviewed digest pins in Git (Renovate PRs) and reach the Pi with the host image. Renovate runs daily in GitHub Actions (`.github/workflows/renovate.yaml`) with the `RENOVATE_TOKEN` secret, a fine-grained PAT for this repository with read/write Contents, Pull requests, Issues and Workflows; renew it before it expires. `podman-auto-update.timer` is disabled.
 
 A backup stops writers for the whole restic scan/upload, then resumes them. Home Assistant gets 60 s to stop cleanly; an unclean stop or remaining writer aborts the capture. Recovery intent is written to `/var/lib/homelab/maintenance/paused-units.json` before stopping anything and is excluded from backups. `homelab-recover.service` replays it at boot. Recovery waits up to 300 s for units to be active, HA HTTP, a Matter `get_nodes` reply and an attached OTBR role; failure keeps the intent and blocks pruning and updates. Do not delete the manifest to bypass a failed restart; inspect the journal and run `sudo /usr/libexec/homelab resume`.
 
