@@ -1,6 +1,6 @@
-# 4.3.4 still ships CVE-2026-90711 (proxy-addr), GHSA-cg2g-xh64-v4q7 (dompurify) and CVE-2026-6653 (libxml2).
+# 5.0.0 still ships CVE-2026-6653 (libxml2, no fixed Debian package).
 # Drop this recipe once an upstream release scans clean.
-FROM docker.io/mauriceboe/trek:4.3.4@sha256:6b7c8f275cc0ff3ca44979084bf078f553c96a0564493a132c1631ffaf6c3e77
+FROM docker.io/mauriceboe/trek:5.0.0@sha256:0c0a8f5b488fc2967248695e04bb000bb177d0b63d3385089d33dca6fde4daf9
 USER root
 # The optional KItinerary extractor pulls in Debian's unpatched libxml2.
 # TREK handles its absence; manual planning and provider-based AI parsing remain.
@@ -9,14 +9,3 @@ RUN apt-get purge -y libkitinerary-bin libxml2 && \
     rm -rf /var/lib/apt/lists/* && \
     rm -f /usr/local/bin/kitinerary-extractor
 ENV KITINERARY_EXTRACTOR_PATH=""
-# Verify the npm registry's published SHA-512 integrity before replacing each module.
-RUN set -e; for spec in \
-      proxy-addr@2.0.8@5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ== \
-      dompurify@3.4.17@B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==; do \
-      name=${spec%%@*}; rest=${spec#*@}; version=${rest%%@*}; integrity=${rest#*@}; \
-      wget -qO /tmp/module.tgz "https://registry.npmjs.org/$name/-/$name-$version.tgz"; \
-      INTEGRITY="$integrity" node -e "const fs=require('fs'),crypto=require('crypto'); if(crypto.createHash('sha512').update(fs.readFileSync('/tmp/module.tgz')).digest('base64')!==process.env.INTEGRITY) process.exit(1)"; \
-      rm -rf "/app/node_modules/$name"; mkdir "/app/node_modules/$name"; \
-      tar -xzf /tmp/module.tgz -C "/app/node_modules/$name" --strip-components=1; \
-      rm /tmp/module.tgz; \
-    done
