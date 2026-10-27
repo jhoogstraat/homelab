@@ -2,8 +2,8 @@ name: Build patched application images
 on:
   workflow_dispatch:
   schedule:
-    # After Renovate (00:17), so the pins land before the Pi's 04:00 Berlin update.
-    - cron: '37 0 * * *'
+    # After Renovate (20:17 UTC), so the pins land before the Pi's 04:00 Berlin update.
+    - cron: '47 20 * * *'
   push:
     branches: [main]
     paths: [images/**, .github/workflows/build-app-images.yaml]

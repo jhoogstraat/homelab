@@ -23,6 +23,8 @@
   ],
   "automerge": false,
   "prHourlyLimit": 0,
+  "prConcurrentLimit": 0,
+  "rebaseWhen": "conflicted",
   "packageRules": [
     {
       "description": "Image pins (Quadlets, Containerfiles) take digest and patch updates on their own once CI passes; minor and major updates wait for review.",
