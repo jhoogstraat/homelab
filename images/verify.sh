@@ -13,7 +13,10 @@ case "$app" in
     podman run --rm --network none --entrypoint /bin/sh "$image" -ec 'test ! -e /usr/local/bin/kitinerary-extractor; ! dpkg -s libxml2 >/dev/null 2>&1'
     ;;
   homeassistant)
-    podman run --rm --network none --entrypoint /bin/sh "$image" -ec 'go2rtc --help >/dev/null; printf "{{ .value }}" >/tmp/template; printf "{\"value\":\"working\"}" | tempio -template /tmp/template | grep -x working; ! grep -rqE "Pillow==12\.3\.0|uv==0\.12\.23" /usr/src/homeassistant/homeassistant; python3 -c "import PIL, homeassistant.components.image_upload, homeassistant.components.go2rtc; assert PIL.__version__ == \"13.0.0\"; import brotli; assert brotli.__version__ == \"1.2.1\""'
+    podman run --rm --network none --entrypoint /bin/sh "$image" -ec 'go2rtc --help >/dev/null; printf "{{ .value }}" >/tmp/template; printf "{\"value\":\"working\"}" | tempio -template /tmp/template | grep -x working; ! grep -rqE "Pillow==12\.3\.0|uv==0\.12\.23" /usr/src/homeassistant/homeassistant; python3 -c "import PIL, homeassistant.components.image_upload, homeassistant.components.go2rtc; assert PIL.__version__ == \"13.0.0\"; import brotli, authlib, selenium.webdriver; assert brotli.__version__ == \"1.2.1\"; assert authlib.__version__ == \"1.9.0\""; ! find /usr/local/lib/python3.*/site-packages/selenium -name "selenium-manager*" | grep -q .'
+    ;;
+  vaultwarden)
+    podman run --rm --network none --entrypoint /vaultwarden "$image" --version
     ;;
   socket-proxy)
     podman run --rm --network none --volume "$(pwd)/configs/environment/socket-proxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro" --entrypoint haproxy "$image" -c -f /usr/local/etc/haproxy/haproxy.cfg
