@@ -7,7 +7,7 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=beszel-ui
 # renovate: datasource=docker depName=docker.io/henrygd/beszel
-Image=docker.io/henrygd/beszel:latest@sha256:6b39a8b64f9b15d00a25e7683e31a93c46161182a54f62713525107064e10599
+Image=docker.io/henrygd/beszel:latest@sha256:8514a69d9bbbcb74f371a3205561ee231fc0289739cea64e8131f341d695b770
 
 Pod=beszel.pod
 
