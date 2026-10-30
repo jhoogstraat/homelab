@@ -2,8 +2,9 @@ name: Renovate
 on:
   workflow_dispatch:
   schedule:
-    # UTC; merges and their builds finish before the Pi's 04:00 Berlin update (02:00 UTC in summer).
-    - cron: '17 0 * * *'
+    # UTC, evening: GitHub starts runs scheduled around midnight UTC up to hours late.
+    # Merges and their builds then finish well before the Pi's 04:00 Berlin update.
+    - cron: '17 20 * * *'
 permissions:
   contents: read
 concurrency: renovate
