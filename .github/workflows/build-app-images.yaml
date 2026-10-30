@@ -7,13 +7,18 @@ on:
   push:
     branches: [main]
     paths: [images/**, .github/workflows/build-app-images.yaml]
+  # Renovate merges only with passing checks, and the host build doesn't cover images/.
+  pull_request:
+    paths: [images/**, .github/workflows/build-app-images.yaml]
 permissions:
   contents: read
   packages: write
+  pull-requests: read
 jobs:
   apps:
     # Scheduled runs rebuild only apps whose deployed image has OS package updates pending
-    # (or can't be checked); push and manual runs rebuild every app.
+    # (or can't be checked); pull requests build and verify the apps they change, unpublished;
+    # push and manual runs rebuild every app.
     runs-on: ubuntu-26.04-arm
     outputs:
       apps: ${{ steps.list.outputs.apps }}
@@ -23,6 +28,8 @@ jobs:
           persist-credentials: false
       - id: list
         env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
           CHECK: 'if command -v apk >/dev/null; then test -z "$(apk -U -q list -u)"; else apt-get update -qq && ! apt list --upgradable 2>/dev/null | grep -q upgradable; fi'
         run: |
           apps=$(ls images/*/Containerfile | cut -d/ -f2)
@@ -34,6 +41,10 @@ jobs:
                 echo "$app"
               fi
             done)
+          fi
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            changed=$(gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only)
+            apps=$(for app in $apps; do grep -q "^images/$app/" <<< "$changed" && echo "$app" || true; done)
           fi
           echo "apps=$(printf '%s\n' $apps | jq -Rnc '[inputs | select(length > 0)]')" >> "$GITHUB_OUTPUT"
   build:
@@ -52,6 +63,7 @@ jobs:
       - name: Install Podman
         run: sudo apt-get update && sudo apt-get install -y podman
       - name: Login to GHCR
+        if: github.event_name != 'pull_request'
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REGISTRY_USER: ${{ github.actor }}
@@ -65,7 +77,9 @@ jobs:
           image="ghcr.io/${REPOSITORY}:${APP_NAME}-sha-${COMMIT_SHA}"
           sudo podman build --arch arm64 --format docker -f "images/${APP_NAME}/Containerfile" --label "org.opencontainers.image.source=https://github.com/${REPOSITORY}" -t "$image" .
           sudo sh images/verify.sh "$APP_NAME" "$image"
-          sudo podman push --authfile /tmp/registry-auth.json "$image"
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            sudo podman push --authfile /tmp/registry-auth.json "$image"
+          fi
       - name: Remove registry credentials
         if: always()
         run: sudo rm -f /tmp/registry-auth.json
@@ -73,6 +87,7 @@ jobs:
     # Point the Quadlets at the images just published and merge once the host build and image scan pass.
     # RENOVATE_TOKEN, because pushes and PRs made with GITHUB_TOKEN don't trigger CI.
     needs: [apps, build]
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     concurrency: pin-patched-images
     steps:
