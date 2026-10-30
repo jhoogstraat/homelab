@@ -7,7 +7,7 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=socket-proxy
 # Patched ARM64 artifact; rebuild and scan before changing this pin.
-Image=ghcr.io/jhoogstraat/homelab:socket-proxy-sha-bd7fa1b3221897e3100111c68bf76487e80078fd@sha256:fd8e0d742c6d8ce1ab84f3446a738acdc0b7edea500aac1e6fb5f2c7bba1a36e
+Image=ghcr.io/jhoogstraat/homelab:socket-proxy-sha-87f1e016893745108e292887aabc13745201537c@sha256:f843497fd993113ec18c26690a19a1f24475228ffea4e2c571c619aab1c65fc9
 Network=podman-api.network
 
 # This broker is the only application allowed to open the rootful API socket.
