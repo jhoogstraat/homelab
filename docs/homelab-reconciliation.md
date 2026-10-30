@@ -4,7 +4,7 @@ Infrastructure changes go through Git, each application is configured through it
 
 ## Reconciliation
 
-The ARM64 host image derives from Fedora's pinned `fedora-bootc:45` base. DNF layers host packages, including Pi firmware/U-Boot packages; SOPS is a patched rebuild of 3.13.3. bootc does not install firmware or bootloader files on an existing Pi.
+The ARM64 host image derives from Fedora's `fedora-bootc:45` base (tag only: Quay deletes its old digests within days). DNF layers host packages, including Pi firmware/U-Boot packages; SOPS is a patched rebuild of 3.13.3. bootc does not install firmware or bootloader files on an existing Pi.
 
 At boot, `homelab-prepare.service` materializes Git-owned environment files into `/var/lib/homelab/environment`, atomically selects a complete decrypted secret generation under `/run/homelab/secrets`, and seeds missing application config files. Every container/pod requires successful preparation, so a partially decrypted deployment never starts. Existing device config is never reseeded.
 
