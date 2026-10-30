@@ -5,7 +5,7 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=registry
 # renovate: datasource=docker depName=docker.io/registry
-Image=docker.io/registry:3@sha256:ddf754342cfc8acc51a56d5d0ab6af06826461864460636d8bd5c546dab2a7b8
+Image=docker.io/registry:3@sha256:d4032d4cc323c1731c707931ecada07a53076eac38e3b61ae57533f170f2c6c3
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.6
