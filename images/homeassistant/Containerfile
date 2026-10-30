@@ -1,7 +1,7 @@
 # 2026.10.2 still ships CVE-2026-60002 (openssh), brotli, certifi, pillow and uv advisories,
 # and go2rtc/tempio built with a vulnerable Go stdlib (CVE-2025-68121).
 # Drop this recipe once an upstream release scans clean.
-FROM docker.io/library/golang:1.27.2-alpine@sha256:c2b8d9b05d9386fe1b01bab829eda3a05edb526c220e638d3c7a73671a290672 AS go
+FROM docker.io/library/golang:1.27.3-alpine@sha256:ee0dcdc452cb73890363fbef65fc333aeb0da7c24ba52f2c6428a37b0e7f4f1c AS go
 RUN apk add --no-cache git
 RUN git clone https://github.com/AlexxIT/go2rtc.git /go2rtc \
     && cd /go2rtc && git checkout b5948cfb25404cc5cb37b166ecaa2dca20b11d4b \
