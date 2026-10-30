@@ -4,7 +4,8 @@ on:
   schedule:
     # UTC, evening: GitHub starts runs scheduled around midnight UTC up to hours late.
     # Merges and their builds then finish well before the Pi's 04:00 Berlin update.
-    - cron: '17 20 * * *'
+    # Three runs because each merges at most two PRs.
+    - cron: '17 18,20,22 * * *'
 permissions:
   contents: read
 concurrency: renovate
