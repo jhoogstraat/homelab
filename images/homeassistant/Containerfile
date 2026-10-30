@@ -1,4 +1,4 @@
-# 2026.10.2 still ships CVE-2026-60002 (openssh), brotli, certifi, pillow and uv advisories,
+# 2026.10.2 still ships CVE-2026-60002 (openssh), authlib, brotli, certifi, pillow and uv advisories,
 # and go2rtc/tempio built with a vulnerable Go stdlib (CVE-2025-68121).
 # Drop this recipe once an upstream release scans clean.
 FROM docker.io/library/golang:1.27.3-alpine@sha256:ee0dcdc452cb73890363fbef65fc333aeb0da7c24ba52f2c6428a37b0e7f4f1c AS go
@@ -22,5 +22,7 @@ RUN PIP_EXTRA_INDEX_URL= pip install --no-cache-dir --no-deps --require-hashes \
       /usr/local/lib/python3.*/site-packages/homeassistant-*.dist-info/METADATA \
     && ! grep -rqE 'Pillow==12\.3\.0|uv==0\.12\.23' . \
     && rm /tmp/requirements.txt
+# selenium-manager downloads browsers, nothing here uses it, and it bundles a vulnerable zip crate.
+RUN find /usr/local/lib/python3.*/site-packages/selenium -name 'selenium-manager*' -delete
 COPY --from=go /out/go2rtc /bin/go2rtc
 COPY --from=go /out/tempio /usr/bin/tempio
