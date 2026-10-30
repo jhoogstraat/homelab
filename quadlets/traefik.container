@@ -8,7 +8,7 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=traefik
 # renovate: datasource=docker depName=docker.io/traefik
-Image=docker.io/traefik:3@sha256:575fa15b135078fe5e50aa847987d96dbddd7b093c172429618404df73f3fa7c
+Image=docker.io/traefik:3@sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.3
