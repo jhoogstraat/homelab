@@ -1,2 +1,2 @@
-FROM ghcr.io/wittdennis/homeassistant-otbr:4.2.5@sha256:db85eb8a1f76aba121ab509ec53a7cb169139748295119d1a6604e1a6640d7a8
+FROM ghcr.io/wittdennis/homeassistant-otbr:4.2.7@sha256:6886625172e18dca33963a6a783180aebf31c96d191d9679d0f0b547926dd66b
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
