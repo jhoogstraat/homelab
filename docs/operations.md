@@ -45,6 +45,32 @@ Backups cover `/var/lib/homelab/{apps,credentials,recovery,maintenance}`, Blueto
 
 Secret changes: update the ciphertext in Git, ship the image, then `sudo systemctl start homelab-secrets-rotate.service` (or reboot). Runtime files land in `/run/homelab/secrets/current/<app>`.
 
+## Pipeline failures
+
+Follow these steps for a red workflow, a Renovate PR that won't merge, or an update that didn't reach the Pi.
+
+1. List recent runs: `gh run list --limit 30`. Only the newest run of each workflow on `main` counts; an older red run followed by a green one is history.
+2. Read the cause: `gh run view <id> --log-failed`. For a scan, also run `gh run download <id> -n image-security`; each entry in `image-security.json` lists its `fixable` findings.
+3. Find the row below and act on it. Make fixes through a PR, and rerun the workflow afterwards.
+4. Check the Pi if an update is involved: `ssh pi1 sudo bootc status`, `sudo bootc upgrade --check`, `systemctl --failed` and `sudo podman ps`. The booted digest should match `ghcr.io/jhoogstraat/homelab:latest`, with all apps up.
+
+You are done when the newest run of every workflow on `main` passes, or when you can name, for each remaining failure, its cause and what it is waiting on.
+
+| Symptom | Meaning | Action |
+| --- | --- | --- |
+| Image security red, nightly or manual | A running image has a fixable CRITICAL finding. Blocks nothing | Repin, or patch in `images/<app>/` ([patched application images](patched-application-images.md)). If the fix needs an upstream change, report that and leave the issue open |
+| Image security red on a PR | The change adds a CRITICAL finding. Blocks that PR only | Patch the image, or hold the update |
+| Build bootc Image red | No new host image; the Pi stays on the last good one | Rerun once if the log shows a registry or network error, otherwise fix the cause. A `manifest unknown` on a pinned digest means Quay deleted it, so use the tag |
+| Build patched application images red | That app keeps its old pin | Fix `images/<app>/`, or what `images/verify.sh` asserts for it |
+| A workflow shows `cancelled` | A newer run replaced it. Normal | Confirm the newest run passed |
+| A nightly run hasn't started | GitHub starts scheduled runs up to hours late. Normal | Trigger it with `gh workflow run` only if the Pi's 04:00 update would miss it |
+| Renovate red | Usually an expired `RENOVATE_TOKEN` or invalid `renovate.json` | Validate with `npx renovate@latest --platform=local --dry-run=lookup`. The user renews the token |
+| Renovate PR not merging | Failed checks, no checks, a major update, or a Fedora release inside its 30 days. Renovate merges at most two PRs per run | Fix the cause, then tick the rebase checkbox on the PR, since Renovate rebases only on conflict. PRs without checks need a workflow whose `paths` match the file |
+| New patched image not picked up | The pin job replaces only existing `<app>-sha-` references | Point the Quadlet at the published image once by hand |
+| Pi skipped the update | Host updates need a full backup and passing recovery checks | Read `journalctl -u bootc-fetch-apply-updates`. Keep the maintenance manifest in place and follow [Maintenance](#maintenance) |
+| `bootc-fetch-apply-updates` ended with `signal` in the previous boot | The reboot stopped it. Normal when the new image booted | Confirm the booted digest |
+| Pi broken after an update | Bad image or failed migration | Ask the user, then `sudo bootc rollback` and reboot. If a database migrated, restore that app's data too ([restore](#restore-and-restore-drill)) |
+
 ## Restore and restore drill
 
 1. Load the restic session above, pick a snapshot and restore it to an isolated directory: `restic restore <id> --target /var/tmp/homelab-restore`. Run `restic check --read-data-subset=10%` periodically. An upload is not a restore drill.

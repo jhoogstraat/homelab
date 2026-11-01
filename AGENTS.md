@@ -20,3 +20,7 @@ Adding a secret:
 ## Checks
 
 `python3 -m unittest discover -s tests -v`. The image and route checks in README need Linux.
+
+## Pipelines
+
+Red pipeline, stuck Renovate PR, Pi missed an update: follow [Pipeline failures](docs/operations.md#pipeline-failures).
