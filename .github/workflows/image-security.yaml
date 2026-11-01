@@ -2,14 +2,17 @@ name: Image security
 on:
   workflow_dispatch:
   schedule:
-    - cron: '23 6 * * 1'
+    - cron: '23 6 * * *'
   pull_request:
     paths:
       - quadlets/**
       - scripts/scan-images
       - .github/workflows/image-security.yaml
+      # Renovate merges only with passing checks, and nothing else checks this file.
+      - .github/workflows/renovate.yaml
 permissions:
   contents: read
+  issues: write  # one issue per fixable CRITICAL finding
   actions: read  # find the last published host image build (scan baseline)
 jobs:
   scan:
@@ -25,10 +28,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        # Weekly and manual runs also flag deployed images whose CRITICAL findings have a fix.
+        # Nightly and manual runs also flag deployed images whose CRITICAL findings have a fix.
         run: python3 scripts/scan-images ${{ github.event_name != 'pull_request' && '--fail-on-fixable' || '' }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: image-security
           path: image-security.json
+      - name: Open issues for fixable CRITICAL findings
+        if: always() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          open=$(gh issue list --state open --limit 200 --json title --jq '.[].title')
+          jq -r '.[] | (.image | split("@")[0] | sub("-sha-[0-9a-f]+$"; "")) as $image
+            | .fixable[]? | "Critical fix available: \($image) \(.)"' image-security.json | sort -u |
+            while IFS= read -r title; do
+              grep -Fxq "$title" <<<"$open" ||
+                gh issue create --title "$title" --body "Found by the nightly image scan. See the latest Image security run."
+            done

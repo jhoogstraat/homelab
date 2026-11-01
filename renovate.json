@@ -19,6 +19,19 @@
         "# renovate: datasource=docker depName=(?<depName>\\S+)\\nImage=\\S+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)"
       ],
       "datasourceTemplate": "docker"
+    },
+    {
+      "description": "endoflife.date lists a Fedora release only once it is generally available; the fedora-bootc tag exists months earlier.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Containerfile$/"
+      ],
+      "matchStrings": [
+        "FROM quay\\.io/fedora/fedora-bootc:(?<currentValue>\\d+)"
+      ],
+      "depNameTemplate": "fedora",
+      "datasourceTemplate": "endoflife-date",
+      "versioningTemplate": "semver-coerced"
     }
   ],
   "automerge": false,
@@ -27,10 +40,22 @@
   "rebaseWhen": "conflicted",
   "packageRules": [
     {
-      "description": "Image pins (Quadlets, Containerfiles) take digest and patch updates on their own once CI passes; minor and major updates wait for review.",
+      "description": "Image pins (Quadlets, Containerfiles) take digest, patch and minor updates on their own once CI passes; major updates wait for review.",
       "matchManagers": [
         "custom.regex",
         "dockerfile"
+      ],
+      "matchUpdateTypes": [
+        "digest",
+        "patch",
+        "minor"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "GitHub Actions take digest and patch updates on their own once CI passes.",
+      "matchManagers": [
+        "github-actions"
       ],
       "matchUpdateTypes": [
         "digest",
@@ -39,14 +64,25 @@
       "automerge": true
     },
     {
-      "description": "Fedora publishes the next release's tag while it is still in development; open its PR only when approved on the Dependency Dashboard.",
+      "description": "The Fedora base follows the fedora dependency below, not its own tags: the next release's tag appears while it is still in development.",
+      "matchManagers": [
+        "dockerfile"
+      ],
       "matchDepNames": [
         "quay.io/fedora/fedora-bootc"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "A new Fedora release merges on its own 30 days after general availability, once its early problems are known.",
+      "matchDepNames": [
+        "fedora"
       ],
       "matchUpdateTypes": [
         "major"
       ],
-      "dependencyDashboardApproval": true
+      "minimumReleaseAge": "30 days",
+      "automerge": true
     }
   ]
 }

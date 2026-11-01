@@ -9,7 +9,7 @@ waits on what is already running. Full reports: image-security.json.
 The baseline is the commit of the last successful host image build on main
 (SCAN_BASELINE overrides it). Without one, every CRITICAL finding counts as new.
 
---fail-on-fixable (the weekly run) also fails on any CRITICAL finding that has a fix,
+--fail-on-fixable (the nightly run) also fails on any CRITICAL finding that has a fix,
 deployed or not: a to-do to repin, never a gate on publication.
 """
 import json
