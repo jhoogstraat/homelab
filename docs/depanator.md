@@ -12,10 +12,15 @@ change only records a baseline; later arrivals become review candidates.
 ## State and access
 
 - `/var/lib/homelab/apps/depanator/data` mounts at `/data`:
-  - `agent.db`: settings, Telegram pairing, listing history and outcomes.
+  - `users/<telegram id>/`, one folder per person:
+    - `agent.db`: settings, listing history and outcomes.
+    - `is24-session.json`, `immomio-session.json`: renewable logins (passwords
+      and codes are not kept).
+  - `users/removed-<telegram id>-<timestamp>/`: removed people; holds their
+    login keys and details until deleted by hand.
   - `telegram-offset.json`: consumed Telegram updates.
-  - `is24-session.json`: renewable IS24 login (password and code are not kept).
-  - `codex/auth.json`: ChatGPT OAuth tokens, renewed by Codex; no API key.
+  - `codex/auth.json`: shared ChatGPT OAuth tokens, renewed by Codex; no API key.
+  - `raw/`: failed IS24 responses, never pruned, may hold landlord contact details.
 - The Telegram bot token is SOPS-encrypted in `secrets/depanator.enc.env` and
   delivered like other app secrets at
   `/run/homelab/secrets/current/depanator/telegram-bot-token`, read through
@@ -43,4 +48,6 @@ Backups stop the agent and capture the whole app directory. After any restore, r
 `sudo /usr/libexec/depanator restore-gate` before starting the service. It
 writes `data/reconciliation-required`, which blocks startup and submission.
 Reconcile IS24 contact history and stale approvals, then remove the marker.
-Image rollback does not roll back database state.
+Image rollback does not roll back database state. The first multi-user start
+moved a single-owner data directory into `users/<telegram id>/`; to run an older
+image, stop the service and move those files back to `data/`.
