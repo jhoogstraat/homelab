@@ -51,3 +51,6 @@ Reconcile IS24 contact history and stale approvals, then remove the marker.
 Image rollback does not roll back database state. The first multi-user start
 moved a single-owner data directory into `users/<telegram id>/`; to run an older
 image, stop the service and move those files back to `data/`.
+The first start with the admin's search list (`869cb29`) turns each person's
+search URL into rent, rooms and area limits plus a `Search N` list entry; waiting
+drafts need ✏️ Improve once before sending.
