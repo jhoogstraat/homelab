@@ -54,3 +54,6 @@ image, stop the service and move those files back to `data/`.
 The first start with the admin's search list (`869cb29`) turns each person's
 search URL into rent, rooms and area limits plus a `Search N` list entry; waiting
 drafts need ✏️ Improve once before sending.
+The first start with per-search schedules (`a31387b`) moves the check interval
+and night pause onto each admin search and the crawled listings into a shared
+`searches.db`; older images do not read that layout.

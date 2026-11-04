@@ -6,7 +6,7 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=depanator
 # renovate: datasource=docker depName=ghcr.io/jhoogstraat/depanator
-Image=ghcr.io/jhoogstraat/depanator:latest@sha256:15bd2c8f4f112df4ccc2bc5d44f167cdf04395e62bc2ab542645c1c1e9eaec14
+Image=ghcr.io/jhoogstraat/depanator:latest@sha256:f30536f891cf4259c3cc83cff9ec23c95d91607218cb080630bb12d305d12d41
 Pull=missing
 StopTimeout=40
 UserNS=auto
