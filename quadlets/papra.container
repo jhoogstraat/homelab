@@ -7,7 +7,7 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=papra
 # Patched ARM64 artifact; rebuild and scan before changing this pin.
-Image=ghcr.io/jhoogstraat/homelab:papra-sha-e0b056dc4246576304f1987e186ed31e8fae1b71@sha256:6fff1f12faf6f8743d47cf94c1efc4698b8cda46d5aa1ecc056007c552a3fae4
+Image=ghcr.io/jhoogstraat/homelab:papra-sha-446dd0882e266420f374029cec0663a980a9f57a@sha256:b2f9017fd9a214da91f7aa08d11ab07b857e014104c57073ac4ac984ab4e6c2c
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.11
