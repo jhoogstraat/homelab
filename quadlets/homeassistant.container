@@ -6,7 +6,7 @@ StartLimitIntervalSec=0
 ContainerName=homeassistant
 StopTimeout=60
 # Patched ARM64 artifact (images/homeassistant); rebuild and scan before changing this pin.
-Image=ghcr.io/jhoogstraat/homelab:homeassistant-sha-c28c5b50c87b2cb7191521a23db98592e07ca0f8@sha256:de8621bda14c1716605299b516c9e2190dd586a404ec733818e5529b025ecd75
+Image=ghcr.io/jhoogstraat/homelab:homeassistant-sha-837856e653e8150e68b834f51b43a7b7ab55c26c@sha256:971809ee35a5b9e661abed60379ae56829982dd9871aed44158d1987227614c6
 
 Network=host
 
