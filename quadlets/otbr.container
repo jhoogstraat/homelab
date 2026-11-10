@@ -5,7 +5,7 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=otbr
 # Patched ARM64 artifact; rebuild and scan before changing this pin.
-Image=ghcr.io/jhoogstraat/homelab:otbr-sha-4a4e246c27a6b099ed7763ad1b5a373925a33aaa@sha256:c594d7f7ae4d502db2dbfb780c46ffc26441ad0eaec44cfaf90db5331c794bae
+Image=ghcr.io/jhoogstraat/homelab:otbr-sha-c097dcfe839b565b5b05f0ccb11ef0c1cbd2e600@sha256:12ba8abe60068522472cdb58947ef869d3965cd5d9f720d9ef8563a2d5eb352c
 
 Network=host
 
