@@ -1,5 +1,5 @@
 # Rebuild the verified SOPS release with dependency security fixes.
-FROM docker.io/library/golang:1.27.3-alpine@sha256:12c7838918df713b810a0576d68d06ab17971b730a0e8855b731d9ddd07094d8 AS sops
+FROM docker.io/library/golang:1.27.4-alpine@sha256:e8e55b7bf3a0faeba720580aa7e4acc04d516e424a5b275eee4f55e98f28dffd AS sops
 WORKDIR /src
 RUN apk add --no-cache git \
     && git clone --depth 1 --branch v3.13.3 https://github.com/getsops/sops.git . \
