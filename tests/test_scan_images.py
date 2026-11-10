@@ -1,5 +1,6 @@
 """One scan policy for every Quadlet image: block only what a change makes worse."""
 from contextlib import redirect_stdout
+import datetime
 from io import StringIO
 import json
 import os
@@ -71,6 +72,18 @@ class ImageSecurityPolicyTests(unittest.TestCase):
         weekly = ("--fail-on-fixable",)
         self.assertTrue(self.scan(OLD, baseline=OLD, findings={OLD: [CVE2]}, args=weekly)[0])
         self.assertFalse(self.scan(OLD, baseline=OLD, findings={OLD: [CVE1]}, args=weekly)[0])
+
+    def test_accepted_fixable_critical_passes_until_it_expires(self):
+        image = "ghcr.io/jhoogstraat/homelab:papra-sha-" + "c" * 40 + "@sha256:" + "d" * 64
+        cve = {"VulnerabilityID": "CVE-2026-114607", "Severity": "CRITICAL", "FixedVersion": "1.7.7"}
+        nightly = ("--fail-on-fixable",)
+        blocked, records = self.scan(image, baseline=image, findings={image: [cve]}, args=nightly)
+        self.assertFalse(blocked)
+        self.assertEqual((records[0]["fixable"], records[0]["accepted"]), ([], ["CVE-2026-114607"]))
+        self.assertTrue(self.scan(image, findings={image: [cve]})[0])  # new findings still block
+        later = type("date", (datetime.date,), {"today": classmethod(lambda cls: datetime.date(2027, 1, 1))})
+        with patch("datetime.date", later):
+            self.assertTrue(self.scan(image, baseline=image, findings={image: [cve]}, args=nightly)[0])
 
     def test_scan_errors_and_unpinned_images_block(self):
         self.assertTrue(self.scan(OLD, baseline=OLD, error=True)[0])

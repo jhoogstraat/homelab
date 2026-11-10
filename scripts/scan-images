@@ -10,8 +10,10 @@ The baseline is the commit of the last successful host image build on main
 (SCAN_BASELINE overrides it). Without one, every CRITICAL finding counts as new.
 
 --fail-on-fixable (the nightly run) also fails on any CRITICAL finding that has a fix,
-deployed or not: a to-do to repin, never a gate on publication.
+deployed or not: a to-do to repin, never a gate on publication. ACCEPTED lists the only
+time-limited exceptions to that rule; each expires on its date and then counts again.
 """
+import datetime
 import json
 import os
 from pathlib import Path
@@ -24,6 +26,13 @@ PLATFORM = "linux/arm64"  # the host's architecture; Trivy pulls it remotely fro
 PINNED = r"\S+@sha256:[a-f0-9]{64}"
 FAIL_ON_FIXABLE = "--fail-on-fixable" in sys.argv[1:]
 GIT = ("git", "-c", "safe.directory=*")  # CI runs this under sudo in the runner's checkout
+# (image without tag suffix, CVE) -> last day it is accepted as fixable. Only for findings the app
+# cannot reach and that have no patch we can apply; never for new findings. Keep the issue open.
+ACCEPTED = {
+    # better-auth < 1.7.7: needs the Magic Link plugin, which Papra does not enable. 1.7 needs a
+    # schema migration Papra does not ship yet (papra-hq/papra#1216), so it cannot be swapped in. #89
+    ("ghcr.io/jhoogstraat/homelab:papra", "CVE-2026-114607"): datetime.date(2026, 12, 31),
+}
 
 
 def output(*args):
@@ -48,6 +57,12 @@ def scan(image):
     if result.returncode:
         return None, result.stderr
     return json.loads(result.stdout), None
+
+
+def accepted(image, vulnerability):
+    name = re.sub(r"-sha-[0-9a-f]+$", "", image.split("@")[0])
+    until = ACCEPTED.get((name, vulnerability))
+    return until is not None and datetime.date.today() <= until
 
 
 def critical(report, fixable=False):
@@ -96,15 +111,16 @@ for path, image in current.items():
             continue
         known = critical(previous_report)
     blocking = sorted(critical(report) - known)
-    fixable = sorted(critical(report, fixable=True))
+    fixable = sorted(v for v in critical(report, fixable=True) if not accepted(image, v))
+    accepted_fixable = sorted(critical(report, fixable=True) - set(fixable))
     findings = [v for target in report.get("Results", []) for v in target.get("Vulnerabilities") or []]
     high = sum(v["Severity"] == "HIGH" for v in findings)
     reports.append({"image": image, "baseline": previous, "blocking": blocking,
-                    "fixable": fixable, "report": report})
+                    "fixable": fixable, "accepted": accepted_fixable, "report": report})
     status = ("BLOCKED" if blocking else "repin: fix available" if fixable and FAIL_ON_FIXABLE
               else "ok" if previous == image else "changed, ok")
     rows.append(f"| `{name}` | {status} | {len(critical(report))} ({len(blocking)} new, "
-                f"{len(fixable)} fixable) | {high} |")
+                f"{len(fixable)} fixable{f', {len(accepted_fixable)} accepted' if accepted_fixable else ''}) | {high} |")
     failed |= bool(blocking) or (FAIL_ON_FIXABLE and bool(fixable))
     print(f"{name}: {len(critical(report))} critical ({len(blocking)} new), {high} high", flush=True)
 

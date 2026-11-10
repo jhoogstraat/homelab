@@ -58,7 +58,7 @@ You are done when the newest run of every workflow on `main` passes, or when you
 
 | Symptom | Meaning | Action |
 | --- | --- | --- |
-| Image security red, nightly or manual | A running image has a fixable CRITICAL finding. Blocks nothing | Repin, or patch in `images/<app>/` ([patched application images](patched-application-images.md)). If the fix needs an upstream change, report that and leave the issue open |
+| Image security red, nightly or manual | A running image has a fixable CRITICAL finding. Blocks nothing | Repin, or patch in `images/<app>/` ([patched application images](patched-application-images.md)). If the fix needs an upstream change, report that and leave the issue open. Only the owner may add a dated exception (`ACCEPTED` in `scripts/scan-images`); an expired one fails the run again |
 | Image security red on a PR | The change adds a CRITICAL finding. Blocks that PR only | Patch the image, or hold the update |
 | Build bootc Image red | No new host image; the Pi stays on the last good one | Rerun once if the log shows a registry or network error, otherwise fix the cause. A `manifest unknown` on a pinned digest means Quay deleted it, so use the tag |
 | Build patched application images red | That app keeps its old pin | Fix `images/<app>/`, or what `images/verify.sh` asserts for it |
