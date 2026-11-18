@@ -6,7 +6,7 @@ StartLimitIntervalSec=0
 
 [Container]
 ContainerName=vaultwarden
-Image=ghcr.io/jhoogstraat/homelab:vaultwarden-sha-3ed50301f669658122db15ff78b6e5e71f496c39@sha256:001abe061ed9c10a666833afc36089e144782dfa1cdac05f0142fd9da5227c00
+Image=ghcr.io/jhoogstraat/homelab:vaultwarden-sha-f4232c9d7d4e6d14a50e6f2200b4e0b88b115921@sha256:e667fba4d84f5dc71e3fbae6a30c58ba2b8c3e954a629e1ae8026aaa2f7abc0d
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.7
