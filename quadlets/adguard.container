@@ -5,7 +5,7 @@ StartLimitIntervalSec=0
 [Container]
 ContainerName=adguard
 # renovate: datasource=docker depName=docker.io/adguard/adguardhome
-Image=docker.io/adguard/adguardhome:latest@sha256:e2e1b48c832f7705be915873f95de0d5114de573736441d7f2923a8a6293027c
+Image=docker.io/adguard/adguardhome:latest@sha256:f00a586f0d1caa74f149340bfb225014960310488ffa838406b89256900a96c2
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.2
