@@ -1,4 +1,4 @@
-# Cloudflare must send vault., trek. and brain.hoogstraat.net to http://traefik:8080.
+# Cloudflare must send vault., trek., brain. and kitchen.hoogstraat.net to http://traefik:8080.
 # This entrypoint has no published host port and exposes only these applications.
 http:
   routers:
@@ -6,6 +6,10 @@ http:
       rule: Host(`brain.hoogstraat.net`)
       entryPoints: [tunnel]
       service: second-brain
+    public-kitchen:
+      rule: Host(`kitchen.hoogstraat.net`)
+      entryPoints: [tunnel]
+      service: kitchen
     public-trek:
       rule: Host(`trek.hoogstraat.net`)
       entryPoints: [tunnel]
@@ -37,6 +41,10 @@ http:
       loadBalancer:
         servers:
           - url: http://second-brain:8000
+    kitchen:
+      loadBalancer:
+        servers:
+          - url: http://kitchen:8000
     trek:
       loadBalancer:
         servers:

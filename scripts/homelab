@@ -29,6 +29,7 @@ SECRET_KEYS = {
     "beszel": ("TOKEN", "KEY"),
     "cloudflared": ("TUNNEL_TOKEN",),
     "depanator": ("TELEGRAM_BOT_TOKEN",),
+    "kitchen": ("KITCHEN_TOKEN",),
     "homepage": ("SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET", "SPOTIFY_REFRESH_TOKEN",
                  "BESZEL_PB_EMAIL", "BESZEL_PB_PASSWORD"),
     "papra": ("AUTH_SECRET", "DATABASE_AUTH_TOKEN", "DATABASE_ENCRYPTION_KEY"),
@@ -37,7 +38,7 @@ SECRET_KEYS = {
 }
 SECRET_OUTPUTS = {"cloudflared": ("tunnel-token",), "vaultwarden": ("admin-token",),
                   "beszel-agent": ("token", "key"), "glance": ("adguard-username", "adguard-password"),
-                  "depanator": ("telegram-bot-token",),
+                  "depanator": ("telegram-bot-token",), "kitchen": ("kitchen-token",),
                   "second-brain": ("github-client-id", "github-client-secret", "jwt-signing-key", "brain-token"),
                   "papra": ("env.json", "load-env.mjs"), "homepage": ("env.json", "load-env.mjs")}
 
@@ -189,6 +190,7 @@ def stage_secrets():
             "glance": {"adguard-username": initial["ADGUARD_USERNAME"],
                        "adguard-password": initial["ADGUARD_PASSWORD"]},
             "depanator": {"telegram-bot-token": values["depanator"]["TELEGRAM_BOT_TOKEN"]},
+            "kitchen": {"kitchen-token": values["kitchen"]["KITCHEN_TOKEN"]},
             "second-brain": {name.lower().replace("_", "-"): value
                              for name, value in values["second-brain"].items()},
         }
