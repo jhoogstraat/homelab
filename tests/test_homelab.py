@@ -341,7 +341,9 @@ class LifecycleTests(unittest.TestCase):
         with patch.object(homelab, "command", update), patch.object(homelab.subprocess, "run", self.active), patch.object(homelab, "Path", path):
             homelab.update_host()
         pull = self.calls.index(("podman", "pull", "--quiet", "example@sha256:new"))
-        self.assertLess(self.calls.index(("bootc", "upgrade")), pull)
+        upgrade = self.calls.index(("systemd-run", "--wait", "--pipe", "--collect",
+                                    "--service-type=oneshot", "/usr/bin/bootc", "upgrade"))
+        self.assertLess(upgrade, pull)
         self.assertEqual(self.calls[-1], ("systemctl", "reboot"))
 
     def test_host_update_without_staged_image_does_not_reboot(self):

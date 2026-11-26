@@ -518,7 +518,10 @@ def update_host():
     if not update_available():
         return
     backup()
-    command("bootc", "upgrade")
+    # Run bootc directly under systemd (init_t) so install_exec_t transitions to
+    # install_t and keeps CAP_MAC_ADMIN for new SELinux file contexts.
+    command("systemd-run", "--wait", "--pipe", "--collect", "--service-type=oneshot",
+            "/usr/bin/bootc", "upgrade")
     images = staged_images()
     if images is None:
         return
