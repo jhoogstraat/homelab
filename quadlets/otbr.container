@@ -4,7 +4,7 @@ Description=OpenThread Border Router
 [Container]
 ContainerName=otbr
 # Patched ARM64 artifact; rebuild and scan before changing this pin.
-Image=ghcr.io/jhoogstraat/homelab:otbr-sha-617ac15da99d4d90855b88c419eb06e40796bb65@sha256:d757eede29aeae736a5f808d0de568aa64a1f440a0344c50af82ea450ca6d3ed
+Image=ghcr.io/jhoogstraat/homelab:otbr-sha-06e76b7a018fb5ba9dfb514aab3cb10a6ff93d3c@sha256:fb609b4572d46b071a61ec0b6cf0a57a5f83a6508ae62c986448b6878a87d82d
 
 Network=host
 
