@@ -25,7 +25,7 @@ def image():
 def status():
     mapping = "Z,idmap=uids=@0-1000-1;gids=@0-1000-1"
     homelab.command("podman", "run", "--rm", "--pull=never", "--userns=auto", "--user=1000:1000",
-                    "-v", f"{APP / 'config'}:/config:ro,{mapping}", "-v", f"{APP / 'data'}:/data:{mapping}",
+                    "-v", f"{APP / 'data'}:/data:{mapping}",
                     image(), "status")
 
 
@@ -39,7 +39,7 @@ def main():
         if subprocess.run(["systemctl", "is-active", "--quiet", "depanator.service"],
                           check=False).returncode == 0:
             raise RuntimeError("Stop depanator.service before running maintenance")
-        for path in (APP, APP / "config", APP / "data"):
+        for path in (APP, APP / "data"):
             path.mkdir(parents=True, mode=0o700, exist_ok=True)
             path.chmod(0o700)
         if args.action == "restore-gate":

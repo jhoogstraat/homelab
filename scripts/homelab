@@ -4,12 +4,10 @@
 import argparse
 import contextlib
 import fcntl
-import hashlib
 import json
 import os
 from pathlib import Path
 import re
-import shutil
 import stat
 import subprocess
 import sys
@@ -24,6 +22,7 @@ SOURCE = Path(os.environ.get("HOMELAB_SOURCE", "/usr/share/homelab"))
 QUADLETS = Path(os.environ.get("HOMELAB_QUADLETS", "/usr/share/containers/systemd"))
 DEVICE_QUADLETS = Path(os.environ.get("HOMELAB_DEVICE_QUADLETS", "/etc/containers/systemd"))
 RUN = Path(os.environ.get("HOMELAB_RUN", "/run/homelab"))
+STATELESS_UNITS = frozenset({"cloudflared.service", "socket-proxy.service"})
 SECRET_KEYS = {
     "adguard": ("ADGUARD_USERNAME", "ADGUARD_PASSWORD", "ADGUARD_PASSWORD_HASH"),
     "beszel": ("TOKEN", "KEY"),
@@ -36,11 +35,6 @@ SECRET_KEYS = {
     "second-brain": ("GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "JWT_SIGNING_KEY", "BRAIN_TOKEN"),
     "vaultwarden": ("ADMIN_TOKEN",),
 }
-SECRET_OUTPUTS = {"cloudflared": ("tunnel-token",), "vaultwarden": ("admin-token",),
-                  "beszel-agent": ("token", "key"), "glance": ("adguard-username", "adguard-password"),
-                  "depanator": ("telegram-bot-token",), "kitchen": ("kitchen-token",),
-                  "second-brain": ("github-client-id", "github-client-secret", "jwt-signing-key", "brain-token"),
-                  "papra": ("env.json", "load-env.mjs"), "homepage": ("env.json", "load-env.mjs")}
 
 
 def command(*args, **kwargs):
@@ -146,18 +140,8 @@ def stage_secrets():
     encrypted = sorted((SOURCE / "secrets").glob("*.enc.env"))
     if {path.name for path in encrypted} != {f"{name}.enc.env" for name in SECRET_KEYS}:
         raise RuntimeError("Encrypted secret inventory does not match the application allowlist")
-    loader = (SOURCE / "secret-loader.mjs").read_bytes()
-    digest = hashlib.sha256(b"homelab-secret-delivery-v1\0" + loader)
-    for path in encrypted:
-        digest.update(path.name.encode() + b"\0" + path.read_bytes() + b"\0")
+    loader = (SOURCE / "secret-loader.mjs").read_text()
     store = secret_store()
-    generation = store / "generations" / digest.hexdigest()
-    if generation.exists():
-        for app, names in SECRET_OUTPUTS.items():
-            for name in names:
-                private_file(generation / app / name)
-        private_file(generation / "adguard-seed.json")
-        return generation
     with tempfile.TemporaryDirectory(dir=store / "generations") as directory:
         staged = Path(directory)
         values = {}
@@ -195,7 +179,7 @@ def stage_secrets():
                              for name, value in values["second-brain"].items()},
         }
         for app in ("papra", "homepage"):
-            exports[app] = {"env.json": json.dumps(values[app]), "load-env.mjs": loader.decode()}
+            exports[app] = {"env.json": json.dumps(values[app]), "load-env.mjs": loader}
         for app, files in exports.items():
             (staged / app).mkdir(mode=0o700)
             for name, value in files.items():
@@ -203,6 +187,7 @@ def stage_secrets():
         atomic_file(staged / "adguard-seed.json", json.dumps({
             name: initial[name] for name in ("ADGUARD_USERNAME", "ADGUARD_PASSWORD_HASH")
         }).encode())
+        generation = Path(f"{directory}.ready")
         staged.rename(generation)
         sync_directory(generation.parent)
     return generation
@@ -247,47 +232,8 @@ def prepare():
         for name in ("ADGUARD_USERNAME", "ADGUARD_PASSWORD_HASH"):
             content = content.replace("${" + name + "}", json.dumps(initial[name]))
         atomic_file(adguard, content.encode())
+    (generation / "adguard-seed.json").unlink(missing_ok=True)
     select_secrets(generation)
-
-
-def prune_secrets(previous):
-    store = secret_store()
-    keep = {(store / "current").resolve(), previous.resolve()}
-    ids = command("podman", "ps", "--all", "--format", "{{.ID}}", stdout=subprocess.PIPE).stdout.decode().split()
-    if ids:
-        mounts = command("podman", "inspect", "--format", "{{json .Mounts}}", *ids,
-                         stdout=subprocess.PIPE).stdout.decode().splitlines()
-        for line in mounts:
-            for mount in json.loads(line):
-                source = Path(mount.get("Source", "")).resolve()
-                for generation in (store / "generations").iterdir():
-                    if source == generation.resolve() or generation.resolve() in source.parents:
-                        keep.add(generation.resolve())
-    for generation in (store / "generations").iterdir():
-        if generation.resolve() not in keep and re.fullmatch(r"[0-9a-f]{64}", generation.name):
-            shutil.rmtree(generation)
-
-
-def rotate_secrets():
-    if paused_units() is not None:
-        raise RuntimeError("A previous maintenance operation needs recovery: run homelab resume")
-    previous = (secret_store() / "current").resolve(strict=True)
-    candidate = stage_secrets().resolve()
-    if candidate == previous:
-        return
-    try:
-        pause()
-        select_secrets(candidate)
-        resume()
-    except (RuntimeError, OSError, subprocess.CalledProcessError):
-        select_secrets(previous)
-        names = paused_units()
-        if names:
-            # Some candidate services may already be running. Recreate them all.
-            command("systemctl", "stop", *names)
-        resume()
-        raise
-    prune_secrets(previous)
 
 
 def units():
@@ -373,7 +319,11 @@ def unit_ready(name):
             if entries.exists():
                 for entry in json.loads(entries.read_text()).get("data", {}).get("entries", []):
                     if entry.get("domain") == "matter":
-                        url = entry.get("data", {}).get("url", url)
+                        candidate = entry.get("data", {}).get("url", "")
+                        if isinstance(candidate, str) and re.fullmatch(
+                            r"ws://(127\.0\.0\.1|localhost)(:\d+)?(/.*)?", candidate
+                        ):
+                            url = candidate
                         break
             command("podman", "exec", "matter", "node", "-e", MATTER_PROBE, url,
                     timeout=10, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -411,11 +361,17 @@ def resume():
         clear_paused_units()
 
 
-def pause():
+def active_units(include_stateless=True):
+    return [name for name in units()
+            if (include_stateless or name not in STATELESS_UNITS)
+            and subprocess.run(["systemctl", "is-active", "--quiet", name], check=False).returncode == 0]
+
+
+def pause(active=None):
     if paused_units() is not None:
         raise RuntimeError("A previous backup needs recovery: run homelab resume")
-    active = [name for name in units() if subprocess.run(
-        ["systemctl", "is-active", "--quiet", name], check=False).returncode == 0]
+    if active is None:
+        active = active_units(include_stateless=False)
     # Persist before stopping: recovery must survive both SIGKILL and reboot.
     save_paused_units(active)
     if active:
@@ -445,16 +401,16 @@ def capture_recovery(active):
     atomic_file(recovery / "bootc.json", status.stdout)
     # No container environment/credentials are emitted into the manifest.
     running = command("podman", "ps", "--format", "json", stdout=subprocess.PIPE)
-    records = []
-    for container in json.loads(running.stdout):
-        # Pod infra containers have no application image to restore.
-        if container.get("IsInfra"):
-            continue
-        image = command("podman", "image", "inspect", container["ImageID"],
-                        stdout=subprocess.PIPE)
-        details = json.loads(image.stdout)[0]
-        records.append({"names": container["Names"], "image": container["Image"],
-                        "digests": details.get("RepoDigests", []), "id": details["Id"]})
+    containers = [c for c in json.loads(running.stdout) if not c.get("IsInfra")]
+    image_ids = list(dict.fromkeys(c["ImageID"] for c in containers))
+    details_by_id = {}
+    if image_ids:
+        inspected = command("podman", "image", "inspect", *image_ids, stdout=subprocess.PIPE)
+        details_by_id = {d["Id"]: d for d in json.loads(inspected.stdout)}
+    records = [{"names": c["Names"], "image": c["Image"],
+                "digests": details_by_id[c["ImageID"]].get("RepoDigests", []),
+                "id": details_by_id[c["ImageID"]]["Id"]}
+               for c in containers]
     atomic_file(recovery / "images.json", json.dumps(records, indent=2).encode())
 
 
@@ -477,11 +433,10 @@ def backup():
     command("restic", "snapshots", "--json", stdout=subprocess.DEVNULL)
     if not (ROOT / "apps").is_dir():
         raise RuntimeError("Application storage is absent; refusing an empty backup")
-    active = [name for name in units() if subprocess.run(
-        ["systemctl", "is-active", "--quiet", name], check=False).returncode == 0]
-    capture_recovery(active)
+    all_active = active_units()
+    capture_recovery(all_active)
     try:
-        pause()
+        pause([name for name in all_active if name not in STATELESS_UNITS])
         sources = [str(ROOT / name) for name in ("apps", "credentials", "recovery")]
         # Include device identity and Bluetooth pairings needed after reinstall.
         sources.extend(device_sources())
@@ -493,6 +448,12 @@ def backup():
     # Retention happens with applications running and only after a full backup.
     command("restic", "forget", "--tag", "homelab", "--group-by", "host,tags",
             "--keep-daily", "7", "--keep-weekly", "4", "--keep-monthly", "12", "--prune")
+    if heartbeat := os.environ.get("BACKUP_HEARTBEAT_URL"):
+        try:
+            with urllib.request.urlopen(heartbeat, timeout=10):
+                pass
+        except (OSError, urllib.error.URLError) as error:
+            print(f"homelab: backup heartbeat failed: {error}", file=sys.stderr)
 
 
 def staged_images():
@@ -514,10 +475,12 @@ def update_available():
 
 
 def update_host():
-    # Runs nightly: without a new host image there is no backup, pause or reboot.
+    # Runs nightly: one cold backup, prune old unused images, then upgrade and reboot if a new host image exists.
+    backup()
+    command("podman", "image", "prune", "--all", "--force", "--filter", "until=168h",
+            stdout=subprocess.DEVNULL)
     if not update_available():
         return
-    backup()
     # Run bootc directly under systemd (init_t) so install_exec_t transitions to
     # install_t and keeps CAP_MAC_ADMIN for new SELinux file contexts.
     command("systemd-run", "--wait", "--pipe", "--collect", "--service-type=oneshot",
@@ -534,7 +497,7 @@ def update_host():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    for name in ("prepare", "rotate-secrets", "backup", "resume", "update-host"):
+    for name in ("prepare", "backup", "resume", "update-host"):
         sub.add_parser(name)
     args = parser.parse_args()
     if os.geteuid() != 0:
@@ -544,8 +507,6 @@ def main():
             resume()
         elif args.action == "prepare":
             prepare()
-        elif args.action == "rotate-secrets":
-            rotate_secrets()
         elif args.action == "backup":
             backup()
         elif args.action == "update-host":

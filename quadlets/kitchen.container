@@ -1,15 +1,12 @@
 [Unit]
 Description=Kitchen Agent MCP server (meals, shopping, pantry, household supplies)
-Wants=adguard.container
-After=adguard.container
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=kitchen
 # renovate: datasource=docker depName=ghcr.io/jhoogstraat/muskelagent
 Image=ghcr.io/jhoogstraat/muskelagent:latest@sha256:356f22d6a64169bc75048773796368da8919a8473a18c5625b29a4e6ee73dff5
 UserNS=auto
-Network=homelab.network:ip=10.90.0.18
+Network=public.network:ip=10.92.0.18
 # The image runs as `kitchen` (1000); /data holds the SQLite database (WAL) and the offer cache.
 Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
 Volume=/run/homelab/secrets/current/kitchen:/run/secrets:ro,Z,idmap=uids=@0-1000-1;gids=@0-1000-1
@@ -21,6 +18,7 @@ Tmpfs=/tmp:rw,noexec,nosuid,size=64m
 DropCapability=ALL
 NoNewPrivileges=true
 Label=traefik.enable=true
+Label=traefik.docker.network=public
 Label=traefik.http.routers.kitchen.rule=Host(`kitchen.hoogstraat.de`)
 Label=traefik.http.routers.kitchen.entrypoints=https
 Label=traefik.http.routers.kitchen.service=kitchen
@@ -28,14 +26,6 @@ Label=traefik.http.services.kitchen.loadbalancer.server.port=8000
 HealthCmd=python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"
 HealthInterval=30s
 HealthStartPeriod=30s
-Timezone=local
 
 [Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
-TimeoutStopSec=30
 MemoryMax=512M
-
-[Install]
-WantedBy=homelab.target

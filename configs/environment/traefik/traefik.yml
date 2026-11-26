@@ -7,7 +7,11 @@ log:
 
 accessLog:
   # Send logs to the journal rather than an unbounded persistent file.
-  format: common
+  # Drop RequestPath so path-prefix tokens (e.g. Kitchen MCP) are never logged.
+  format: json
+  fields:
+    names:
+      RequestPath: drop
   filters:
     statusCodes:
       - "200-299"
@@ -27,13 +31,17 @@ certificatesResolvers:
 entryPoints:
   tunnel:
     address: :8080
+    forwardedHeaders:
+      trustedIPs:
+        - "10.92.0.9/32"
     http:
+      middlewares: [tunnel-only@file, security-headers@file]
       aliasHeadersStrategy: delete
   https:
     address: :443
     asDefault: true
     http:
-      middlewares: [lan-only@file]
+      middlewares: [lan-only@file, security-headers@file]
       aliasHeadersStrategy: delete
       tls:
         certResolver: lets-encrypt-dns

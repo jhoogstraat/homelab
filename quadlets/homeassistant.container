@@ -1,6 +1,5 @@
 [Unit]
 Description=Home Assistant
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=homeassistant
@@ -12,8 +11,10 @@ Network=host
 
 User=root
 
+DropCapability=SYS_ADMIN SYS_PTRACE SYS_MODULE SYS_RAWIO SYS_BOOT MKNOD AUDIT_WRITE
 AddCapability=NET_ADMIN
 AddCapability=NET_RAW
+NoNewPrivileges=true
 
 # Required for SELinux allowing access to certain hardware devices, such as Bluetooth
 SecurityLabelType=spc_t
@@ -26,13 +27,7 @@ Label="traefik.http.routers.homeassistant.entrypoints=https"
 Label="traefik.http.services.%p.loadbalancer.server.port=8123"
 Label="subdomain=ha"
 
-Timezone=local
-
 [Service]
-Restart=on-failure
-RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
-
-[Install]
-WantedBy=homelab.target
+MemoryMax=1536M

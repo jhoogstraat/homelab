@@ -2,7 +2,6 @@
 Description=Glance
 Wants=adguard.container
 After=adguard.container
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=glance
@@ -16,16 +15,10 @@ Volume=/var/lib/homelab/apps/%p/config:/app/config:Z,idmap
 
 Volume=/run/homelab/secrets/current/glance:/run/secrets:ro,Z,idmap
 
+ReadOnly=true
+Tmpfs=/tmp:rw,noexec,nosuid,size=32m
+DropCapability=ALL
+NoNewPrivileges=true
+
 Label="traefik.enable=true"
 Label="traefik.http.routers.glance.entrypoints=https"
-
-Timezone=local
-
-[Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
-TimeoutStopSec=30
-
-[Install]
-WantedBy=homelab.target

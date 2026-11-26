@@ -2,7 +2,6 @@
 Description=Personal homepage
 Wants=adguard.container
 After=adguard.container
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=homepage
@@ -24,13 +23,6 @@ Exec=bun --preload /run/secrets/load-env.mjs dist/server/entry.mjs
 Label="traefik.enable=true"
 Label="traefik.http.routers.homepage.entrypoints=https"
 
-Timezone=local
-
 [Service]
-Restart=on-failure
-RestartSec=30
 TimeoutStartSec=60
-TimeoutStopSec=30
-
-[Install]
-WantedBy=homelab.target
+MemoryMax=512M

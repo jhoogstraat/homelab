@@ -94,6 +94,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual((self.run / "secrets/current/glance/adguard-password").read_text(), "secret")
         self.assertEqual((self.run / "secrets/current/glance/adguard-password").stat().st_mode & 0o777, 0o600)
         self.assertEqual((self.run / "secrets/current/depanator/telegram-bot-token").read_text(), "secret")
+        self.assertFalse((self.run / "secrets/current/adguard-seed.json").exists())
         self.assertFalse((self.state / "secrets").exists())
 
     def test_failed_secret_rotation_keeps_complete_previous_set(self):
@@ -178,7 +179,7 @@ class LifecycleTests(unittest.TestCase):
                 homelab.prepare()
         self.assertEqual((self.run / "secrets/current").readlink(), previous)
 
-    def test_loader_changes_build_a_fresh_generation_and_incomplete_sets_fail(self):
+    def test_loader_changes_build_a_fresh_generation_and_heal_missing_files(self):
         with patch.object(homelab, "command", self.fake_command):
             homelab.prepare()
             previous = (self.run / "secrets/current").readlink()
@@ -187,71 +188,8 @@ class LifecycleTests(unittest.TestCase):
             homelab.prepare()
             self.assertNotEqual((self.run / "secrets/current").readlink(), previous)
             (self.run / "secrets/current/homepage/env.json").unlink()
-            with self.assertRaisesRegex(RuntimeError, "credential"):
-                homelab.prepare()
-
-    def test_rotation_restarts_only_active_units_and_retains_previous(self):
-        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active):
             homelab.prepare()
-            previous = (self.run / "secrets/current").resolve()
-            (self.source / "secrets/cloudflared.enc.env").write_text("new")
-            self.calls.clear()
-            homelab.rotate_secrets()
-        self.assertNotEqual((self.run / "secrets/current").resolve(), previous)
-        self.assertTrue(previous.exists())
-        self.assertEqual([call for call in self.calls if call[:2] in (("systemctl", "stop"), ("systemctl", "start"))],
-                         [("systemctl", "stop", "glance.service"), ("systemctl", "start", "glance.service")])
-        self.assertIsNone(homelab.paused_units())
-
-    def test_failed_rotation_readiness_recreates_old_set(self):
-        with patch.object(homelab, "command", self.fake_command):
-            homelab.prepare()
-        previous = (self.run / "secrets/current").resolve()
-        (self.source / "secrets/cloudflared.enc.env").write_text("new")
-        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active), patch.object(homelab, "wait_ready", side_effect=[RuntimeError("Not ready"), None]):
-            with self.assertRaisesRegex(RuntimeError, "Not ready"):
-                homelab.rotate_secrets()
-        self.assertEqual((self.run / "secrets/current").resolve(), previous)
-        self.assertEqual(self.calls.count(("systemctl", "stop", "glance.service")), 2)
-        self.assertEqual(self.calls.count(("systemctl", "start", "glance.service")), 2)
-        self.assertIsNone(homelab.paused_units())
-
-    def test_failed_rotation_recovery_keeps_durable_intent(self):
-        with patch.object(homelab, "command", self.fake_command):
-            homelab.prepare()
-        previous = (self.run / "secrets/current").resolve()
-        (self.source / "secrets/cloudflared.enc.env").write_text("new")
-        with patch.object(homelab, "command", self.fake_command), patch.object(homelab.subprocess, "run", self.active), patch.object(homelab, "wait_ready", side_effect=RuntimeError("Not ready")):
-            with self.assertRaises(RuntimeError):
-                homelab.rotate_secrets()
-        self.assertEqual((self.run / "secrets/current").resolve(), previous)
-        self.assertEqual(homelab.paused_units(), ["glance.service"])
-
-    def test_noop_rotation_does_not_stop_apps_and_previous_intent_blocks_rotation(self):
-        with patch.object(homelab, "command", self.fake_command):
-            homelab.prepare()
-            self.calls.clear()
-            homelab.rotate_secrets()
-            self.assertFalse(any(call[:2] == ("systemctl", "stop") for call in self.calls))
-            homelab.save_paused_units(["glance.service"])
-            with self.assertRaisesRegex(RuntimeError, "previous maintenance"):
-                homelab.rotate_secrets()
-
-    def test_pruning_keeps_old_generations_with_container_mounts(self):
-        with patch.object(homelab, "command", self.fake_command):
-            homelab.prepare()
-        generations = self.run / "secrets/generations"
-        old, unused = generations / ("a" * 64), generations / ("b" * 64)
-        old.mkdir()
-        unused.mkdir()
-        def containers(*args, **kwargs):
-            if args[:2] == ("podman", "ps"):
-                return subprocess.CompletedProcess(args, 0, stdout=b"old-container\n")
-            return subprocess.CompletedProcess(args, 0, stdout=json.dumps([{"Source": str(old / "papra")}]).encode())
-        with patch.object(homelab, "command", containers):
-            homelab.prune_secrets((self.run / "secrets/current").resolve())
-        self.assertTrue(old.exists())
-        self.assertFalse(unused.exists())
+            self.assertTrue((self.run / "secrets/current/homepage/env.json").is_file())
 
     def test_exposed_backup_inputs_fail_before_restic_or_service_stop(self):
         for name in ("restic-password", "s3-credentials", "backup.env"):
@@ -358,7 +296,7 @@ class LifecycleTests(unittest.TestCase):
             homelab.update_host()
         self.assertNotIn(("systemctl", "reboot"), self.calls)
 
-    def test_host_update_without_new_image_does_not_interrupt_apps(self):
+    def test_host_update_without_new_image_backs_up_without_upgrading_or_rebooting(self):
         def update(*args, **kwargs):
             result = self.fake_command(*args, **kwargs)
             if args[:2] == ("bootc", "status"):
@@ -368,7 +306,32 @@ class LifecycleTests(unittest.TestCase):
             return result
         with patch.object(homelab, "command", update), patch.object(homelab.subprocess, "run", self.active):
             homelab.update_host()
-        self.assertEqual(self.calls, [("bootc", "upgrade", "--check"), ("bootc", "status", "--json")])
+        self.assertTrue(any(call[:2] == ("restic", "backup") for call in self.calls))
+        self.assertIn(("podman", "image", "prune", "--all", "--force", "--filter", "until=168h"), self.calls)
+        self.assertFalse(any(call[0] == "systemd-run" for call in self.calls))
+        self.assertNotIn(("systemctl", "reboot"), self.calls)
+
+    def test_backup_skips_stateless_units_and_pings_optional_heartbeat(self):
+        (self.quadlets / "cloudflared.container").write_text("[Container]\n")
+        (self.quadlets / "socket-proxy.container").write_text("[Container]\n")
+        pinged = []
+        class DummyResponse:
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+        def fake_urlopen(url, timeout=10):
+            pinged.append(url)
+            return DummyResponse()
+        active_all = lambda args, **kwargs: subprocess.CompletedProcess(args, 0)
+        with patch.dict(os.environ, BACKUP_HEARTBEAT_URL="https://hc-ping.com/test"), \
+             patch.object(homelab, "command", self.fake_command), \
+             patch.object(homelab.subprocess, "run", active_all), \
+             patch.object(homelab.urllib.request, "urlopen", fake_urlopen):
+            homelab.backup()
+        stop_call = next(call for call in self.calls if call[:2] == ("systemctl", "stop"))
+        self.assertIn("glance.service", stop_call)
+        self.assertNotIn("cloudflared.service", stop_call)
+        self.assertNotIn("socket-proxy.service", stop_call)
+        self.assertEqual(pinged, ["https://hc-ping.com/test"])
 
     def test_recovery_after_killed_backup_is_repeatable(self):
         homelab.save_paused_units(["glance.service"])
@@ -427,6 +390,17 @@ class LifecycleTests(unittest.TestCase):
             self.assertFalse(homelab.unit_ready("otbr.service"))
         with patch.object(homelab, "unit_ready", side_effect=[False, True]), patch.object(homelab.time, "sleep"):
             homelab.wait_ready(["otbr.service"])
+
+    def test_matter_probe_rejects_non_loopback_url_from_ha_storage(self):
+        storage = self.state / "apps/homeassistant/config/.storage"
+        storage.mkdir(parents=True)
+        (storage / "core.config_entries").write_text(json.dumps({
+            "data": {"entries": [{"domain": "matter", "data": {"url": "ws://evil.example:5580/ws"}}]}
+        }))
+        with patch.object(homelab.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)), \
+             patch.object(homelab, "command", self.fake_command):
+            self.assertTrue(homelab.unit_ready("matter.service"))
+        self.assertEqual(self.calls[-1][-1], "ws://127.0.0.1:5580/ws")
 
     def test_cold_start_can_exceed_two_minutes(self):
         with patch.object(homelab, "unit_ready", side_effect=[False, False, True]), patch.object(homelab.time, "monotonic", side_effect=[0, 125, 250]), patch.object(homelab.time, "sleep"):

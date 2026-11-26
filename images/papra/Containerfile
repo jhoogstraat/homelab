@@ -8,10 +8,12 @@ RUN git clone https://github.com/evanw/esbuild.git . \
     && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/0.25.10 ./cmd/esbuild
 FROM ghcr.io/papra-hq/papra:latest-rootless@sha256:d1f596a35332ad04d8a69d88a5e19bc82acd47f2bc2fe687dd2145b1ef5a8b19
 USER root
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
 COPY images/patch-node.py /tmp/patch-node.py
-RUN python3 /tmp/patch-node.py && rm /tmp/patch-node.py
-COPY --from=esbuild /out/ /tmp/esbuild/
 COPY images/patch-esbuild.py /tmp/patch-esbuild.py
-RUN python3 /tmp/patch-esbuild.py && rm -rf /tmp/esbuild /tmp/patch-esbuild.py
+COPY --from=esbuild /out/ /tmp/esbuild/
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends python3 \
+    && python3 /tmp/patch-node.py \
+    && python3 /tmp/patch-esbuild.py \
+    && apt-get purge -y --auto-remove python3 \
+    && rm -rf /var/lib/apt/lists/* /tmp/esbuild /tmp/patch-node.py /tmp/patch-esbuild.py
 USER nonroot

@@ -27,9 +27,9 @@ change only records a baseline; later arrivals become review candidates.
   `TELEGRAM_BOT_TOKEN_FILE`.
 - Idmapped mounts map host UID/GID 0 to the image UID/GID 1000. Keep the app
   tree root-owned and private.
-- Public Mini App: `https://trek.hoogstraat.net/depanator/connect`, a dedicated
-  Traefik router for `/depanator/` on the tunnel entrypoint. Private LAN
-  endpoint: `https://depanator.hoogstraat.de/connect`. No host port.
+- Public Mini App: `https://depanator.hoogstraat.net/connect`, routed through
+  Traefik's `tunnel` entrypoint in `public-routes.yml`. Private LAN endpoint:
+  `https://depanator.hoogstraat.de/connect`. No host port.
 
 The connect page is static; connection actions require fresh Telegram-signed
 data from the paired owner. IS24 credentials are forwarded once and not stored.

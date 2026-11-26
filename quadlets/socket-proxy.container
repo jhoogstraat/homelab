@@ -2,7 +2,6 @@
 Description=Restricted Podman discovery and monitoring API
 Requires=podman.socket
 After=podman.socket
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=socket-proxy
@@ -18,12 +17,3 @@ ReadOnly=true
 User=root
 Volume=/var/lib/homelab/environment/%p/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
 Volume=%t/podman/podman.sock:/var/run/podman.sock:ro
-
-[Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
-TimeoutStopSec=30
-
-[Install]
-WantedBy=homelab.target

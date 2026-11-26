@@ -1,15 +1,12 @@
 [Unit]
 Description=TREK travel planner
-Wants=adguard.container
-After=adguard.container
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=trek
 # Patched ARM64 artifact (images/trek); rebuild and scan before changing this pin.
 Image=ghcr.io/jhoogstraat/homelab:trek-sha-617ac15da99d4d90855b88c419eb06e40796bb65@sha256:bfc56cfc67b0d06cd722d7259233173ffeeb3f89c1c3c11b70352699a1c9fc32
 UserNS=auto
-Network=homelab.network:ip=10.90.0.15
+Network=public.network:ip=10.92.0.15
 Volume=/var/lib/homelab/apps/%p/data:/app/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
 Volume=/var/lib/homelab/apps/%p/data/uploads:/app/uploads:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
 Environment=NODE_ENV=production
@@ -19,8 +16,6 @@ Environment=ALLOWED_ORIGINS=https://trek.hoogstraat.net
 Environment=FORCE_HTTPS=true
 Environment=TRUST_PROXY=1
 Environment=TZ=Europe/Berlin
-# Document sync reaches Papra at http://papra:1221; TREK's SSRF guard blocks private IPs otherwise.
-Environment=ALLOW_INTERNAL_NETWORK=true
 # Bootstrap credentials and optional provider keys belong to device-owned config.
 EnvironmentFile=/var/lib/homelab/apps/%p/config/app.env
 ReadOnly=true
@@ -33,13 +28,7 @@ HealthInterval=30s
 HealthTimeout=10s
 HealthRetries=3
 HealthStartPeriod=60s
-Timezone=local
 
 [Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
 TimeoutStopSec=60
-
-[Install]
-WantedBy=homelab.target
+MemoryMax=768M

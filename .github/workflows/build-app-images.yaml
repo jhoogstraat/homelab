@@ -12,14 +12,15 @@ on:
     paths: [images/**, .github/workflows/build-app-images.yaml]
 permissions:
   contents: read
-  packages: write
-  pull-requests: read
 jobs:
   apps:
     # Scheduled runs rebuild only apps whose deployed image has OS package updates pending
     # (or can't be checked); pull requests build and verify the apps they change, unpublished;
     # push and manual runs rebuild every app.
     runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       apps: ${{ steps.list.outputs.apps }}
     steps:
@@ -52,6 +53,9 @@ jobs:
     if: needs.apps.outputs.apps != '[]'
     # Native ARM64 builds; emulating ARM64 on x64 runners is many times slower.
     runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -116,6 +120,4 @@ jobs:
           git push -f origin "$branch"
           gh pr create --base main --head "$branch" --title "chore: pin patched application images from ${COMMIT_SHA::7}" \
             --body "Pins the images published by ${GITHUB_SERVER_URL}/${REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. Merged automatically once CI passes."
-          sleep 60  # let the PR's checks register
-          gh pr checks "$branch" --watch --fail-fast
-          gh pr merge "$branch" --squash --delete-branch
+          gh pr merge "$branch" --auto --squash --delete-branch

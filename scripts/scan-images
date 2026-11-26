@@ -92,6 +92,13 @@ for path, image in current.items():
         rows.append(f"| `{image}` | unpinned | | |")
         failed = True
         continue
+    previous = baseline.get(path)
+    if previous == image and not FAIL_ON_FIXABLE:
+        reports.append({"image": image, "baseline": previous, "blocking": [],
+                        "fixable": [], "accepted": [], "skipped": True})
+        rows.append(f"| `{name}` | ok (unchanged) | - | - |")
+        print(f"{name}: unchanged, skipped", flush=True)
+        continue
     report, error = scan(image)
     if error:
         reports.append({"image": image, "error": error})
@@ -99,7 +106,6 @@ for path, image in current.items():
         failed = True
         continue
     known = set()
-    previous = baseline.get(path)
     if previous == image:
         known = critical(report)  # already deployed: nothing here makes the host worse
     elif previous and re.fullmatch(PINNED, previous):

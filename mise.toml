@@ -1,3 +1,2 @@
 [tools]
 sops = "3.13.3"
-yamllint = "1.38.0"

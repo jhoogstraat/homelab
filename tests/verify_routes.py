@@ -20,7 +20,7 @@ backend, proxy = prefix + "-backend", prefix + "-proxy"
 cases = [("vault.hoogstraat.net", path, status) for path, status in [
     ("/", 200), ("/api/config", 200), ("/identity/connect/token", 200),
     ("/notifications/hub", 200), ("/admin", 403), ("/admin/", 403),
-    ("/admin/config", 403), ("/%61dmin", 403), ("/admin%2Fconfig", 403),
+    ("/ADMIN", 403), ("/admin/config", 403), ("/%61dmin", 403), ("/admin%2Fconfig", 403),
 ]] + [("adguard.hoogstraat.net", "/", 404), ("ha.hoogstraat.de", "/", 404)]
 probe = """
 import http.client,json,time

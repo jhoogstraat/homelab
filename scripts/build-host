@@ -5,7 +5,6 @@ set -xeuo pipefail
 cat > /usr/lib/sysusers.d/homelab-users.conf <<-'EOT'
 u jh 1000 "Joshua" /var/empty /bin/zsh
 m jh wheel
-u cockpit 4000 "Rootless unprivileged peasant with password to login to cockpit" /var/empty /bin/bash
 u containers - "Podman user namespace allocation" /var/empty /usr/sbin/nologin
 EOT
 
@@ -22,7 +21,7 @@ usermod --lock root
 install -d -m 0755 /usr/share/homelab/ssh
 printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/wheel-nopasswd
 chmod 0440 /etc/sudoers.d/wheel-nopasswd
-rm -rf /var/home/jh /var/home/cockpit /tmp/* /var/tmp/*
+rm -rf /var/home/jh
 
 install -d -m 0755 /etc/ssh/sshd_config.d
 cat > /etc/ssh/sshd_config.d/30-homelab.conf <<-'EOT'
@@ -30,6 +29,7 @@ PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin no
 PubkeyAuthentication yes
+AllowUsers jh
 Match User jh
     AuthorizedKeysFile /usr/share/homelab/ssh/jh.keys
 EOT
@@ -38,13 +38,7 @@ echo 'pi1.local' > /etc/hostname
 echo 'LANG=C.UTF-8' > /etc/locale.conf
 echo 'KEYMAP=us' > /etc/vconsole.conf
 ln -snf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
-install -d -m 0755 /etc/containers/registries.conf.d /etc/systemd/resolved.conf.d
-
-cat > /etc/containers/registries.conf.d/local_registry.conf <<-'EOT'
-[[registry]]
-location = "localhost:5000"
-insecure = true
-EOT
+install -d -m 0755 /etc/systemd/resolved.conf.d
 
 cat > /etc/systemd/resolved.conf.d/custom-dns.conf <<-'EOT'
 [Resolve]
@@ -72,28 +66,34 @@ d /var/lib/homelab 0755 root root -
 d /var/lib/homelab/credentials 0700 root root -
 d /var/lib/homelab/maintenance 0700 root root -
 d /var/cache/restic 0700 root root -
-d /var/lib/PackageKit 0755 root root -
 d /var/lib/bluetooth 0700 root root -
 d /var/lib/bluetooth/mesh 0755 root root -
-d /var/lib/iscsi 0755 root root -
-d /var/lib/iscsi/ifaces 0755 root root -
-d /var/lib/iscsi/isns 0755 root root -
-d /var/lib/iscsi/nodes 0755 root root -
-d /var/lib/iscsi/send_targets 0755 root root -
-d /var/lib/iscsi/slp 0755 root root -
-d /var/lib/iscsi/static 0755 root root -
 EOT
 
-systemctl enable chrony-wait.service bluetooth.service cockpit.socket firewalld.service NetworkManager-wait-online.service podman.socket systemd-resolved.service homelab.target homelab-recover.service homelab-backup.timer bootc-fetch-apply-updates.timer
-firewall-offline-cmd --zone=public --add-service=cockpit
+systemctl enable chrony-wait.service bluetooth.service firewalld.service NetworkManager-wait-online.service podman.socket systemd-resolved.service homelab.target homelab-recover.service bootc-fetch-apply-updates.timer
 firewall-offline-cmd --zone=public --add-service=https
 firewall-offline-cmd --zone=public --add-service=dns
-# Explicit membership lets firewalld forward LAN traffic to the Thread mesh.
-firewall-offline-cmd --zone=public --add-interface=wpan0
 firewall-offline-cmd --zone=public --add-port=21063-21064/tcp
+# Isolate Thread mesh in its own zone (no SSH/HTTPS/DNS from wpan0) while allowing LAN->Thread forwarding.
+firewall-offline-cmd --new-zone=thread
+firewall-offline-cmd --zone=thread --set-target=DROP
+firewall-offline-cmd --zone=thread --add-interface=wpan0
+firewall-offline-cmd --new-policy=lan-to-thread
+firewall-offline-cmd --policy=lan-to-thread --add-ingress-zone=public
+firewall-offline-cmd --policy=lan-to-thread --add-egress-zone=thread
+firewall-offline-cmd --policy=lan-to-thread --set-target=ACCEPT
+# Prevent public DMZ containers (10.92.0.0/24) from reaching host-networked smart-home ports.
+firewall-offline-cmd --new-policy=deny-public-containers-host
+firewall-offline-cmd --policy=deny-public-containers-host --set-priority=-10
+firewall-offline-cmd --policy=deny-public-containers-host --add-ingress-zone=ANY
+firewall-offline-cmd --policy=deny-public-containers-host --add-egress-zone=HOST
+for port in 5580 7070 8123; do
+    firewall-offline-cmd --policy=deny-public-containers-host \
+        --add-rich-rule="rule family=\"ipv4\" source address=\"10.92.0.0/24\" port port=\"${port}\" protocol=\"tcp\" drop"
+done
 # Application updates arrive as reviewed digest pins in the host image.
 systemctl disable podman-auto-update.timer
-rm -rf /run/cockpit /run/selinux-policy /var/lib/dnf /tmp/* /var/tmp/*
+rm -rf /run/selinux-policy /var/lib/dnf /tmp/* /var/tmp/*
 # semanage.conf stores the image policy in /etc/selinux. RPM upgrades also
 # leave a duplicate build-time store in /var, which bootc must not deploy.
 grep -qx 'store-root=/etc/selinux' /etc/selinux/semanage.conf

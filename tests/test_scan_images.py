@@ -52,10 +52,11 @@ class ImageSecurityPolicyTests(unittest.TestCase):
             finally:
                 os.chdir(previous)
 
-    def test_deployed_image_never_blocks(self):
-        blocked, records = self.scan(OLD, baseline=OLD, findings={OLD: [CVE1, CVE2]})
+    def test_deployed_image_is_skipped_without_fail_on_fixable(self):
+        blocked, records = self.scan(OLD, baseline=OLD, findings={OLD: [CVE1, CVE2]}, error=True)
         self.assertFalse(blocked)
         self.assertEqual(records[0]["blocking"], [])
+        self.assertTrue(records[0]["skipped"])
 
     def test_repin_blocks_only_new_criticals(self):
         blocked, records = self.scan(NEW, baseline=OLD, findings={OLD: [CVE1], NEW: [CVE1, CVE2]})
@@ -86,7 +87,8 @@ class ImageSecurityPolicyTests(unittest.TestCase):
             self.assertTrue(self.scan(image, baseline=image, findings={image: [cve]}, args=nightly)[0])
 
     def test_scan_errors_and_unpinned_images_block(self):
-        self.assertTrue(self.scan(OLD, baseline=OLD, error=True)[0])
+        self.assertTrue(self.scan(NEW, baseline=OLD, error=True)[0])
+        self.assertTrue(self.scan(OLD, baseline=OLD, error=True, args=("--fail-on-fixable",))[0])
         self.assertTrue(self.scan("ghcr.io/example/app:latest")[0])
 
 

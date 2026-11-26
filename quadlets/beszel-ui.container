@@ -1,15 +1,15 @@
 [Unit]
 Description=Beszel UI
-Requires=beszel.pod
-After=beszel.pod
-StartLimitIntervalSec=0
+Wants=adguard.container
+After=adguard.container
 
 [Container]
 ContainerName=beszel-ui
 # renovate: datasource=docker depName=docker.io/henrygd/beszel
 Image=docker.io/henrygd/beszel:latest@sha256:b0be90bd4aee2993fde763032a5098ce4386fba43cfe5031ec017b8d9e8c97a2
+UserNS=auto
 
-Pod=beszel.pod
+Network=homelab.network:ip=10.90.0.14
 
 Volume=/var/lib/homelab/apps/beszel-ui/data:/beszel_data:Z,idmap
 
@@ -18,13 +18,5 @@ Label="traefik.http.routers.beszel-ui.entrypoints=https"
 Label="traefik.http.services.%p.loadbalancer.server.port=8090"
 Label="subdomain=beszel"
 
-Timezone=local
-
 [Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
-TimeoutStopSec=30
-
-[Install]
-WantedBy=homelab.target
+MemoryMax=512M

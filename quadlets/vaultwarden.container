@@ -1,8 +1,5 @@
 [Unit]
 Description=Vaultwarden (Bitwarden in Rust)
-Wants=adguard.container
-After=adguard.container
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=vaultwarden
@@ -10,7 +7,7 @@ ContainerName=vaultwarden
 Image=docker.io/vaultwarden/server:latest-alpine@sha256:bbe684a02d6b0db54256ff88eac9754f4519284a7b26314afc241fd7d0918191
 UserNS=auto
 
-Network=homelab.network:ip=10.90.0.7
+Network=public.network:ip=10.92.0.7
 HostName=vaultwarden
 
 Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
@@ -21,17 +18,16 @@ Environment=SIGNUPS_ALLOWED=false
 Volume=/run/homelab/secrets/current/vaultwarden:/run/secrets:ro,Z,idmap
 Environment=ADMIN_TOKEN_FILE=/run/secrets/admin-token
 
+ReadOnly=true
+Tmpfs=/tmp:rw,noexec,nosuid,size=64m
+DropCapability=ALL
+NoNewPrivileges=true
+
 Label="traefik.enable=true"
+Label="traefik.docker.network=public"
 Label="traefik.http.routers.vaultwarden.entrypoints=https"
 Label="subdomain=vault"
 
-Timezone=local
-
 [Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
 TimeoutStopSec=60
-
-[Install]
-WantedBy=homelab.target
+MemoryMax=512M

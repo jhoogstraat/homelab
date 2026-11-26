@@ -2,7 +2,6 @@
 Description=Open Home Foundation Matter(.js) Server
 Requires=bluetooth.service
 After=bluetooth.service
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=matter
@@ -13,8 +12,10 @@ Network=host
 
 User=root
 
+DropCapability=ALL
 AddCapability=NET_ADMIN
 AddCapability=NET_RAW
+NoNewPrivileges=true
 
 # Allow access to the host D-Bus socket under SELinux, as for Home Assistant.
 SecurityLabelType=spc_t
@@ -31,13 +32,7 @@ Environment=PRIMARY_INTERFACE=end0
 Label=traefik.enable=true
 Label=traefik.http.services.%p.loadbalancer.server.port=5580
 
-Timezone=local
-
 [Service]
-Restart=on-failure
-RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
-
-[Install]
-WantedBy=homelab.target
+MemoryMax=512M

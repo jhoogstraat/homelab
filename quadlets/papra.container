@@ -2,7 +2,6 @@
 Description=Papra document management
 Wants=adguard.container
 After=adguard.container
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=papra
@@ -25,13 +24,5 @@ Environment=NODE_OPTIONS=--import=/run/secrets/load-env.mjs
 Label="traefik.enable=true"
 Label="traefik.http.routers.papra.entrypoints=https"
 
-Timezone=local
-
 [Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
-TimeoutStopSec=30
-
-[Install]
-WantedBy=homelab.target
+MemoryMax=1G
