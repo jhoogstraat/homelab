@@ -120,4 +120,6 @@ jobs:
           git push -f origin "$branch"
           gh pr create --base main --head "$branch" --title "chore: pin patched application images from ${COMMIT_SHA::7}" \
             --body "Pins the images published by ${GITHUB_SERVER_URL}/${REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. Merged automatically once CI passes."
-          gh pr merge "$branch" --auto --squash --delete-branch
+          sleep 60  # let the PR's checks register
+          gh pr checks "$branch" --watch --fail-fast
+          gh pr merge "$branch" --squash --delete-branch
