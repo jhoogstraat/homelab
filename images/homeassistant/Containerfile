@@ -1,28 +1,9 @@
-# 2026.10.2 still ships CVE-2026-60002 (openssh), authlib, brotli, certifi, pillow and uv advisories,
-# and go2rtc/tempio built with a vulnerable Go stdlib (CVE-2025-68121).
+# 2026.11.3 still ships CVE-2026-123158 (openssh-client) and CVE-2026-96760 (Authlib 1.7.2).
 # Drop this recipe once an upstream release scans clean.
-FROM docker.io/library/golang:1.27.4-alpine@sha256:e8e55b7bf3a0faeba720580aa7e4acc04d516e424a5b275eee4f55e98f28dffd AS go
-RUN apk add --no-cache git
-RUN git clone https://github.com/AlexxIT/go2rtc.git /go2rtc \
-    && cd /go2rtc && git checkout b5948cfb25404cc5cb37b166ecaa2dca20b11d4b \
-    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/go2rtc . \
-    && git clone https://github.com/home-assistant/tempio.git /tempio \
-    && cd /tempio && git checkout 2fcfc522502f7bba71043874a5fab4007812d28c \
-    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/tempio .
 FROM ghcr.io/home-assistant/home-assistant:2026.11.3@sha256:ee500645d61b5483d0b05eebd4f2de22c390618ec178df0e1114a77d40d6d650
 RUN apk upgrade --no-cache
 COPY images/homeassistant/requirements.txt /tmp/requirements.txt
-# PyPI only, so the pinned hashes match. Constraints and integration manifests pin the old
-# versions; bump them too, otherwise Home Assistant downgrades the packages at startup.
+# PyPI only, so the pinned hash matches.
 RUN PIP_EXTRA_INDEX_URL= pip install --no-cache-dir --no-deps --require-hashes \
       --index-url https://pypi.org/simple -r /tmp/requirements.txt \
-    && cd /usr/src/homeassistant/homeassistant \
-    && sed -i -e 's/Pillow==12\.3\.0/Pillow==13.0.0/' -e 's/uv==0\.12\.23/uv==0.13.4/' \
-      package_constraints.txt components/*/manifest.json \
-      /usr/local/lib/python3.*/site-packages/homeassistant-*.dist-info/METADATA \
-    && ! grep -rqE 'Pillow==12\.3\.0|uv==0\.12\.23' . \
     && rm /tmp/requirements.txt
-# selenium-manager downloads browsers, nothing here uses it, and it bundles a vulnerable zip crate.
-RUN find /usr/local/lib/python3.*/site-packages/selenium -name 'selenium-manager*' -delete
-COPY --from=go /out/go2rtc /bin/go2rtc
-COPY --from=go /out/tempio /usr/bin/tempio
