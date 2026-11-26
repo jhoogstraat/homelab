@@ -28,7 +28,7 @@ http:
       service: vault
       middlewares: [tunnel-https]
     public-vault-admin:
-      rule: Host(`vault.hoogstraat.net`) && PathRegexp(`(?i)^/+admin(/|$)`)
+      rule: Host(`vault.hoogstraat.net`) && PathRegexp(`(?i)^/+admin`)
       priority: 100
       entryPoints: [tunnel]
       service: noop@internal
