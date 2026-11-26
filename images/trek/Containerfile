@@ -1,6 +1,6 @@
 # 5.0.0 still ships CVE-2026-6653 (libxml2, no fixed Debian package).
 # Drop this recipe once an upstream release scans clean.
-FROM docker.io/mauriceboe/trek:5.1.4@sha256:991ff5aa53244b25d5a8ea40361dc286cfc8211638044eabe12b9926729db5cc
+FROM docker.io/mauriceboe/trek:5.2.1@sha256:7935eeb96db3202b5af896951fd96379d6eb4d3608ce93a1f2e8f850e10a2257
 USER root
 # The optional KItinerary extractor pulls in Debian's unpatched libxml2.
 # TREK handles its absence; manual planning and provider-based AI parsing remain.
