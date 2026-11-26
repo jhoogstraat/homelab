@@ -6,7 +6,7 @@ After=adguard.container
 [Container]
 ContainerName=papra
 # Patched ARM64 artifact; rebuild and scan before changing this pin.
-Image=ghcr.io/jhoogstraat/homelab:papra-sha-617ac15da99d4d90855b88c419eb06e40796bb65@sha256:e614c7f173bb465ac52a5bf395af49a8b19e4fa35bde99f08f1fc90bacc59915
+Image=ghcr.io/jhoogstraat/homelab:papra-sha-c3bedba6b2eafe7163fcce657bde9abb2c3f2c10@sha256:af70c692a4a9b9341e9a9fb6411cde862bf555b6323642a802168fa5a9a1a682
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.11
