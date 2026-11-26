@@ -1,31 +1,25 @@
 [Unit]
 Description=Beszel Agent
-Requires=beszel.pod socket-proxy.container
-After=beszel.pod socket-proxy.container
-StartLimitIntervalSec=0
+Requires=socket-proxy.container
+Wants=beszel-ui.container
+After=beszel-ui.container socket-proxy.container
 
 [Container]
 ContainerName=beszel-agent
 # renovate: datasource=docker depName=docker.io/henrygd/beszel-agent
 Image=docker.io/henrygd/beszel-agent:latest@sha256:343254226ae57a5cc6f8c23c755b1464730aba2abc7043116a2e222711ec6e1a
+UserNS=auto
 
-Pod=beszel.pod
+Network=homelab.network:ip=10.90.0.19
+Network=podman-api.network
 
 Volume=/var/lib/homelab/apps/beszel-agent/data:/var/lib/beszel-agent:Z,idmap
 
-Environment=HUB_URL=http://localhost:8090
+Environment=HUB_URL=http://10.90.0.14:8090
 Environment=DOCKER_HOST=tcp://socket-proxy:2375
 Volume=/run/homelab/secrets/current/beszel-agent:/run/secrets:ro,Z,idmap
 Environment=TOKEN_FILE=/run/secrets/token
 Environment=KEY_FILE=/run/secrets/key
 
-Timezone=local
-
 [Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
 TimeoutStopSec=60
-
-[Install]
-WantedBy=homelab.target

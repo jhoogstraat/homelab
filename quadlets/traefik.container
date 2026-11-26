@@ -3,7 +3,6 @@ Description=Traefik Reverse Proxy
 Requires=socket-proxy.container
 Wants=adguard.container
 After=adguard.container socket-proxy.container
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=traefik
@@ -12,6 +11,7 @@ Image=docker.io/traefik:3@sha256:00c9734983e74ae35a1fc18eaee9e9da13f3dde95c4e45b
 UserNS=auto
 
 Network=homelab.network:ip=10.90.0.3
+Network=public.network:ip=10.92.0.3
 Network=podman-api.network
 
 # Host-network services must use the app bridge, not the isolated API gateway.
@@ -25,14 +25,11 @@ Volume=/var/lib/homelab/apps/%p/data:/opt/traefik:Z,idmap
 
 Environment=ACME_DNS_API_BASE=https://auth.acme-dns.io
 Environment=ACME_DNS_STORAGE_PATH=/opt/traefik/.lego-acme-dns-accounts.json
-
-Timezone=local
+ReadOnly=true
+Tmpfs=/tmp:rw,noexec,nosuid,size=64m
+DropCapability=ALL
+AddCapability=NET_BIND_SERVICE
+NoNewPrivileges=true
 
 [Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
-TimeoutStopSec=30
-
-[Install]
-WantedBy=homelab.target
+OOMScoreAdjust=-500

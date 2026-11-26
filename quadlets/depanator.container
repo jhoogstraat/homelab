@@ -1,7 +1,6 @@
 [Unit]
 Description=Depanator apartment agent
 ConditionPathExists=!/var/lib/homelab/apps/depanator/data/reconciliation-required
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=depanator
@@ -12,33 +11,26 @@ StopTimeout=40
 UserNS=auto
 User=1000
 Group=1000
-Network=homelab.network:ip=10.90.0.16
+Network=public.network:ip=10.92.0.16
 Volume=/var/lib/homelab/apps/depanator/data:/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
 Volume=/run/homelab/secrets/current/depanator:/run/secrets:ro,Z,idmap=uids=@0-1000-1;gids=@0-1000-1
 Environment=TELEGRAM_BOT_TOKEN_FILE=/run/secrets/telegram-bot-token
-Environment=DEPANATOR_PUBLIC_URL=https://trek.hoogstraat.net/depanator
+Environment=DEPANATOR_PUBLIC_URL=https://depanator.hoogstraat.net
+DropCapability=ALL
+NoNewPrivileges=true
 Label=traefik.enable=true
+Label=traefik.docker.network=public
 Label=traefik.http.routers.depanator.rule=Host(`depanator.hoogstraat.de`)
 Label=traefik.http.routers.depanator.entrypoints=https
 Label=traefik.http.routers.depanator.service=depanator
-Label="traefik.http.routers.depanator-public.rule=Host(`trek.hoogstraat.net`) && PathPrefix(`/depanator/`)"
-Label=traefik.http.routers.depanator-public.entrypoints=tunnel
-Label=traefik.http.routers.depanator-public.priority=100
-Label=traefik.http.routers.depanator-public.service=depanator
 Label=traefik.http.services.depanator.loadbalancer.server.port=8080
 HealthCmd=/usr/local/bin/depanator-entrypoint health
 HealthInterval=5m
 HealthTimeout=10s
 HealthStartPeriod=15m
 HealthOnFailure=kill
-Timezone=local
 
 [Service]
 Restart=always
-RestartSec=30
-TimeoutStartSec=300
 TimeoutStopSec=60
 MemoryMax=2G
-
-[Install]
-WantedBy=homelab.target

@@ -1,6 +1,5 @@
 [Unit]
 Description=OpenThread Border Router
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=otbr
@@ -9,8 +8,10 @@ Image=ghcr.io/jhoogstraat/homelab:otbr-sha-617ac15da99d4d90855b88c419eb06e40796b
 
 Network=host
 
+DropCapability=SYS_ADMIN SYS_PTRACE SYS_MODULE SYS_RAWIO SYS_BOOT MKNOD AUDIT_WRITE
 AddCapability=NET_ADMIN
 AddCapability=NET_RAW
+NoNewPrivileges=true
 
 AddDevice=/dev/serial/by-id/usb-Itead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_V2_56fc5dba521fef11a58a4ad0639e525b-if00-port0:/dev/ttyUSB0
 AddDevice=/dev/net/tun
@@ -24,13 +25,6 @@ EnvironmentFile=/var/lib/homelab/environment/%p/%p.env
 Label=traefik.enable=true
 Label=traefik.http.services.%p.loadbalancer.server.port=7070
 
-Timezone=local
-
 [Service]
-Restart=on-failure
-RestartSec=30
 TimeoutStartSec=100
 TimeoutStopSec=100
-
-[Install]
-WantedBy=homelab.target

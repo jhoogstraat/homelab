@@ -1,0 +1,5 @@
+[Network]
+NetworkName=public
+Subnet=10.92.0.0/24
+Gateway=10.92.0.1
+IPv6=true

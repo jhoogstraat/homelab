@@ -1,4 +1,4 @@
-# Cloudflare must send vault., trek., brain. and kitchen.hoogstraat.net to http://traefik:8080.
+# Cloudflare must send vault., trek., depanator., brain. and kitchen.hoogstraat.net to http://traefik:8080.
 # This entrypoint has no published host port and exposes only these applications.
 http:
   routers:
@@ -6,30 +6,46 @@ http:
       rule: Host(`brain.hoogstraat.net`)
       entryPoints: [tunnel]
       service: second-brain
+      middlewares: [tunnel-https]
+    public-depanator:
+      rule: Host(`depanator.hoogstraat.net`)
+      entryPoints: [tunnel]
+      service: depanator
+      middlewares: [tunnel-https]
     public-kitchen:
       rule: Host(`kitchen.hoogstraat.net`)
       entryPoints: [tunnel]
       service: kitchen
+      middlewares: [tunnel-https]
     public-trek:
       rule: Host(`trek.hoogstraat.net`)
       entryPoints: [tunnel]
       service: trek
-      middlewares: [trek-https]
+      middlewares: [tunnel-https]
     public-vault:
       rule: Host(`vault.hoogstraat.net`)
       entryPoints: [tunnel]
       service: vault
+      middlewares: [tunnel-https]
     public-vault-admin:
-      rule: Host(`vault.hoogstraat.net`) && PathPrefix(`/admin`)
+      rule: Host(`vault.hoogstraat.net`) && PathRegexp(`(?i)^/+admin`)
       priority: 100
       entryPoints: [tunnel]
-      service: vault
+      service: noop@internal
       middlewares: [deny-public-admin]
   middlewares:
-    trek-https:
+    tunnel-https:
       headers:
         customRequestHeaders:
           X-Forwarded-Proto: https
+    security-headers:
+      headers:
+        contentTypeNosniff: true
+        referrerPolicy: strict-origin-when-cross-origin
+        stsSeconds: 31536000
+    tunnel-only:
+      ipAllowList:
+        sourceRange: [10.92.0.9/32]
     lan-only:
       ipAllowList:
         sourceRange: [192.168.0.0/24, 127.0.0.1/32, '::1/128', 'fe80::/10']
@@ -41,6 +57,10 @@ http:
       loadBalancer:
         servers:
           - url: http://second-brain:8000
+    depanator:
+      loadBalancer:
+        servers:
+          - url: http://depanator:8080
     kitchen:
       loadBalancer:
         servers:

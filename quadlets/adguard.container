@@ -1,6 +1,5 @@
 [Unit]
 Description=Adguard Home DNS Server
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=adguard
@@ -22,13 +21,5 @@ Label="traefik.enable=true"
 Label="traefik.http.routers.adguard.entrypoints=https"
 Label="traefik.http.services.%p.loadbalancer.server.port=80"
 
-Timezone=local
-
 [Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
-TimeoutStopSec=30
-
-[Install]
-WantedBy=homelab.target
+OOMScoreAdjust=-500

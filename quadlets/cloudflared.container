@@ -1,8 +1,5 @@
 [Unit]
 Description=Cloudflare Daemon for a ZeroTrust Tunnel
-Wants=adguard.container
-After=adguard.container
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=cloudflared
@@ -10,19 +7,11 @@ ContainerName=cloudflared
 Image=docker.io/cloudflare/cloudflared:latest@sha256:55c7e3e8d89d5e8d20b75a82f3602cbf98e06db406e73e282073cfdc5a9a3af6
 UserNS=auto
 
-Network=homelab.network:ip=10.90.0.9
+Network=public.network:ip=10.92.0.9
 
 Volume=/run/homelab/secrets/current/cloudflared:/run/secrets:ro,Z,idmap=uids=@0-65532-1;gids=@0-65532-1
 
 Exec=tunnel --no-autoupdate run --token-file /run/secrets/tunnel-token
-
-Timezone=local
-
-[Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
-TimeoutStopSec=30
-
-[Install]
-WantedBy=homelab.target
+ReadOnly=true
+DropCapability=ALL
+NoNewPrivileges=true

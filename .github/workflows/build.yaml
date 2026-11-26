@@ -39,19 +39,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
-    # Scheduled runs rebuild only if main has no published image yet or Fedora has package updates for it.
+  build-and-push:
     runs-on: ubuntu-26.04-arm
     permissions:
       contents: read
-    outputs:
-      rebuild: ${{ steps.check.outputs.rebuild }}
+      packages: write
+      actions: read  # scan baseline: the last published host image build
+
     steps:
-      - id: check
+      - name: Install Podman
+        run: sudo apt-get update && sudo apt-get install -y podman python3 restic
+
+      - name: Check for Fedora updates
+        id: changes
         run: |
           if [ "$GITHUB_EVENT_NAME" = schedule ]; then
             image="ghcr.io/$GITHUB_REPOSITORY:sha-${GITHUB_SHA::7}"
-            sudo apt-get update && sudo apt-get install -y podman
             # dnf check-update exits 0 when nothing is pending, 100 when updates exist.
             if sudo podman pull --quiet "$image" && sudo podman run --rm "$image" dnf -q check-update --refresh; then
               echo "rebuild=false" >> "$GITHUB_OUTPUT"
@@ -60,35 +63,25 @@ jobs:
           fi
           echo "rebuild=true" >> "$GITHUB_OUTPUT"
 
-  build-and-push:
-    needs: changes
-    if: needs.changes.outputs.rebuild == 'true'
-    runs-on: ubuntu-26.04-arm
-    permissions:
-      contents: read
-      packages: write
-      actions: read  # scan baseline: the last published host image build
-
-    steps:
       - name: Checkout repository
+        if: steps.changes.outputs.rebuild == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Install Podman
-        run: sudo apt-get update && sudo apt-get install -y podman python3 restic rsync
-
       - name: Verify initialization and maintenance
+        if: steps.changes.outputs.rebuild == 'true'
         run: sudo python3 -m unittest discover -s tests -v
 
       - name: Log in to the Container registry
-        if: github.event_name != 'pull_request'
+        if: steps.changes.outputs.rebuild == 'true' && github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REGISTRY_USER: ${{ github.actor }}
         run: printf '%s' "$GITHUB_TOKEN" | sudo podman login --authfile /tmp/homelab-registry-auth.json ghcr.io --username "$REGISTRY_USER" --password-stdin
 
       - name: Generate image metadata
+        if: steps.changes.outputs.rebuild == 'true'
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
@@ -98,6 +91,7 @@ jobs:
             type=sha,format=short
 
       - name: Build image
+        if: steps.changes.outputs.rebuild == 'true'
         run: |
           sudo podman build \
             --arch arm64 \
@@ -107,23 +101,26 @@ jobs:
             .
 
       - name: Validate packaged Quadlets and systemd dependencies
+        if: steps.changes.outputs.rebuild == 'true'
         run: sudo python3 tests/verify_image.py homelab-bootc:build
 
       - name: Verify restricted Podman API
+        if: steps.changes.outputs.rebuild == 'true'
         run: sudo python3 tests/verify_proxy.py homelab-bootc:build
 
       - name: Verify public tunnel routes
+        if: steps.changes.outputs.rebuild == 'true'
         run: sudo python3 tests/verify_routes.py homelab-bootc:build
 
       - name: Scan application digests before publication
-        if: github.event_name != 'pull_request'
+        if: steps.changes.outputs.rebuild == 'true' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: sudo --preserve-env=GITHUB_STEP_SUMMARY,GH_TOKEN,GH_REPO python3 scripts/scan-images
 
       - name: Push image tags
-        if: github.event_name != 'pull_request'
+        if: steps.changes.outputs.rebuild == 'true' && github.event_name != 'pull_request'
         env:
           IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
         run: |

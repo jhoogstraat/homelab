@@ -1,15 +1,12 @@
 [Unit]
 Description=Second brain MCP server
-Wants=adguard.container
-After=adguard.container
-StartLimitIntervalSec=0
 
 [Container]
 ContainerName=second-brain
 # renovate: datasource=docker depName=ghcr.io/jhoogstraat/second-brain
 Image=ghcr.io/jhoogstraat/second-brain:latest@sha256:62b500e32082bdd32a7408e02f1bfe197cc7fd6cc4c8cdd16dfbf8d94a07be71
 UserNS=auto
-Network=homelab.network:ip=10.90.0.17
+Network=public.network:ip=10.92.0.17
 # The image runs as `brain` (1000); /data holds the brain git repo and OAuth state.
 Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
 Environment=PUBLIC_URL=https://brain.hoogstraat.net
@@ -26,13 +23,6 @@ NoNewPrivileges=true
 HealthCmd=python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
 HealthInterval=30s
 HealthStartPeriod=30s
-Timezone=local
 
 [Service]
-Restart=on-failure
-RestartSec=30
-TimeoutStartSec=300
-TimeoutStopSec=30
-
-[Install]
-WantedBy=homelab.target
+MemoryMax=512M

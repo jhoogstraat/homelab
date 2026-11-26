@@ -19,10 +19,9 @@ SHELL ["/bin/bash", "-xeuo", "pipefail", "-c"]
 
 RUN dnf -y upgrade --refresh \
 	&& dnf -y install \
-	bind-utils bluez btop cockpit cockpit-podman fd-find git htop ncurses \
-	neovim python3 restic ripgrep rsync tcpdump which wireshark-cli zsh \
-	arm-image-installer bcm283x-firmware uboot-images-armv8 brcmfmac-firmware \
-	NetworkManager-wifi firewalld chrony \
+	bind-utils bluez btop fd-find git ncurses \
+	neovim python3 restic ripgrep rsync which zsh \
+	brcmfmac-firmware NetworkManager-wifi firewalld chrony \
 	&& dnf clean all \
 	&& rm -rf /var/cache/* /var/log/* /run/dnf /tmp/* /var/tmp/*
 
