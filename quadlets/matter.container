@@ -28,6 +28,7 @@ Environment=NOBLE_BINDINGS=dbus
 Environment=BLUETOOTH_ADAPTER=0
 Environment=LOG_LEVEL=info
 Environment=PRIMARY_INTERFACE=end0
+Environment=ENABLE_TIME_SYNC=true
 
 Label=traefik.enable=true
 Label=traefik.http.services.%p.loadbalancer.server.port=5580
