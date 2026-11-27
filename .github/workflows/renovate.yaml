@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: renovatebot/github-action@acdd6bda8b035c99ce59d5675816af2aa65a1774 # v46.3.14
+      - uses: renovatebot/github-action@7b402fe76b7bc4273576663a09be2f0f85266e2f # v47.0.0
         with:
           # A PAT, not github.token: PRs opened with github.token don't trigger CI, so nothing could automerge.
           token: ${{ secrets.RENOVATE_TOKEN }}
