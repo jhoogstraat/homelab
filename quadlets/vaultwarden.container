@@ -13,6 +13,7 @@ HostName=vaultwarden
 Volume=/var/lib/homelab/apps/%p/data:/data:Z,idmap
 
 Environment=DOMAIN=https://vault.hoogstraat.net
+Environment=ROCKET_PORT=8080
 Environment=SIGNUPS_ALLOWED=false
 
 Volume=/run/homelab/secrets/current/vaultwarden:/run/secrets:ro,Z,idmap
@@ -26,6 +27,8 @@ NoNewPrivileges=true
 Label="traefik.enable=true"
 Label="traefik.docker.network=public"
 Label="traefik.http.routers.vaultwarden.entrypoints=https"
+Label="traefik.http.routers.vaultwarden.service=vaultwarden"
+Label="traefik.http.services.vaultwarden.loadbalancer.server.port=8080"
 Label="subdomain=vault"
 
 [Service]

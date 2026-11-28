@@ -187,7 +187,7 @@ pages:
                 icon: di:adguard-home
               - title: Vaultwarden
                 url: https://vault.hoogstraat.de
-                check-url: http://vaultwarden:80
+                check-url: http://vaultwarden:8080
                 icon: di:vaultwarden
               - title: Beszel
                 url: https://beszel.hoogstraat.de

@@ -55,7 +55,7 @@ try:
             "import http.server; "
             "H=type('H',(http.server.BaseHTTPRequestHandler,),"
             "{'do_GET':lambda s:(s.send_response(200),s.end_headers(),s.wfile.write(b'{}'))}); "
-            "http.server.HTTPServer(('0.0.0.0',80),H).serve_forever()")
+            "http.server.HTTPServer(('0.0.0.0',8080),H).serve_forever()")
     command("create", "--name", proxy, "--network", prefix, traefik_image,
             "--entrypoints.tunnel.address=:8080",
             "--entrypoints.tunnel.http.aliasHeadersStrategy=delete", "--entrypoints.https.address=:8443",

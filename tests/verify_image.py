@@ -59,6 +59,8 @@ for name in ("cloudflared", "vaultwarden", "beszel-agent", "glance", "papra", "h
     assert not re.search(r"--env-file(?:=| )[^\s]*homelab/secrets", unit), name
 assert "--token-file /run/secrets/tunnel-token" in units["cloudflared.service"]
 assert "ADMIN_TOKEN_FILE=/run/secrets/admin-token" in units["vaultwarden.service"]
+assert "ROCKET_PORT=8080" in units["vaultwarden.service"]
+assert "traefik.http.services.vaultwarden.loadbalancer.server.port=8080" in units["vaultwarden.service"]
 assert "/run/homelab/secrets/current/beszel-agent:/run/secrets:ro,Z,idmap" in units["beszel-agent.service"]
 assert "--userns auto" in units["beszel-ui.service"]
 assert "--userns auto" in units["beszel-agent.service"]
