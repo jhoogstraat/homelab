@@ -4,7 +4,7 @@ Description=TREK travel planner
 [Container]
 ContainerName=trek
 # Patched ARM64 artifact (images/trek); rebuild and scan before changing this pin.
-Image=ghcr.io/jhoogstraat/homelab:trek-sha-ea6939d83d70147ff278946b9a8d256163303bd1@sha256:9bc2a21f9ca52732b187171fd5024357f3224b38de27bef46f971bb891445114
+Image=ghcr.io/jhoogstraat/homelab:trek-sha-89dd70fe73d425afb54bb0f0ae2e9770155d07ac@sha256:cff5a6d301ecd96728d0d93c45900a0560f3c3d9c4339b677cc6434d151a1ca0
 UserNS=auto
 Network=public.network:ip=10.92.0.15
 Volume=/var/lib/homelab/apps/%p/data:/app/data:Z,idmap=uids=@0-1000-1;gids=@0-1000-1
